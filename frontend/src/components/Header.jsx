@@ -1,32 +1,26 @@
 import React from 'react'
 
 export function Header({ page, search, setSearch, openExpenseDialog }) {
-  const pageTitle =
-    page === 'expenses'
-      ? 'Expenses'
-      : page === 'insights'
-      ? 'Insights'
-      : page === 'settings'
-      ? 'Settings'
-      : 'Dashboard'
+  const isExpenses = page === 'expenses'
+  const title = page === 'insights' ? 'Insights' : page === 'settings' ? 'Settings' : 'Expenses'
 
   return (
-    <div className="pocket-ledger-topbar">
-      <h1>{pageTitle}</h1>
-
-      <div className="pocket-ledger-actions">
-        {page === 'expenses' && (
+    <div className="top">
+      <h1 id="title">{title}</h1>
+      <div className="actions">
+        {isExpenses && (
           <input
+            id="q"
             type="search"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
             placeholder="Search expenses"
             aria-label="Search expenses"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
           />
         )}
-
         <button
-          className="pocket-ledger-primary-button"
+          className="primary"
+          id="open"
           type="button"
           onClick={() => openExpenseDialog()}
         >

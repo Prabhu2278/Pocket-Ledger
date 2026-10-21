@@ -2,14 +2,11 @@ import React from 'react'
 import './App.css'
 import { useExpenses } from './hooks/useExpenses'
 import { MainLayout } from './layouts/MainLayout'
-import { Expenses } from './pages/transactions/Expenses'
+import { Expenses } from './pages/Expenses'
 import { Insights } from './pages/Insights'
-import { Dashboard } from './pages/Dashboard'
-import { Settings } from './pages/Settings'
 
 export function App() {
   const {
-    data,
     month,
     changeMonth,
     page,
@@ -18,7 +15,19 @@ export function App() {
     search,
     setSearch,
     sort,
-    sortBy,
+    toggleSort,
+    budget,
+    totalSpent,
+    budgetLeft,
+    budgetPercent,
+    monthTransactions,
+    visibleTransactions,
+    categoryTotals,
+    rankedCategories,
+    daysLeft,
+    isCurrentMonth,
+    last7Days,
+    activityLogs,
     dialogOpen,
     setDialogOpen,
     editingId,
@@ -33,19 +42,11 @@ export function App() {
     formError,
     openExpenseDialog,
     saveExpense,
-    deleteConfirmId,
-    setDeleteConfirmId,
     deleteExpense,
     undoDelete,
+    updateBudget,
+    selectCategoryFilter,
     toast,
-    monthTransactions,
-    categoryTotals,
-    totalSpent,
-    budgetLeft,
-    budgetPercent,
-    rankedCategories,
-    visibleTransactions,
-    setBudget,
   } = useExpenses()
 
   return (
@@ -54,7 +55,7 @@ export function App() {
       month={month}
       changeMonth={changeMonth}
       totalSpent={totalSpent}
-      budget={data.budget}
+      budget={budget}
       budgetPercent={budgetPercent}
       search={search}
       setSearch={setSearch}
@@ -72,55 +73,39 @@ export function App() {
       setDate={setDate}
       formError={formError}
       saveExpense={saveExpense}
-      deleteConfirmId={deleteConfirmId}
-      setDeleteConfirmId={setDeleteConfirmId}
-      deleteExpense={deleteExpense}
       toast={toast}
       undoDelete={undoDelete}
     >
-      {page === 'expenses' && (
-        <Expenses
-          transactions={data.tx}
-          monthTransactions={monthTransactions}
-          totalSpent={totalSpent}
-          budgetLeft={budgetLeft}
-          rankedCategories={rankedCategories}
-          onEdit={openExpenseDialog}
-          onDelete={(id) => setDeleteConfirmId(id)}
-        />
-      )}
-
-      {page === 'insights' && (
+      {page === 'insights' ? (
         <Insights
           totalSpent={totalSpent}
-          budget={data.budget}
+          budget={budget}
           budgetLeft={budgetLeft}
           budgetPercent={budgetPercent}
+          month={month}
+          daysLeft={daysLeft}
+          isCurrentMonth={isCurrentMonth}
           categoryTotals={categoryTotals}
           rankedCategories={rankedCategories}
-          data={data}
-          setBudget={setBudget}
+          last7Days={last7Days}
+          activityLogs={activityLogs}
+          onUpdateBudget={updateBudget}
+          onSelectCategoryFilter={selectCategoryFilter}
         />
-      )}
-
-      {page === 'dashboard' && (
-        <Dashboard
+      ) : (
+        <Expenses
           totalSpent={totalSpent}
-          budget={data.budget}
           budgetLeft={budgetLeft}
-          budgetPercent={budgetPercent}
           monthTransactions={monthTransactions}
           rankedCategories={rankedCategories}
+          filter={filter}
+          setFilter={setFilter}
           visibleTransactions={visibleTransactions}
           sort={sort}
-          sortBy={sortBy}
+          onSort={toggleSort}
           openExpenseDialog={openExpenseDialog}
-          setDeleteConfirmId={setDeleteConfirmId}
+          onDeleteExpense={deleteExpense}
         />
-      )}
-
-      {page === 'settings' && (
-        <Settings showToast={(msg) => alert(msg)} />
       )}
     </MainLayout>
   )

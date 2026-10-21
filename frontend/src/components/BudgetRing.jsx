@@ -1,35 +1,43 @@
 import React from 'react'
 import { money } from '../utils/formatCurrency'
 
-export function BudgetRing({ totalSpent, budget, budgetLeft, budgetPercent }) {
-  const ringCircumference = 326.7
-  const strokeDashoffset = ringCircumference * (1 - Math.min(budgetPercent, 1))
+export function BudgetRing({
+  totalSpent = 0,
+  budget = 20000,
+  budgetLeft = 0,
+  budgetPercent = 0,
+  daysLeft = 'Closed',
+}) {
+  const pct = Math.max(budgetPercent, 0)
+  const clampedPct = Math.min(pct, 1)
+  const strokeOffset = 326.7 * (1 - clampedPct)
 
   const strokeColor =
-    budgetPercent >= 1
-      ? 'var(--pocket-out)'
-      : budgetPercent >= 0.8
-      ? 'var(--pocket-warn)'
-      : 'var(--pocket-accent)'
+    pct >= 1
+      ? 'var(--out)'
+      : pct >= 0.8
+      ? 'var(--warn)'
+      : 'var(--acc)'
 
   return (
-    <div className="pocket-ledger-budget-ring-layout">
-      <div className="pocket-ledger-ring">
+    <div className="ringbox">
+      <div className="ring">
         <svg
           viewBox="0 0 120 120"
+          id="ringsvg"
           role="img"
-          aria-label={`${Math.round(budgetPercent * 100)}% of budget used`}
+          aria-label={`${Math.round(pct * 100)}% of the budget used`}
         >
           <circle
             cx="60"
             cy="60"
             r="52"
             fill="none"
-            stroke="var(--pocket-bg)"
+            stroke="var(--bg)"
             strokeWidth="12"
           />
-
           <circle
+            id="arc"
             cx="60"
             cy="60"
             r="52"
@@ -37,29 +45,35 @@ export function BudgetRing({ totalSpent, budget, budgetLeft, budgetPercent }) {
             stroke={strokeColor}
             strokeWidth="12"
             strokeLinecap="round"
-            strokeDasharray={ringCircumference}
-            strokeDashoffset={strokeDashoffset}
+            strokeDasharray="326.7"
+            strokeDashoffset={strokeOffset}
+            style={{ transition: 'stroke-dashoffset 0.7s, stroke 0.3s' }}
           />
         </svg>
-
-        <div className="pocket-ledger-ring-center">
-          <b>
+        <div className="mid">
+          <b id="left">
             {budgetLeft < 0 ? '-' : ''}
             {money(Math.abs(budgetLeft))}
           </b>
-          <small>
+          <small id="leftlbl">
             {budgetLeft < 0 ? 'over budget' : 'left to spend'}
           </small>
         </div>
       </div>
 
-      <div className="pocket-ledger-budget-stats">
-        <span>Spent</span>
-        <b>{money(totalSpent)}</b>
-        <span>Budget</span>
-        <b>{money(budget)}</b>
-        <span>Used</span>
-        <b>{Math.round(budgetPercent * 100)}%</b>
+      <div>
+        <div className="st">
+          <span>Spent</span>
+          <b id="spent">{money(totalSpent)}</b>
+        </div>
+        <div className="st">
+          <span>Budget</span>
+          <b id="bud">{money(budget)}</b>
+        </div>
+        <div className="st">
+          <span>Days left</span>
+          <b id="days">{daysLeft}</b>
+        </div>
       </div>
     </div>
   )

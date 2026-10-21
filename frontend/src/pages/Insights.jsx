@@ -1,143 +1,182 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { money } from '../utils/formatCurrency'
 import { BudgetRing } from '../components/BudgetRing'
-import { CATEGORIES } from '../hooks/useExpenses'
+import { getCategoryColor } from '../constants/categories'
 
-function relativeTime(timestamp) {
-  const diff = Date.now() - timestamp
-  const minutes = Math.floor(diff / 60000)
-  if (minutes < 1) return 'Just now'
-  if (minutes < 60) return `${minutes}m ago`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours}h ago`
-  const days = Math.floor(hours / 24)
-  return `${days}d ago`
+function formatRelativeTime(timestamp) {
+  const diffSec = Math.floor((Date.now() - timestamp) / 1000)
+  if (diffSec < 60) return 'just now'
+  if (diffSec < 3600) return `${Math.floor(diffSec / 60)} min ago`
+  if (diffSec < 86400) return `${Math.floor(diffSec / 3600)} h ago`
+  return `${Math.floor(diffSec / 86400)} d ago`
 }
 
 export function Insights({
-  totalSpent,
-  budget,
-  budgetLeft,
-  budgetPercent,
-  categoryTotals,
-  rankedCategories,
-  data,
-  setBudget,
+  totalSpent = 0,
+  budget = 20000,
+  budgetLeft = 0,
+  budgetPercent = 0,
+  month = { year: new Date().getFullYear(), month: new Date().getMonth() },
+  daysLeft = 'Closed',
+  isCurrentMonth = true,
+  categoryTotals = {},
+  rankedCategories = [],
+  last7Days = [],
+  activityLogs = [],
+  onUpdateBudget,
+  onSelectCategoryFilter,
 }) {
-  const [editingBudget, setEditingBudget] = useState(false)
-  const [newBudgetVal, setNewBudgetVal] = useState(String(budget))
-  const categoryColorMap = Object.fromEntries(CATEGORIES)
+  const [budgetVal, setBudgetVal] = useState(budget)
 
-  const handleSaveBudget = (e) => {
-    e.preventDefault()
-    setBudget(Number(newBudgetVal) || 0)
-    setEditingBudget(false)
+  useEffect(() => {
+    setBudgetVal(budget)
+  }, [budget])
+
+  const handleBudgetChange = (e) => {
+    const val = parseFloat(e.target.value)
+    const newBudget = val >= 0 ? val : 0
+    setBudgetVal(newBudget)
+    if (onUpdateBudget) {
+      onUpdateBudget(newBudget)
+    }
   }
 
-  return (
-    <section className="pocket-ledger-insights-view" aria-label="Insights module">
-      <div className="pocket-ledger-insights-grid">
-        <div className="pocket-ledger-card">
-          <h2>Budget</h2>
+  // Calculate hint text matching prototype
+  const daysInMonth = new Date(month.year, month.month + 1, 0).getDate()
+  const todayDate = new Date().getDate()
+  const dl = Math.max(daysInMonth - todayDate, 1)
 
+  let hintText = ''
+  if (!isCurrentMonth) {
+    hintText = `This month is closed. You spent ${money(totalSpent)}.`
+  } else if (budgetLeft > 0) {
+    hintText = `You can spend about ${money(budgetLeft / dl)} a day and stay on budget.`
+  } else {
+    hintText = `You are ${money(Math.abs(budgetLeft))} over budget. A no-spend day will help.`
+  }
+
+  // Max value for last 7 days chart
+  const maxDayAmount = Math.max(1, ...last7Days.map((d) => d.amount || 0))
+
+  return (
+    <section className="view on" id="v2" aria-label="Insights module">
+      <div className="grid2">
+        {/* Card 1: Budget Ring */}
+        <div className="card">
+          <h2>Budget</h2>
           <BudgetRing
             totalSpent={totalSpent}
             budget={budget}
             budgetLeft={budgetLeft}
             budgetPercent={budgetPercent}
+            daysLeft={daysLeft}
           />
+          <div className="hint" id="hint">
+            {hintText}
+          </div>
+          <div className="bud">
+            <label htmlFor="budget">Monthly budget</label>
+            <input
+              id="budget"
+              type="number"
+              inputMode="decimal"
+              min="0"
+              value={budgetVal}
+              onChange={handleBudgetChange}
+            />
+          </div>
+        </div>
 
-          <div className="pocket-ledger-budget-editor">
-            {editingBudget ? (
-              <form onSubmit={handleSaveBudget} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                <input
-                  type="number"
-                  className="pocket-ledger-amount-input"
-                  value={newBudgetVal}
-                  onChange={(e) => setNewBudgetVal(e.target.value)}
-                  style={{ maxWidth: '160px', padding: '6px 12px' }}
-                  autoFocus
-                />
-                <button type="submit" className="pocket-ledger-primary-button">
-                  Save
-                </button>
-                <button
-                  type="button"
-                  className="pocket-ledger-ghost-button"
-                  onClick={() => setEditingBudget(false)}
+        {/* Card 2: Last 7 days */}
+        <div className="card">
+          <h2>
+            Last 7 days <small>hover a bar for the amount</small>
+          </h2>
+          <div className="week" id="week">
+            {last7Days.map((d) => {
+              const heightPx = (d.amount / maxDayAmount) * 110
+              return (
+                <div
+                  key={d.date}
+                  className={d.is_today ? 'today' : ''}
+                  title={money(d.amount)}
                 >
-                  Cancel
-                </button>
-              </form>
+                  <span>{money(d.amount)}</span>
+                  <i
+                    style={{ height: `${Math.max(heightPx, 4)}px` }}
+                    aria-hidden="true"
+                  ></i>
+                  <span>{d.day_name}</span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Card 3: Where your money went */}
+        <div className="card">
+          <h2>
+            Where your money went <small>click to filter</small>
+          </h2>
+          <div id="break">
+            {rankedCategories.length > 0 ? (
+              <>
+                <div className="bar" role="img" aria-label="Spending by category">
+                  {rankedCategories.map((cat) => {
+                    const amt = categoryTotals[cat] || 0
+                    const pct = totalSpent > 0 ? (amt / totalSpent) * 100 : 0
+                    return (
+                      <i
+                        key={cat}
+                        style={{
+                          width: `${pct}%`,
+                          background: getCategoryColor(cat),
+                        }}
+                      ></i>
+                    )
+                  })}
+                </div>
+                {rankedCategories.map((cat) => {
+                  const amt = categoryTotals[cat] || 0
+                  const pct = totalSpent > 0 ? Math.round((amt / totalSpent) * 100) : 0
+                  return (
+                    <button
+                      key={cat}
+                      type="button"
+                      className="lg"
+                      onClick={() => onSelectCategoryFilter(cat)}
+                    >
+                      <i style={{ background: getCategoryColor(cat) }}></i>
+                      {cat}
+                      <em>
+                        {money(amt)} · {pct}%
+                      </em>
+                    </button>
+                  )
+                })}
+              </>
             ) : (
-              <button
-                type="button"
-                className="pocket-ledger-ghost-button"
-                onClick={() => {
-                  setNewBudgetVal(String(budget))
-                  setEditingBudget(true)
-                }}
-              >
-                ✎ Adjust monthly budget
-              </button>
+              <div className="empty">
+                <b>No spending yet</b>
+                Add an expense to see your breakdown.
+              </div>
             )}
           </div>
         </div>
 
-        <div className="pocket-ledger-card">
-          <h2>Categories</h2>
-
-          <div className="pocket-ledger-category-legend">
-            {rankedCategories.length === 0 ? (
-              <p style={{ color: 'var(--pocket-muted)', fontSize: '13px' }}>
-                No category data for this month.
-              </p>
-            ) : (
-              rankedCategories.map((cat) => {
-                const amt = categoryTotals[cat] || 0
-                const pct = totalSpent > 0 ? Math.round((amt / totalSpent) * 100) : 0
-                const color = categoryColorMap[cat] || '#64748b'
-
-                return (
-                  <div key={cat} style={{ marginBottom: '14px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', fontSize: '13.5px' }}>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span
-                          className="pocket-ledger-category-dot"
-                          style={{ background: color }}
-                        />
-                        <b>{cat}</b>
-                      </span>
-                      <span>
-                        {money(amt)} <small style={{ color: 'var(--pocket-muted)' }}>({pct}%)</small>
-                      </span>
-                    </div>
-
-                    <div className="pocket-ledger-category-bar">
-                      <i style={{ width: `${pct}%`, background: color }} />
-                    </div>
-                  </div>
-                )
-              })
-            )}
-          </div>
-        </div>
-
-        <div className="pocket-ledger-card">
+        {/* Card 4: Recent activity */}
+        <div className="card">
           <h2>Recent activity</h2>
-
-          <ul className="pocket-ledger-activity-list">
-            {!data.log || data.log.length === 0 ? (
-              <li style={{ color: 'var(--pocket-muted)', fontSize: '13px' }}>
-                No recent activity logged.
-              </li>
-            ) : (
-              data.log.slice(0, 10).map((item, idx) => (
+          <ul className="feed" id="feed">
+            {activityLogs.length > 0 ? (
+              activityLogs.slice(0, 7).map((log, idx) => (
                 <li key={idx}>
-                  <span>{item.txt}</span>
-                  <time>{relativeTime(item.t)}</time>
+                  {log.txt}
+                  <span>{formatRelativeTime(log.t)}</span>
                 </li>
               ))
+            ) : (
+              <li style={{ color: 'var(--mute)' }}>No recent activity.</li>
             )}
           </ul>
         </div>

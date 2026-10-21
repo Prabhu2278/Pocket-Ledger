@@ -5,15 +5,23 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 
 load_dotenv()
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./expenses.db")
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+psycopg2://postgres:Pra12.22@localhost:5432/expense_tracker")
 
-# Fallback to sqlite if postgresql isn't reachable or on SQLite connect
+# Normalize postgresql:// to postgresql+psycopg2:// for SQLAlchemy
+if DATABASE_URL.startswith("postgresql://"):
+    DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg2://", 1)
+
 try:
     if "sqlite" in DATABASE_URL:
         engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
     else:
         engine = create_engine(DATABASE_URL, pool_pre_ping=True)
-except Exception:
+    # Test connection
+    with engine.connect() as test_conn:
+        pass
+    print(f"[Database] Connected successfully to {DATABASE_URL.split('@')[-1] if '@' in DATABASE_URL else DATABASE_URL}")
+except Exception as e:
+    print(f"[Database Warning] Failed to connect to PostgreSQL: {e}. Falling back to SQLite.")
     DATABASE_URL = "sqlite:///./expenses.db"
     engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 

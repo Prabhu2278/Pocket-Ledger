@@ -7,20 +7,15 @@ export function Sidebar({ page, month, changeMonth, totalSpent, budget, budgetPe
     year: 'numeric',
   })
 
-  return (
-    <aside className="pocket-ledger-sidebar">
-      <div className="pocket-ledger-brand">
-        Pocket Ledger
-      </div>
+  const clampedPct = Math.min(Math.max(budgetPercent, 0), 1)
 
-      <nav className="pocket-ledger-navigation" aria-label="Modules">
+  return (
+    <aside className="side">
+      <div className="brand">Pocket Ledger</div>
+      <nav aria-label="Modules">
         <a
           href="#/expenses"
-          className={
-            page === 'expenses'
-              ? 'pocket-ledger-nav-link pocket-ledger-nav-active'
-              : 'pocket-ledger-nav-link'
-          }
+          id="n1"
           aria-current={page === 'expenses' ? 'page' : undefined}
         >
           <svg
@@ -37,14 +32,9 @@ export function Sidebar({ page, month, changeMonth, totalSpent, budget, budgetPe
           </svg>
           Expenses
         </a>
-
         <a
           href="#/insights"
-          className={
-            page === 'insights'
-              ? 'pocket-ledger-nav-link pocket-ledger-nav-active'
-              : 'pocket-ledger-nav-link'
-          }
+          id="n2"
           aria-current={page === 'insights' ? 'page' : undefined}
         >
           <svg
@@ -60,90 +50,37 @@ export function Sidebar({ page, month, changeMonth, totalSpent, budget, budgetPe
           </svg>
           Insights
         </a>
-
-        <a
-          href="#/dashboard"
-          className={
-            page === 'dashboard'
-              ? 'pocket-ledger-nav-link pocket-ledger-nav-active'
-              : 'pocket-ledger-nav-link'
-          }
-          aria-current={page === 'dashboard' ? 'page' : undefined}
-        >
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            aria-hidden="true"
-          >
-            <rect x="3" y="3" width="7" height="7" rx="1" />
-            <rect x="14" y="3" width="7" height="7" rx="1" />
-            <rect x="14" y="14" width="7" height="7" rx="1" />
-            <rect x="3" y="14" width="7" height="7" rx="1" />
-          </svg>
-          Dashboard
-        </a>
-
-        <a
-          href="#/settings"
-          className={
-            page === 'settings'
-              ? 'pocket-ledger-nav-link pocket-ledger-nav-active'
-              : 'pocket-ledger-nav-link'
-          }
-          aria-current={page === 'settings' ? 'page' : undefined}
-        >
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            aria-hidden="true"
-          >
-            <circle cx="12" cy="12" r="3" />
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-          </svg>
-          Settings
-        </a>
       </nav>
 
-      <div
-        className="pocket-ledger-month-picker"
-        role="group"
-        aria-label="Choose month"
-      >
+      <div className="month" role="group" aria-label="Choose month">
         <button
+          id="prev"
+          aria-label="Previous month"
           type="button"
           onClick={() => changeMonth(-1)}
-          aria-label="Previous month"
         >
           ‹
         </button>
-
-        <span>{monthDisplay}</span>
-
+        <span id="mlabel" aria-live="polite">
+          {monthDisplay}
+        </span>
         <button
+          id="next"
+          aria-label="Next month"
           type="button"
           onClick={() => changeMonth(1)}
-          aria-label="Next month"
         >
           ›
         </button>
       </div>
 
-      <div className="pocket-ledger-sidebar-budget">
+      <div className="sidebud">
         <span>Budget used</span>
-        <b>
+        <b id="sbtxt">
           {money(totalSpent)} of {money(budget)}
         </b>
-
-        <div className="pocket-ledger-budget-meter">
-          <i style={{ width: `${Math.min(budgetPercent * 100, 100)}%` }} />
+        <div className="meter">
+          <i id="sbbar" style={{ width: `${clampedPct * 100}%` }}></i>
         </div>
       </div>
     </aside>

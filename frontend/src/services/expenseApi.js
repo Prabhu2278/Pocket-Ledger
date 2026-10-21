@@ -1,52 +1,11 @@
 /**
- * expenseApi.js - Centralized API Service for Expenses, Budgets, and Insights
+ * expenseApi.js - Dedicated API service communicating with FastAPI backend
  */
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
-const LOCAL_STORAGE_KEY = 'pocket_ledger_expenses_data'
-const LOCAL_BUDGET_KEY = 'pocket_ledger_budgets_data'
-
-// Helper: Seed default demo transactions if empty
-function getLocalExpenses() {
-  const stored = localStorage.getItem(LOCAL_STORAGE_KEY)
-  if (stored) {
-    try {
-      return JSON.parse(stored)
-    } catch (e) {
-      // Fallback
-    }
-  }
-  const defaults = [
-    { id: 1, title: 'Grocery Shopping', amount: 3450, category: 'Groceries', date: '2026-10-20', payment_method: 'UPI', notes: 'Weekly fruits & vegetables' },
-    { id: 2, title: 'House Rent', amount: 22000, category: 'Housing', date: '2026-10-01', payment_method: 'Bank Transfer', notes: 'October rent payment' },
-    { id: 3, title: 'Dinner with Friends', amount: 1850, category: 'Food & Dining', date: '2026-10-18', payment_method: 'Credit Card', notes: 'Weekend dinner' },
-    { id: 4, title: 'Electricity & Wifi', amount: 2400, category: 'Utilities', date: '2026-10-12', payment_method: 'UPI', notes: 'Broadband + power' },
-    { id: 5, title: 'Cab to Airport', amount: 850, category: 'Transportation', date: '2026-10-15', payment_method: 'UPI', notes: 'Uber ride' },
-    { id: 6, title: 'Gym Membership', amount: 2500, category: 'Healthcare', date: '2026-10-05', payment_method: 'Card', notes: 'Monthly fitness pass' },
-  ]
-  localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(defaults))
-  return defaults
-}
-
-function saveLocalExpenses(data) {
-  localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(data))
-}
-
-function getLocalBudget(monthKey) {
-  const stored = localStorage.getItem(LOCAL_BUDGET_KEY)
-  const map = stored ? JSON.parse(stored) : {}
-  return map[monthKey] || 100000.0
-}
-
-function saveLocalBudget(monthKey, amount) {
-  const stored = localStorage.getItem(LOCAL_BUDGET_KEY)
-  const map = stored ? JSON.parse(stored) : {}
-  map[monthKey] = amount
-  localStorage.setItem(LOCAL_BUDGET_KEY, JSON.stringify(map))
-}
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/api$/, '')
 
 export const expenseApi = {
-  // Fetch all expenses with optional filters
+  // Fetch expenses with optional month, category, search, and sorting filters
   async getExpenses(params = {}) {
     const query = new URLSearchParams()
     if (params.category && params.category !== 'All') query.append('category', params.category)
@@ -54,167 +13,114 @@ export const expenseApi = {
     if (params.month_key) query.append('month_key', params.month_key)
     if (params.sort_by) query.append('sort_by', params.sort_by)
     if (params.sort_order) query.append('sort_order', params.sort_order)
+    query.append('limit', '500')
 
-    try {
-      const res = await fetch(`${API_BASE}/expenses?${query.toString()}`)
-      if (res.ok) {
-        return await res.json()
-      }
-    } catch (err) {
-      // Offline fallback
+    const res = await fetch(`${API_BASE}/api/expenses?${query.toString()}`)
+    if (!res.ok) {
+      throw new Error(`Failed to fetch expenses: ${res.statusText}`)
     }
-
-    // Local filter fallback
-    let items = getLocalExpenses()
-    if (params.category && params.category !== 'All') {
-      items = items.filter((x) => x.category.toLowerCase() === params.category.toLowerCase())
-    }
-    if (params.search) {
-      const term = params.search.toLowerCase()
-      items = items.filter(
-        (x) =>
-          x.title.toLowerCase().includes(term) ||
-          x.category.toLowerCase().includes(term) ||
-          (x.notes && x.notes.toLowerCase().includes(term))
-      )
-    }
-    if (params.month_key) {
-      items = items.filter((x) => x.date.startsWith(params.month_key))
-    }
-    items.sort((a, b) => new Date(b.date) - new Date(a.date))
-    return items
+    return await res.json()
   },
 
-  // Create new expense
-  async createExpense(data) {
-    try {
-      const res = await fetch(`${API_BASE}/expenses`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      })
-      if (res.ok) {
-        return await res.json()
-      }
-    } catch (err) {
-      // Offline fallback
+  // Fetch single expense by ID
+  async getExpense(id) {
+    const res = await fetch(`${API_BASE}/api/expenses/${id}`)
+    if (!res.ok) {
+      throw new Error(`Failed to fetch expense ${id}`)
     }
+    return await res.json()
+  },
 
-    const items = getLocalExpenses()
-    const newExpense = {
-      ...data,
-      id: Date.now(),
-      created_at: new Date().toISOString(),
+  // Create an expense
+  async createExpense(payload) {
+    const res = await fetch(`${API_BASE}/api/expenses`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        amt: Number(payload.amt || payload.amount),
+        amount: Number(payload.amount || payload.amt),
+        cat: payload.cat || payload.category,
+        category: payload.category || payload.cat,
+        note: payload.note || payload.title || '',
+        title: payload.title || payload.note || '',
+        date: payload.date || payload.spent_on,
+        spent_on: payload.spent_on || payload.date,
+        payment_method: payload.payment_method || 'UPI',
+      }),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.detail || 'Failed to save expense')
     }
-    items.unshift(newExpense)
-    saveLocalExpenses(items)
-    return newExpense
+    return await res.json()
   },
 
   // Update existing expense
-  async updateExpense(id, data) {
-    try {
-      const res = await fetch(`${API_BASE}/expenses/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      })
-      if (res.ok) {
-        return await res.json()
-      }
-    } catch (err) {
-      // Offline fallback
+  async updateExpense(id, payload) {
+    const res = await fetch(`${API_BASE}/api/expenses/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        amt: Number(payload.amt || payload.amount),
+        amount: Number(payload.amount || payload.amt),
+        cat: payload.cat || payload.category,
+        category: payload.category || payload.cat,
+        note: payload.note || payload.title || '',
+        title: payload.title || payload.note || '',
+        date: payload.date || payload.spent_on,
+        spent_on: payload.spent_on || payload.date,
+        payment_method: payload.payment_method || 'UPI',
+      }),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.detail || 'Failed to update expense')
     }
-
-    const items = getLocalExpenses()
-    const index = items.findIndex((x) => x.id === id)
-    if (index !== -1) {
-      items[index] = { ...items[index], ...data }
-      saveLocalExpenses(items)
-      return items[index]
-    }
-    throw new Error('Expense not found')
+    return await res.json()
   },
 
   // Delete expense
   async deleteExpense(id) {
-    try {
-      const res = await fetch(`${API_BASE}/expenses/${id}`, {
-        method: 'DELETE',
-      })
-      if (res.ok) return true
-    } catch (err) {
-      // Offline fallback
+    const res = await fetch(`${API_BASE}/api/expenses/${id}`, {
+      method: 'DELETE',
+    })
+    if (!res.ok && res.status !== 204) {
+      throw new Error('Failed to delete expense')
     }
-
-    let items = getLocalExpenses()
-    items = items.filter((x) => x.id !== id)
-    saveLocalExpenses(items)
     return true
   },
 
-  // Fetch monthly budget & insights analytics
-  async getInsights(monthKey) {
-    try {
-      const res = await fetch(`${API_BASE}/insights?month_key=${monthKey}`)
-      if (res.ok) {
-        return await res.json()
-      }
-    } catch (err) {
-      // Offline fallback
+  // Get monthly budget
+  async getBudget(monthKey) {
+    const res = await fetch(`${API_BASE}/api/insights/budget?month_key=${monthKey}`)
+    if (!res.ok) {
+      throw new Error('Failed to fetch budget')
     }
-
-    const expenses = getLocalExpenses().filter((x) => x.date.startsWith(monthKey))
-    const budgetTarget = getLocalBudget(monthKey)
-    const totalSpent = expenses.reduce((acc, curr) => acc + Number(curr.amount || 0), 0)
-    const remainingBudget = Math.max(0, budgetTarget - totalSpent)
-    const pctUsed = budgetTarget > 0 ? (totalSpent / budgetTarget) * 100 : 0
-
-    // Category breakdown
-    const catMap = {}
-    const countMap = {}
-    expenses.forEach((e) => {
-      catMap[e.category] = (catMap[e.category] || 0) + Number(e.amount)
-      countMap[e.category] = (countMap[e.category] || 0) + 1
-    })
-
-    const breakdown = Object.entries(catMap).map(([category, amount]) => ({
-      category,
-      amount,
-      percentage: totalSpent > 0 ? (amount / totalSpent) * 100 : 0,
-      count: countMap[category],
-    })).sort((a, b) => b.amount - a.amount)
-
-    return {
-      month_key: monthKey,
-      total_spent: totalSpent,
-      budget_target: budgetTarget,
-      remaining_budget: remainingBudget,
-      budget_percentage_used: Math.round(pctUsed * 10) / 10,
-      expense_count: expenses.length,
-      top_category: breakdown[0]?.category || 'None',
-      category_breakdown: breakdown,
-    }
+    return await res.json()
   },
 
-  // Save budget target for a month
+  // Update monthly budget
   async setBudget(monthKey, targetAmount) {
-    try {
-      const res = await fetch(`${API_BASE}/insights/budget`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ month_key: monthKey, target_amount: Number(targetAmount) }),
-      })
-      if (res.ok) {
-        return await res.json()
-      }
-    } catch (err) {
-      // Offline fallback
+    const res = await fetch(`${API_BASE}/api/insights/budget`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        month_key: monthKey,
+        target_amount: Number(targetAmount),
+      }),
+    })
+    if (!res.ok) {
+      throw new Error('Failed to set budget')
     }
+    return await res.json()
+  },
 
-    saveLocalBudget(monthKey, Number(targetAmount))
-    return { month_key: monthKey, target_amount: Number(targetAmount) }
+  // Get full insights summary
+  async getInsights(monthKey) {
+    const res = await fetch(`${API_BASE}/api/insights?month_key=${monthKey}`)
+    if (!res.ok) {
+      throw new Error('Failed to fetch insights')
+    }
+    return await res.json()
   },
 }
-
-export default expenseApi

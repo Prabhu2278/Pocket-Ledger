@@ -1,5 +1,5 @@
 import React from 'react'
-import { CATEGORIES } from '../hooks/useExpenses'
+import { CATEGORIES } from '../constants/categories'
 
 export function ExpenseForm({
   dialogOpen,
@@ -18,103 +18,93 @@ export function ExpenseForm({
 }) {
   if (!dialogOpen) return null
 
+  const isEditing = editingId !== null
+
   return (
     <div
-      className="pocket-ledger-dialog-backdrop"
-      role="presentation"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) {
-          setDialogOpen(false)
-        }
+      className="modal-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="dtitle"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) setDialogOpen(false)
       }}
     >
-      <section
-        className="pocket-ledger-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="pocket-ledger-dialog-title"
-      >
-        <form className="pocket-ledger-expense-form" onSubmit={saveExpense}>
-          <h2 id="pocket-ledger-dialog-title">
-            {editingId !== null ? 'Edit expense' : 'Add expense'}
-          </h2>
+      <div className="dialog-content">
+        <form className="f" onSubmit={saveExpense} noValidate>
+          <h2 id="dtitle">{isEditing ? 'Edit expense' : 'Add expense'}</h2>
 
-          <label className="pocket-ledger-form-label">
+          <label>
             Amount
             <input
-              className="pocket-ledger-amount-input"
+              className="amount"
+              id="amt"
               type="number"
+              inputMode="decimal"
               min="0"
               step="0.01"
               placeholder="₹0"
               value={amount}
-              onChange={(event) => setAmount(event.target.value)}
+              onChange={(e) => setAmount(e.target.value)}
               autoFocus
-              required
             />
           </label>
 
-          <div
-            className="pocket-ledger-form-categories"
-            role="group"
-            aria-label="Category"
-          >
-            {CATEGORIES.map(([name]) => (
+          <div className="chips" role="group" aria-label="Category">
+            {CATEGORIES.map(([catName]) => (
               <button
+                key={catName}
                 type="button"
-                key={name}
-                className="pocket-ledger-chip"
-                aria-pressed={category === name}
-                onClick={() => setCategory(name)}
+                className="chip"
+                aria-pressed={category === catName}
+                onClick={() => setCategory(catName)}
               >
-                {name}
+                {catName}
               </button>
             ))}
           </div>
 
-          <label className="pocket-ledger-form-label">
+          <label>
             Note
             <input
+              id="note"
               type="text"
-              maxLength="60"
+              maxLength={60}
               placeholder="What was it for? (optional)"
               value={note}
-              onChange={(event) => setNote(event.target.value)}
+              onChange={(e) => setNote(e.target.value)}
             />
           </label>
 
-          <label className="pocket-ledger-form-label">
+          <label>
             Date
             <input
+              id="date"
               type="date"
               value={date}
-              onChange={(event) => setDate(event.target.value)}
-              required
+              onChange={(e) => setDate(e.target.value)}
             />
           </label>
 
-          {formError && (
-            <div className="pocket-ledger-form-error">{formError}</div>
-          )}
+          <p className="err" id="err" role="alert">
+            {formError}
+          </p>
 
-          <div className="pocket-ledger-dialog-actions">
+          <div className="btns">
             <button
               type="button"
-              className="pocket-ledger-ghost-button"
+              className="ghost"
+              id="cancel"
               onClick={() => setDialogOpen(false)}
             >
               Cancel
             </button>
-
-            <button
-              type="submit"
-              className="pocket-ledger-primary-button"
-            >
-              {editingId !== null ? 'Save changes' : 'Add expense'}
+            <button className="primary" id="save" type="submit">
+              {isEditing ? 'Save changes' : 'Save expense'}
             </button>
           </div>
         </form>
-      </section>
+      </div>
     </div>
   )
 }

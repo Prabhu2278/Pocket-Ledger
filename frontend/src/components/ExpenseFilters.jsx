@@ -1,20 +1,16 @@
 import React from 'react'
-import { CATEGORIES } from '../hooks/useExpenses'
+import { CATEGORIES } from '../constants/categories'
 
-export function ExpenseFilters({ filter, setFilter }) {
-  const categoryList = ['All', ...CATEGORIES.map(([name]) => name)]
+export function ExpenseFilters({ filter = 'All', setFilter }) {
+  const options = ['All', ...CATEGORIES.map((c) => c[0])]
 
   return (
-    <div
-      className="pocket-ledger-category-filters"
-      role="group"
-      aria-label="Filter by category"
-    >
-      {categoryList.map((name) => (
+    <div className="chips" role="group" aria-label="Filter by category">
+      {options.map((name) => (
         <button
-          type="button"
           key={name}
-          className="pocket-ledger-chip"
+          type="button"
+          className="chip"
           aria-pressed={filter === name}
           onClick={() => setFilter(name)}
         >

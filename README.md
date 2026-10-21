@@ -1,69 +1,152 @@
-# 💼 Pocket Ledger
+# 💼 Pocket Ledger — Full-Stack Expense Tracker
 
-> **Intelligent, beautifully designed personal finance & wealth tracker with multi-wallet balances, month-by-month budgeting, and bank statement CSV parsing.**
-
----
-
-## ✨ Features at a Glance
-
-- 🔐 **Privacy-First Manual Access**: Clean authentication requiring manual credential entry every session with zero default demo data or browser autofill.
-- 💳 **Multi-Wallet Management**: Live balance tracking across Bank, UPI, Cash, and Savings accounts with funds transfer support.
-- 🎯 **Month-Specific Isolated Budgeting**: Custom monthly budgets with visual SVG circular gauges and real-time cash flow analytics.
-- 📊 **Insightful Financial Analytics**: 7-day spending trends, ranked category expenditure bars, and monthly cash flow metrics.
-- 📂 **Bank CSV Importer**: Drag-and-drop CSV parser with intelligent auto-categorization.
-- 🌓 **Dynamic Theme Engine**: Tailored Light and Dark modes with ambient background nebula layers and high-contrast accessibility.
+Pocket Ledger is a full-stack personal finance web application built using a clean, modern UI prototype as its exact design authority. It enables intuitive daily expense management, dynamic monthly budget tracking, and real-time spending insights with PostgreSQL persistence and a FastAPI REST API.
 
 ---
 
-## 🗂️ Project Structure & Flow
+## 🛠️ Technology Stack
 
-Pocket Ledger's frontend is organized cleanly around the **5-step User Journey Flow**:
+- **Frontend**: React.js (v18), Vite, Vanilla CSS (preserving design prototype tokens)
+- **Backend**: Python 3.12, FastAPI, Uvicorn
+- **Database**: PostgreSQL (with SQLAlchemy ORM)
+- **Data Validation**: Pydantic (v2)
+- **API Communication**: HTTP REST API
+
+---
+
+## 📁 Project Structure
 
 ```
-frontend/src/flow/
-├── 1-auth/         # Step 1: Authentication & Onboarding (AuthGateway, LoginForm, RegisterForm)
-├── 2-navigation/   # Step 2: Main Application Shell (Sidebar, Topbar, Month Switcher)
-├── 3-dashboard/    # Step 3: Financial Analytics & Overview (KPI Cards, Budget Ring, Trends)
-├── 4-transactions/ # Step 4: Expense Ledger & Table (Sort, Filter, Pagination, Bulk Delete)
-└── 5-features/     # Step 5: Modals & Feature Dialogs (ExpenseModal, WalletBar, BudgetModal, CsvImport)
+expense-tracker/
+│
+├── backend/
+│   ├── app/
+│   │   ├── __init__.py
+│   │   ├── main.py          # FastAPI application, CORS, and router registration
+│   │   ├── database.py      # PostgreSQL connection, session factory, Base
+│   │   ├── models.py        # SQLAlchemy models (Expense, Budget)
+│   │   ├── schemas.py       # Pydantic schemas (Expense, Budget, Insights)
+│   │   ├── crud.py          # Database operations for expenses, budgets, insights
+│   │   └── routers/
+│   │       ├── __init__.py
+│   │       ├── expenses.py  # REST endpoints for CRUD operations
+│   │       └── insights.py  # Analytics, budget gauges, and trend endpoints
+│   ├── requirements.txt
+│   └── .env
+│
+├── frontend/
+│   ├── public/
+│   ├── src/
+│   │   ├── assets/
+│   │   ├── components/      # Sidebar, Header, BudgetRing, ExpenseList, ExpenseForm, ExpenseFilters
+│   │   ├── pages/           # Expenses, Insights
+│   │   ├── layouts/         # MainLayout shell
+│   │   ├── services/        # Centralized API service (expenseApi.js)
+│   │   ├── hooks/           # useExpenses state & sync hook
+│   │   ├── utils/           # Currency and date utilities
+│   │   ├── styles/
+│   │   ├── App.jsx
+│   │   ├── App.css          # Design reference prototype styling
+│   │   ├── index.css
+│   │   └── main.jsx
+│   ├── .env
+│   ├── package.json
+│   ├── vite.config.js
+│   └── index.html
+│
+├── .gitignore
+└── README.md
 ```
-
-For complete visual diagrams, data pipelines, and architectural maps, refer to:
-- 📖 [PROJECT_FLOW.md](./PROJECT_FLOW.md)
-- 🏛️ [ARCHITECTURE.md](./ARCHITECTURE.md)
 
 ---
 
-## ⚡ Quick Start
+## 🚀 Prerequisites
 
-### 1. Backend Setup (FastAPI + SQLite)
+1. **Node.js** (v18+ recommended) & `npm`
+2. **Python** (v3.10+ recommended)
+3. **PostgreSQL** installed and running on `localhost:5432`
+
+---
+
+## ⚙️ Configuration & Environment Variables
+
+### 1. PostgreSQL Database Setup
+Ensure PostgreSQL is running and create the `expense_tracker` database:
+```sql
+CREATE DATABASE expense_tracker;
+```
+
+### 2. Backend Environment Variables (`backend/.env`)
+Create or edit `backend/.env`:
+```env
+DATABASE_URL=postgresql+psycopg2://postgres:YOUR_PASSWORD@localhost:5432/expense_tracker
+PORT=8000
+```
+*(Replace `YOUR_PASSWORD` with your local PostgreSQL user password)*
+
+### 3. Frontend Environment Variables (`frontend/.env`)
+```env
+VITE_API_BASE_URL=http://localhost:8000
+VITE_API_URL=http://localhost:8000/api
+```
+
+---
+
+## 🏃 Quick Start Guide
+
+### Step 1: Start the FastAPI Backend
 ```bash
 cd backend
-# Activate Python virtual environment
-.\venv\Scripts\activate
+# Activate virtual environment
+.\venv\Scripts\activate   # Windows
+# source venv/bin/activate # macOS/Linux
 
-# Install dependencies (if needed)
+# Install dependencies (if first time)
 pip install -r requirements.txt
 
-# Start the API server
-uvicorn main:app --reload --port 9000
+# Start backend server
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
-API docs available at: `http://localhost:9000/docs`
+- API Base: `http://localhost:8000`
+- Interactive API Docs (Swagger): `http://localhost:8000/docs`
 
-### 2. Frontend Setup (React + Vite)
+### Step 2: Start the React Frontend
+Open a second terminal window:
 ```bash
 cd frontend
-# Install dependencies (if needed)
+
+# Install dependencies (if first time)
 npm install
 
-# Start the Vite development server
+# Start Vite dev server
 npm run dev
 ```
-Application will be live at: `http://localhost:5173/`
+- Web Application: `http://localhost:5173/`
 
-### 3. Production Build Validation
+### Step 3: Production Build Validation
+To verify frontend build correctness:
 ```bash
 cd frontend
 npm run build
 ```
-Builds cleanly with zero errors.
+
+---
+
+## 🌟 Key Application Features
+
+1. **Design Prototype Fidelity**: Exact colors, Manrope typography, card border-radii, spacing, and responsive layout matching the reference UI prototype.
+2. **Expense Management**:
+   - Add new expenses with amount, category chips, notes, and dates.
+   - Edit existing expenses with instant ledger recalculation.
+   - Delete expenses with a 5-second **Undo** toast notification.
+   - Search expenses by keyword or notes.
+   - Filter by categories (`All`, `Food`, `Transport`, `Home`, `Fun`, `Health`, `Shopping`, `Other`).
+   - Sort by Date (ascending/descending) and Amount (ascending/descending).
+3. **Monthly Budgets**:
+   - Month-by-month navigation (‹ Month Year ›).
+   - Dynamic SVG Budget Ring with threshold color alerts (`<80%`: Accent, `80%-100%`: Warning, `>100%`: Over budget).
+   - Persistent monthly budget targets stored in PostgreSQL.
+4. **Insights & Analytics**:
+   - **Where your money went**: Category progress breakdown with direct click-to-filter navigation to Expenses.
+   - **Last 7 days**: Interactive spending bar chart with today highlighted.
+   - **Recent activity**: Chronological feed of ledger events with relative timestamps.

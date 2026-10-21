@@ -1,65 +1,20 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { isoDate } from '../utils/dateUtils'
 import { expenseApi } from '../services/expenseApi'
 
-export const CATEGORIES = [
-  ['Food', '#b42c45'],
-  ['Transport', '#2563eb'],
-  ['Home', '#0d7a6f'],
-  ['Fun', '#9333ea'],
-  ['Health', '#15803d'],
-  ['Shopping', '#b45309'],
-  ['Other', '#64748b'],
-]
-
-const STORAGE_KEY = 'pocket-ledger-web-v1'
-
-function getInitialData() {
-  if (typeof window !== 'undefined') {
-    const cached = localStorage.getItem(STORAGE_KEY)
-    if (cached) {
-      try {
-        return JSON.parse(cached)
-      } catch (e) {
-        // Fallback
-      }
-    }
-  }
-  const today = new Date()
-  const y = today.getFullYear()
-  const m = String(today.getMonth() + 1).padStart(2, '0')
-  return {
-    budget: 45000,
-    tx: [
-      { id: 1, amt: 850, cat: 'Food', date: `${y}-${m}-04`, note: 'Grocery haul' },
-      { id: 2, amt: 2200, cat: 'Transport', date: `${y}-${m}-06`, note: 'Monthly metro pass' },
-      { id: 3, amt: 3400, cat: 'Home', date: `${y}-${m}-10`, note: 'Kitchen supplies' },
-      { id: 4, amt: 1200, cat: 'Fun', date: `${y}-${m}-12`, note: 'Movie night with friends' },
-      { id: 5, amt: 750, cat: 'Health', date: `${y}-${m}-15`, note: 'Pharmacy' },
-      { id: 6, amt: 2800, cat: 'Shopping', date: `${y}-${m}-18`, note: 'Winter jacket' },
-    ],
-    log: [
-      { t: Date.now() - 3600000 * 24, txt: 'Added "Winter jacket" (Shopping)' },
-      { t: Date.now() - 3600000 * 48, txt: 'Added "Pharmacy" (Health)' },
-    ],
-  }
-}
-
 export function useExpenses() {
-  const [data, setData] = useState(getInitialData)
-  const today = useMemo(() => new Date(), [])
+  const now = useMemo(() => new Date(), [])
   const [month, setMonth] = useState({
-    year: today.getFullYear(),
-    month: today.getMonth(),
+    year: now.getFullYear(),
+    month: now.getMonth(),
   })
 
+  // Hash-based routing matching prototype #/expenses and #/insights
   const [page, setPage] = useState(() => {
     if (typeof window !== 'undefined') {
       const hash = window.location.hash.toLowerCase()
-      if (hash.includes('expenses')) return 'expenses'
       if (hash.includes('insights')) return 'insights'
-      if (hash.includes('settings')) return 'settings'
-      if (hash.includes('dashboard')) return 'dashboard'
+      return 'expenses'
     }
     return 'expenses'
   })
@@ -68,7 +23,14 @@ export function useExpenses() {
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState({ key: 'date', direction: -1 })
 
-  // Dialog state for adding/editing expense
+  // Data state
+  const [transactions, setTransactions] = useState([])
+  const [budget, setBudgetState] = useState(20000)
+  const [activityLogs, setActivityLogs] = useState([])
+  const [insightsSummary, setInsightsSummary] = useState(null)
+  const [loading, setLoading] = useState(false)
+
+  // Dialog state
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [amount, setAmount] = useState('')
@@ -77,278 +39,322 @@ export function useExpenses() {
   const [date, setDate] = useState(() => isoDate(new Date()))
   const [formError, setFormError] = useState('')
 
-  // Delete confirm dialog state
-  const [deleteConfirmId, setDeleteConfirmId] = useState(null)
+  // Toast & Undo
   const [toast, setToast] = useState({ message: '', undo: false, hidden: true })
-  const [lastDeleted, setLastDeleted] = useState(null)
+  const lastDeletedRef = useRef(null)
+  const toastTimeoutRef = useRef(null)
 
-  // Listen to hash route changes
+  const monthKey = `${month.year}-${String(month.month + 1).padStart(2, '0')}`
+
+  // Listen to hash change
   useEffect(() => {
-    function handleRoute() {
+    function handleHash() {
       const hash = window.location.hash.toLowerCase()
-      if (hash.includes('expenses')) setPage('expenses')
-      else if (hash.includes('insights')) setPage('insights')
-      else if (hash.includes('settings')) setPage('settings')
-      else if (hash.includes('dashboard')) setPage('dashboard')
-    }
-    window.addEventListener('hashchange', handleRoute)
-    return () => window.removeEventListener('hashchange', handleRoute)
-  }, [])
-
-  // Persist to local storage
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
-    } catch (e) {
-      // Storage full
-    }
-  }, [data])
-
-  // Sync with FastAPI backend if available
-  useEffect(() => {
-    async function fetchBackend() {
-      try {
-        const monthKey = `${month.year}-${String(month.month + 1).padStart(2, '0')}`
-        const items = await expenseApi.getExpenses({ month_key: monthKey })
-        if (items && items.length > 0) {
-          setData((prev) => {
-            const mapped = items.map((i) => ({
-              id: i.id,
-              amt: i.amount || i.amt,
-              cat: i.category || i.cat,
-              date: i.date || i.spent_on,
-              note: i.notes || i.note || '',
-            }))
-            // Merge with local items that are not in backend
-            const merged = [...prev.tx]
-            for (const m of mapped) {
-              const idx = merged.findIndex((x) => x.id === m.id)
-              if (idx >= 0) merged[idx] = m
-              else merged.push(m)
-            }
-            return { ...prev, tx: merged }
-          })
-        }
-      } catch (err) {
-        // Backend offline, fallback seamlessly to localStorage
+      if (hash.includes('insights')) {
+        setPage('insights')
+      } else {
+        setPage('expenses')
       }
     }
-    fetchBackend()
-  }, [month])
+    window.addEventListener('hashchange', handleHash)
+    return () => window.removeEventListener('hashchange', handleHash)
+  }, [])
 
-  // Filter transactions for current month
+  const showToast = useCallback((message, undo = false) => {
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current)
+    setToast({ message, undo, hidden: false })
+    toastTimeoutRef.current = setTimeout(() => {
+      setToast((prev) => ({ ...prev, hidden: true }))
+    }, 5000)
+  }, [])
+
+  // Load from FastAPI backend
+  const loadData = useCallback(async () => {
+    setLoading(true)
+    try {
+      const [items, budgetResp, insightsResp] = await Promise.allSettled([
+        expenseApi.getExpenses({ month_key: monthKey }),
+        expenseApi.getBudget(monthKey),
+        expenseApi.getInsights(monthKey),
+      ])
+
+      if (items.status === 'fulfilled' && Array.isArray(items.value)) {
+        setTransactions(items.value)
+      }
+
+      if (budgetResp.status === 'fulfilled' && budgetResp.value) {
+        setBudgetState(Number(budgetResp.value.target_amount || budgetResp.value.budget || 20000))
+      }
+
+      if (insightsResp.status === 'fulfilled' && insightsResp.value) {
+        setInsightsSummary(insightsResp.value)
+        if (insightsResp.value.recent_activity) {
+          setActivityLogs(insightsResp.value.recent_activity)
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load data from backend:', err)
+    } finally {
+      setLoading(false)
+    }
+  }, [monthKey])
+
+  useEffect(() => {
+    loadData()
+  }, [loadData])
+
+  // Filter transactions for current view month
   const monthTransactions = useMemo(() => {
-    return data.tx.filter((item) => {
-      if (!item.date) return false
-      const [y, m] = item.date.split('-').map(Number)
+    return transactions.filter((t) => {
+      const d = t.spent_on || t.date
+      if (!d) return false
+      const [y, m] = d.split('-').map(Number)
       return y === month.year && m === month.month + 1
     })
-  }, [data.tx, month])
+  }, [transactions, month])
 
   const categoryTotals = useMemo(() => {
     const totals = {}
-    monthTransactions.forEach((item) => {
-      totals[item.cat] = (totals[item.cat] || 0) + Number(item.amt)
+    monthTransactions.forEach((t) => {
+      const c = t.cat || t.category || 'Other'
+      const val = Number(t.amt || t.amount || 0)
+      totals[c] = (totals[c] || 0) + val
     })
     return totals
   }, [monthTransactions])
 
   const totalSpent = useMemo(() => {
-    return monthTransactions.reduce((total, item) => total + Number(item.amt), 0)
+    return monthTransactions.reduce((acc, t) => acc + Number(t.amt || t.amount || 0), 0)
   }, [monthTransactions])
 
-  const budgetLeft = Number(data.budget) - totalSpent
+  const budgetLeft = budget - totalSpent
 
   const budgetPercent = useMemo(() => {
-    return Number(data.budget) > 0 ? Math.min(totalSpent / Number(data.budget), 1) : 0
-  }, [data.budget, totalSpent])
+    return budget > 0 ? totalSpent / budget : 0
+  }, [budget, totalSpent])
 
   const rankedCategories = useMemo(() => {
     return Object.keys(categoryTotals).sort((a, b) => categoryTotals[b] - categoryTotals[a])
   }, [categoryTotals])
 
-  const daysInMonth = useMemo(() => {
-    return new Date(month.year, month.month + 1, 0).getDate()
-  }, [month])
+  const isCurrentMonth = month.year === now.getFullYear() && month.month === now.getMonth()
+  const daysInMonth = useMemo(() => new Date(month.year, month.month + 1, 0).getDate(), [month])
+  const daysLeft = isCurrentMonth ? Math.max(daysInMonth - now.getDate(), 1) : 'Closed'
 
-  const currentMonth = month.year === today.getFullYear() && month.month === today.getMonth()
-  const daysLeft = currentMonth ? Math.max(daysInMonth - today.getDate(), 1) : 1
+  // Last 7 days daily calculation
+  const last7Days = useMemo(() => {
+    if (insightsSummary && insightsSummary.last_7_days && insightsSummary.last_7_days.length > 0) {
+      return insightsSummary.last_7_days
+    }
+    const days = []
+    const today = new Date()
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today)
+      d.setDate(d.getDate() - i)
+      const k = isoDate(d)
+      const tot = transactions
+        .filter((t) => (t.spent_on || t.date) === k)
+        .reduce((sum, t) => sum + Number(t.amt || t.amount || 0), 0)
+      days.push({
+        index: i,
+        date: k,
+        day_name: d.toLocaleDateString(undefined, { weekday: 'short' }),
+        amount: tot,
+        is_today: i === 0,
+      })
+    }
+    return days
+  }, [insightsSummary, transactions])
 
+  // Filtered and sorted transactions
   const visibleTransactions = useMemo(() => {
-    const rows = monthTransactions.filter((item) => {
-      const matchesCategory = filter === 'All' || item.cat === filter
-      const matchesSearch = `${item.note || ''} ${item.cat || ''}`
-        .toLowerCase()
-        .includes(search.trim().toLowerCase())
-      return matchesCategory && matchesSearch
+    const query = search.trim().toLowerCase()
+    const rows = monthTransactions.filter((t) => {
+      const c = t.cat || t.category || 'Other'
+      const n = t.note || t.title || ''
+      const matchesFilter = filter === 'All' || c.toLowerCase() === filter.toLowerCase()
+      const matchesSearch = !query || `${n} ${c}`.toLowerCase().includes(query)
+      return matchesFilter && matchesSearch
     })
 
     return rows.sort((a, b) => {
-      const comparison =
-        sort.key === 'amt'
-          ? a.amt - b.amt
-          : a.date.localeCompare(b.date) || a.id - b.id
-      return comparison * sort.direction
+      if (sort.key === 'amt' || sort.key === 'amount') {
+        const valA = Number(a.amt || a.amount || 0)
+        const valB = Number(b.amt || b.amount || 0)
+        return (valA - valB) * sort.direction
+      }
+      const dateA = a.spent_on || a.date || ''
+      const dateB = b.spent_on || b.date || ''
+      const comp = dateA.localeCompare(dateB) || a.id - b.id
+      return comp * sort.direction
     })
   }, [monthTransactions, filter, search, sort])
 
-  const logActivity = useCallback((message) => {
-    setData((current) => ({
-      ...current,
-      log: [{ t: Date.now(), txt: message }, ...current.log].slice(0, 30),
-    }))
-  }, [])
-
-  const showToast = useCallback((message, undo = false) => {
-    setToast({ message, undo, hidden: false })
-    setTimeout(() => {
-      setToast((t) => ({ ...t, hidden: true }))
-    }, 4000)
-  }, [])
-
-  const changeMonth = useCallback((offset) => {
-    setMonth((current) => {
-      const next = new Date(current.year, current.month + offset, 1)
+  // Month navigation
+  const changeMonth = useCallback((delta) => {
+    setMonth((curr) => {
+      const nextDate = new Date(curr.year, curr.month + delta, 1)
       return {
-        year: next.getFullYear(),
-        month: next.getMonth(),
+        year: nextDate.getFullYear(),
+        month: nextDate.getMonth(),
       }
     })
   }, [])
 
-  const openExpenseDialog = useCallback((item = null) => {
-    setEditingId(item?.id ?? null)
-    setCategory(item?.cat ?? 'Food')
-    setAmount(item ? String(item.amt) : '')
-    setNote(item?.note ?? '')
-    setDate(item?.date ?? isoDate(new Date()))
-    setFormError('')
-    setDialogOpen(true)
-  }, [])
-
-  const saveExpense = useCallback(
-    async (event) => {
-      if (event && event.preventDefault) event.preventDefault()
-      const numericAmount = Number(amount)
-      if (!numericAmount || numericAmount <= 0) {
-        setFormError('Please enter an amount greater than ₹0')
-        return
-      }
-
-      if (editingId !== null) {
-        // Update existing expense
-        setData((current) => ({
-          ...current,
-          tx: current.tx.map((item) =>
-            item.id === editingId
-              ? { ...item, amt: numericAmount, cat: category, note: note.trim(), date }
-              : item
-          ),
-        }))
-        logActivity(`Updated ${category} expense (${numericAmount})`)
-        showToast('Expense updated')
-        // Async update to backend
-        expenseApi.updateExpense(editingId, {
-          amount: numericAmount,
-          category,
-          date,
-          notes: note.trim(),
-        }).catch(() => {})
-      } else {
-        // Add new expense
-        const newId = Date.now()
-        const newRecord = {
-          id: newId,
-          amt: numericAmount,
-          cat: category,
-          note: note.trim(),
-          date,
-        }
-        setData((current) => ({
-          ...current,
-          tx: [newRecord, ...current.tx],
-        }))
-        logActivity(`Added ${category} expense (${numericAmount})`)
-        showToast('Expense added')
-        // Async create to backend
-        expenseApi.createExpense({
-          title: note.trim() || `${category} Expense`,
-          amount: numericAmount,
-          category,
-          date,
-          notes: note.trim(),
-        }).catch(() => {})
-      }
-
-      setDialogOpen(false)
-    },
-    [amount, category, note, date, editingId, logActivity, showToast]
-  )
-
-  const deleteExpense = useCallback(
-    (id) => {
-      const target = data.tx.find((item) => item.id === id)
-      if (!target) return
-      setLastDeleted(target)
-      setData((current) => ({
-        ...current,
-        tx: current.tx.filter((item) => item.id !== id),
-      }))
-      logActivity(`Deleted ${target.cat} expense (${target.amt})`)
-      showToast('Expense deleted', true)
-      setDeleteConfirmId(null)
-      // Async delete to backend
-      expenseApi.deleteExpense(id).catch(() => {})
-    },
-    [data.tx, logActivity, showToast]
-  )
-
-  const undoDelete = useCallback(() => {
-    if (!lastDeleted) return
-    setData((current) => ({
-      ...current,
-      tx: [lastDeleted, ...current.tx],
-    }))
-    logActivity(`Restored ${lastDeleted.cat} expense`)
-    setLastDeleted(null)
-    setToast((t) => ({ ...t, hidden: true }))
-  }, [lastDeleted, logActivity])
-
-  const sortBy = useCallback((key) => {
-    setSort((current) => {
-      if (current.key === key) {
-        return { key, direction: current.direction === 1 ? -1 : 1 }
+  // Sorting toggle
+  const toggleSort = useCallback((key) => {
+    setSort((curr) => {
+      if (curr.key === key) {
+        return { key, direction: -curr.direction }
       }
       return { key, direction: -1 }
     })
   }, [])
 
-  const setBudget = useCallback(
-    (newBudget) => {
-      const val = Number(newBudget) || 0
-      setData((curr) => ({ ...curr, budget: val }))
-      const monthKey = `${month.year}-${String(month.month + 1).padStart(2, '0')}`
-      expenseApi.setBudget(monthKey, val).catch(() => {})
-      logActivity(`Budget changed to ₹${val}`)
-      showToast('Budget updated')
+  // Open Add/Edit dialog
+  const openExpenseDialog = useCallback((item = null) => {
+    if (item) {
+      setEditingId(item.id)
+      setAmount(String(item.amt || item.amount || ''))
+      setCategory(item.cat || item.category || 'Food')
+      setNote(item.note || item.title || '')
+      setDate(item.spent_on || item.date || isoDate(new Date()))
+    } else {
+      setEditingId(null)
+      setAmount('')
+      setCategory('Food')
+      setNote('')
+      setDate(isoDate(new Date()))
+    }
+    setFormError('')
+    setDialogOpen(true)
+  }, [])
+
+  // Save Expense (Create or Update)
+  const saveExpense = useCallback(
+    async (e) => {
+      if (e && e.preventDefault) e.preventDefault()
+      const numericAmount = parseFloat(amount)
+      if (isNaN(numericAmount) || numericAmount <= 0) {
+        setFormError('Enter an amount greater than 0.')
+        return
+      }
+      if (!date) {
+        setFormError('Pick a date.')
+        return
+      }
+
+      try {
+        const payload = {
+          amt: numericAmount,
+          cat: category,
+          note: note.trim(),
+          date,
+        }
+
+        if (editingId) {
+          await expenseApi.updateExpense(editingId, payload)
+          showToast('Changes saved', false)
+        } else {
+          await expenseApi.createExpense(payload)
+          showToast('Expense added', false)
+        }
+
+        // Adjust month view if date is in a different month
+        const [y, m] = date.split('-').map(Number)
+        setMonth({ year: y, month: m - 1 })
+        setDialogOpen(false)
+        await loadData()
+      } catch (err) {
+        setFormError(err.message || 'Error saving expense.')
+      }
     },
-    [month, logActivity, showToast]
+    [amount, category, note, date, editingId, loadData, showToast]
+  )
+
+  // Delete Expense
+  const deleteExpense = useCallback(
+    async (id) => {
+      const target = transactions.find((t) => t.id === id)
+      if (!target) return
+
+      try {
+        await expenseApi.deleteExpense(id)
+        lastDeletedRef.current = target
+        showToast('Expense deleted', true)
+        await loadData()
+      } catch (err) {
+        showToast('Failed to delete expense', false)
+      }
+    },
+    [transactions, loadData, showToast]
+  )
+
+  // Undo delete
+  const undoDelete = useCallback(async () => {
+    if (!lastDeletedRef.current) return
+    const toRestore = lastDeletedRef.current
+    lastDeletedRef.current = null
+    try {
+      await expenseApi.createExpense({
+        amt: toRestore.amt || toRestore.amount,
+        cat: toRestore.cat || toRestore.category,
+        note: toRestore.note || toRestore.title || '',
+        date: toRestore.spent_on || toRestore.date,
+      })
+      setToast((prev) => ({ ...prev, hidden: true }))
+      await loadData()
+    } catch (err) {
+      console.error('Failed to restore expense:', err)
+    }
+  }, [loadData])
+
+  // Update budget
+  const updateBudget = useCallback(
+    async (newBudget) => {
+      try {
+        setBudgetState(newBudget)
+        await expenseApi.setBudget(monthKey, newBudget)
+      } catch (err) {
+        console.error('Failed to update budget:', err)
+      }
+    },
+    [monthKey]
+  )
+
+  // Filter category from Insights
+  const selectCategoryFilter = useCallback(
+    (cat) => {
+      setFilter(cat)
+      window.location.hash = '#/expenses'
+      showToast(`Showing ${cat} only`, false)
+    },
+    [showToast]
   )
 
   return {
-    data,
-    setData,
     month,
-    setMonth,
     changeMonth,
     page,
-    setPage,
     filter,
     setFilter,
     search,
     setSearch,
     sort,
-    sortBy,
+    toggleSort,
+    loading,
+    budget,
+    totalSpent,
+    budgetLeft,
+    budgetPercent,
+    monthTransactions,
+    visibleTransactions,
+    categoryTotals,
+    rankedCategories,
+    daysLeft,
+    isCurrentMonth,
+    last7Days,
+    activityLogs,
     dialogOpen,
     setDialogOpen,
     editingId,
@@ -361,23 +367,14 @@ export function useExpenses() {
     date,
     setDate,
     formError,
-    setFormError,
     openExpenseDialog,
     saveExpense,
-    deleteConfirmId,
-    setDeleteConfirmId,
     deleteExpense,
     undoDelete,
+    updateBudget,
+    selectCategoryFilter,
     toast,
-    setToast,
-    monthTransactions,
-    categoryTotals,
-    totalSpent,
-    budgetLeft,
-    budgetPercent,
-    rankedCategories,
-    daysLeft,
-    visibleTransactions,
-    setBudget,
   }
 }
+
+export default useExpenses
