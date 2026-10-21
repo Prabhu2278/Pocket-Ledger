@@ -1,0 +1,261 @@
+/* ========================================================
+   Pocket Ledger - Transactions Ledger & Tooltip Styles
+   ======================================================== */
+
+.pocket-ledger-separated-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 13.5px;
+}
+
+.pocket-ledger-separated-table th {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  padding: 11px 14px;
+  background: var(--pocket-sidebar);
+  border-bottom: 2px solid var(--pocket-line);
+  border-right: 1px solid var(--pocket-line);
+  color: var(--pocket-muted);
+  text-align: left;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+/* Ensure hovered TH stacks above adjacent sticky columns so tooltips are never clipped */
+.pocket-ledger-separated-table th:hover,
+.pocket-ledger-separated-table th:focus-within {
+  z-index: 40;
+}
+
+.pocket-ledger-separated-table th:last-child {
+  border-right: none;
+}
+
+.pocket-ledger-separated-table td {
+  padding: 12px 14px;
+  background: var(--pocket-card);
+  border-bottom: 1px solid var(--pocket-line);
+  color: var(--pocket-ink);
+  vertical-align: middle;
+  transition: background 0.15s ease;
+}
+
+.pocket-ledger-separated-table tbody tr:hover td {
+  background: var(--pocket-soft);
+}
+
+.pocket-ledger-th-sort-btn {
+  position: relative;
+  z-index: 10;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  color: var(--pocket-muted);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 6px;
+  transition: color 0.15s ease;
+}
+
+.pocket-ledger-th-sort-btn:hover {
+  color: var(--pocket-ink);
+  z-index: 50;
+}
+
+.pocket-ledger-th-sort-btn.is-active {
+  color: var(--pocket-accent);
+}
+
+/* Right-align amount sort button in TH */
+.pocket-ledger-th-amount .pocket-ledger-th-sort-btn {
+  margin-left: auto;
+  justify-content: flex-end;
+}
+
+/* Sleek Icon Badge for Sort Arrow (Zero words) */
+.pocket-ledger-sort-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: var(--pocket-card);
+  border: 1px solid var(--pocket-line);
+  color: var(--pocket-muted);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  flex-shrink: 0;
+}
+
+.pocket-ledger-th-sort-btn:hover .pocket-ledger-sort-badge {
+  background: var(--pocket-soft);
+  border-color: var(--pocket-accent);
+  color: var(--pocket-accent);
+  transform: scale(1.08);
+}
+
+.pocket-ledger-th-sort-btn.is-active .pocket-ledger-sort-badge {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  border-color: #10b981;
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.4);
+  transform: scale(1.06);
+}
+
+/* Custom Floating Tooltip for Table Headers */
+.pocket-ledger-th-tooltip {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(-4px);
+  padding: 6px 11px;
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 7px;
+  box-shadow: 0 10px 25px -4px rgba(0, 0, 0, 0.35), 0 4px 10px -2px rgba(0, 0, 0, 0.2);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0.01em;
+  line-height: 1.3;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.18s cubic-bezier(0.16, 1, 0.3, 1), transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pocket-ledger-th-tooltip-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--pocket-accent, #10b981);
+  box-shadow: 0 0 7px rgba(16, 185, 129, 0.9);
+  flex-shrink: 0;
+}
+
+/* Caret Arrow pointing up - centered by default */
+.pocket-ledger-th-tooltip::before {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 0 5px 5px 5px;
+  border-style: solid;
+  border-color: transparent transparent rgba(15, 23, 42, 0.95) transparent;
+}
+
+/* Date column: Left-aligned so it never clips past table left border */
+.pocket-ledger-th-date .pocket-ledger-th-tooltip {
+  left: 0;
+  transform: translateY(-4px);
+}
+
+.pocket-ledger-th-date .pocket-ledger-th-sort-btn:hover .pocket-ledger-th-tooltip {
+  transform: translateY(0);
+}
+
+/* Caret on Date column points directly up to the sort badge icon */
+.pocket-ledger-th-date .pocket-ledger-th-tooltip::before {
+  left: 47px;
+  transform: none;
+}
+
+/* Amount column: Right-aligned so it never clips past table right border */
+.pocket-ledger-th-amount .pocket-ledger-th-tooltip {
+  left: auto;
+  right: 0;
+  transform: translateY(-4px);
+}
+
+.pocket-ledger-th-amount .pocket-ledger-th-sort-btn:hover .pocket-ledger-th-tooltip {
+  transform: translateY(0);
+}
+
+/* Caret on Amount column points directly up to the sort badge icon */
+.pocket-ledger-th-amount .pocket-ledger-th-tooltip::before {
+  left: auto;
+  right: 15px;
+  transform: none;
+}
+
+.pocket-ledger-th-sort-btn:hover .pocket-ledger-th-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Date Pill Styles */
+.pocket-ledger-date-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: var(--pocket-soft);
+  border: 1px solid var(--pocket-line);
+}
+
+.pocket-ledger-date-day {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--pocket-ink);
+}
+
+.pocket-ledger-date-meta {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+
+.pocket-ledger-date-month {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--pocket-muted);
+}
+
+.pocket-ledger-date-year {
+  font-size: 10px;
+  color: var(--pocket-muted);
+}
+
+.pocket-ledger-wallet-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--pocket-soft);
+  color: var(--pocket-muted);
+  border: 1px solid var(--pocket-line);
+}
+
+.pocket-ledger-chip-active {
+  background: var(--pocket-accent) !important;
+  color: #ffffff !important;
+  border-color: var(--pocket-accent) !important;
+}

@@ -1,0 +1,322 @@
+:root,
+[data-theme="light"] {
+  --pocket-bg: #f8fafc;
+  --pocket-card: #ffffff;
+  --pocket-ink: #0f172a;
+  --pocket-muted: #64748b;
+  --pocket-line: #e2e8f0;
+  --pocket-accent: #10b981;
+  --pocket-soft: #ecfdf5;
+  --pocket-out: #f43f5e;
+  --pocket-warn: #f59e0b;
+  --pocket-on-accent: #ffffff;
+  --pocket-sidebar: #f8fafc;
+  --pocket-sidebar-ink: #0f172a;
+
+  /* Aliases for modal and drawer components */
+  --pocket-text: var(--pocket-ink);
+  --pocket-text-muted: var(--pocket-muted);
+  --pocket-card-bg: var(--pocket-card);
+  --pocket-border: var(--pocket-line);
+  --pocket-tooltip-bg: #0f172a;
+  --pocket-tooltip-ink: #f8fafc;
+  --pocket-tooltip-border: rgba(15, 23, 42, 0.15);
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  --pocket-bg: #0d1118;
+  --pocket-card: #171d29;
+  --pocket-ink: #f0f3f8;
+  --pocket-muted: #94a3b8;
+  --pocket-line: #262f3f;
+  --pocket-accent: #6366f1;
+  --pocket-soft: rgba(99, 102, 241, 0.15);
+  --pocket-out: #f87171;
+  --pocket-warn: #fbbf24;
+  --pocket-on-accent: #ffffff;
+  --pocket-sidebar: #10141f;
+  --pocket-sidebar-ink: #cbd5e1;
+
+  /* Aliases for modal and drawer components */
+  --pocket-text: var(--pocket-ink);
+  --pocket-text-muted: var(--pocket-muted);
+  --pocket-card-bg: var(--pocket-card);
+  --pocket-border: var(--pocket-line);
+  --pocket-tooltip-bg: #1e2638;
+  --pocket-tooltip-ink: #f8fafc;
+  --pocket-tooltip-border: rgba(255, 255, 255, 0.16);
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --pocket-bg: #0d1118;
+    --pocket-card: #171d29;
+    --pocket-ink: #f0f3f8;
+    --pocket-muted: #94a3b8;
+    --pocket-line: #262f3f;
+    --pocket-accent: #6366f1;
+    --pocket-soft: rgba(99, 102, 241, 0.15);
+    --pocket-out: #f87171;
+    --pocket-warn: #fbbf24;
+    --pocket-on-accent: #ffffff;
+    --pocket-sidebar: #10141f;
+    --pocket-sidebar-ink: #cbd5e1;
+    --pocket-tooltip-bg: #1e2638;
+    --pocket-tooltip-ink: #f8fafc;
+    --pocket-tooltip-border: rgba(255, 255, 255, 0.16);
+    color-scheme: dark;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--pocket-bg);
+  color: var(--pocket-ink);
+  font: 400 15px/1.45 Manrope, system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 2.5px solid var(--pocket-accent);
+  outline-offset: 2px;
+}
+
+/* App shell layout */
+.pocket-ledger-app {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  min-height: 100vh;
+  width: 100%;
+  align-items: stretch;
+  background: var(--pocket-bg);
+}
+
+.pocket-ledger-main {
+  min-width: 0;
+  max-width: 1280px;
+  width: 100%;
+  padding: 20px 24px;
+}
+
+/* Common Card style used by Dashboard and Expenses views */
+.pocket-ledger-card {
+  min-width: 0;
+  padding: 16px 18px;
+  border-radius: 12px;
+  background: var(--pocket-card);
+  border: 1px solid var(--pocket-line);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.pocket-ledger-card:hover {
+  box-shadow: 0 6px 16px -2px rgba(0, 0, 0, 0.06);
+  border-color: rgba(46, 139, 69, 0.25);
+}
+
+.pocket-ledger-card h2 {
+  margin: 0 0 12px;
+  font-size: 14.5px;
+  font-weight: 800;
+  color: var(--pocket-ink);
+  letter-spacing: -0.01em;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.pocket-ledger-card h2 small {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--pocket-muted);
+}
+
+/* Global button styles */
+.pocket-ledger-primary-button {
+  min-height: 36px;
+  height: 36px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--pocket-accent);
+  color: var(--pocket-on-accent);
+  font-weight: 700;
+  font-size: 12.5px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 6px rgba(46, 139, 69, 0.25);
+}
+
+.pocket-ledger-primary-button,
+.pocket-ledger-btn-primary {
+  min-height: 36px;
+  height: 36px;
+  padding: 0 16px;
+  border: 1px solid var(--pocket-accent);
+  border-radius: 8px;
+  background: var(--pocket-accent);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 12.5px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 6px rgba(46, 139, 69, 0.25);
+  outline: none;
+}
+
+.pocket-ledger-primary-button:hover,
+.pocket-ledger-btn-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(46, 139, 69, 0.35);
+  filter: brightness(1.05);
+}
+
+.pocket-ledger-primary-button:active,
+.pocket-ledger-btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.pocket-ledger-primary-button:disabled,
+.pocket-ledger-btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.pocket-ledger-ghost-button,
+.pocket-ledger-btn-secondary {
+  min-height: 36px;
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--pocket-line);
+  border-radius: 8px;
+  background: var(--pocket-card);
+  color: var(--pocket-ink);
+  font-weight: 600;
+  font-size: 12.5px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.pocket-ledger-ghost-button:hover,
+.pocket-ledger-btn-secondary:hover {
+  border-color: var(--pocket-accent);
+  background: var(--pocket-soft);
+  color: var(--pocket-accent);
+  transform: translateY(-1px);
+}
+
+.pocket-ledger-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--pocket-line);
+}
+
+/* Global utility classes */
+.pocket-ledger-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.pocket-ledger-field-error {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--pocket-out);
+  margin-top: 4px;
+  display: block;
+}
+
+.has-error,
+input.has-error,
+select.has-error {
+  border-color: var(--pocket-out) !important;
+  box-shadow: 0 0 0 2.5px rgba(220, 38, 38, 0.18) !important;
+}
+
+/* Responsive Shell Breakpoints */
+@media (max-width: 900px) {
+  .pocket-ledger-app {
+    grid-template-columns: 1fr;
+  }
+
+  .pocket-ledger-main {
+    max-width: none;
+    padding: 16px;
+  }
+}
+
+/* Privacy Mode Masking (Sensitive Financial Amounts) */
+body.pocket-ledger-privacy-active .pocket-ledger-kpi-val,
+body.pocket-ledger-privacy-active .pocket-ledger-kpi-sub b,
+body.pocket-ledger-privacy-active .pocket-ledger-wallet-card-balance,
+body.pocket-ledger-privacy-active .pocket-ledger-wallet-card-sub b,
+body.pocket-ledger-privacy-active .pocket-ledger-wallet-balance,
+body.pocket-ledger-privacy-active .pocket-ledger-td-amount,
+body.pocket-ledger-privacy-active .pocket-ledger-budget-hero-amount,
+body.pocket-ledger-privacy-active .pocket-ledger-budget-info-val,
+body.pocket-ledger-privacy-active .pocket-ledger-stat-amount,
+body.pocket-ledger-privacy-active .pocket-ledger-card-amount,
+body.pocket-ledger-privacy-active .privacy-sensitive {
+  filter: blur(6px);
+  user-select: none;
+  transition: filter 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+body.pocket-ledger-privacy-active .pocket-ledger-kpi-val:hover,
+body.pocket-ledger-privacy-active .pocket-ledger-kpi-sub b:hover,
+body.pocket-ledger-privacy-active .pocket-ledger-wallet-card-balance:hover,
+body.pocket-ledger-privacy-active .pocket-ledger-wallet-card-sub b:hover,
+body.pocket-ledger-privacy-active .pocket-ledger-wallet-balance:hover,
+body.pocket-ledger-privacy-active .pocket-ledger-td-amount:hover,
+body.pocket-ledger-privacy-active .pocket-ledger-budget-hero-amount:hover,
+body.pocket-ledger-privacy-active .pocket-ledger-budget-info-val:hover,
+body.pocket-ledger-privacy-active .pocket-ledger-stat-amount:hover,
+body.pocket-ledger-privacy-active .pocket-ledger-card-amount:hover,
+body.pocket-ledger-privacy-active .privacy-sensitive:hover {
+  filter: none;
+  cursor: pointer;
+}
+
