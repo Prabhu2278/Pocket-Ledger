@@ -5,6 +5,8 @@ import calendar
 from typing import Optional, List
 
 from app.models import User, Expense, Income, Budget
+from app.models.wallet import Wallet
+from fastapi import HTTPException
 from app.schemas import (
     UserRegister,
     UserUpdate,
@@ -98,8 +100,13 @@ def change_user_password(db: Session, user_id: int, current_pw: str, new_pw: str
 
 # ==================== EXPENSE CRUD ====================
 
-def serialize_expense(e: Expense) -> ExpenseResponse:
+def serialize_expense(e: Expense, db: Optional[Session] = None) -> ExpenseResponse:
     spent_str = e.spent_on.isoformat() if isinstance(e.spent_on, (date, datetime)) else str(e.spent_on)
+    w_name = None
+    if e.wallet_id and db:
+        w = db.query(Wallet).filter(Wallet.id == e.wallet_id).first()
+        if w:
+            w_name = w.name
     return ExpenseResponse(
         id=e.id,
         amount=float(e.amount),
@@ -111,6 +118,9 @@ def serialize_expense(e: Expense) -> ExpenseResponse:
         spent_on=spent_str,
         payment_method=e.payment_method or "UPI",
         type=e.type or "EXPENSE",
+        wallet_id=e.wallet_id,
+        wallet_name=w_name,
+        to_wallet_id=e.to_wallet_id,
         user_id=e.user_id,
         created_at=e.created_at,
     )
@@ -157,20 +167,37 @@ def get_expenses(
     query = query.order_by(desc(order_col) if sort_order.lower() == "desc" else asc(order_col), desc(Expense.id))
 
     records = query.offset(skip).limit(limit).all()
-    return [serialize_expense(r) for r in records]
+    return [serialize_expense(r, db=db) for r in records]
 
 def get_expense(db: Session, expense_id: int, user_id: Optional[int] = None) -> Optional[ExpenseResponse]:
     query = db.query(Expense).filter(Expense.id == expense_id)
     if user_id is not None:
         query = query.filter(Expense.user_id == user_id)
     r = query.first()
-    return serialize_expense(r) if r else None
+    return serialize_expense(r, db=db) if r else None
 
 def create_expense(db: Session, expense_in: ExpenseCreate, user_id: Optional[int] = None) -> ExpenseResponse:
     amt = expense_in.resolve_amount()
     cat = expense_in.resolve_category()
     note = expense_in.resolve_note()
     d = expense_in.resolve_date()
+    wallet_id = expense_in.wallet_id
+
+    if not wallet_id:
+        first_w = db.query(Wallet).filter(Wallet.user_id == user_id).first() if user_id else db.query(Wallet).first()
+        if first_w:
+            wallet_id = first_w.id
+
+    if wallet_id:
+        target_wallet = db.query(Wallet).filter(Wallet.id == wallet_id).first()
+        if target_wallet:
+            from app.services.wallet_service import WalletService
+            curr_balance = WalletService.calculate_wallet_balance(db, target_wallet)
+            if amt > curr_balance:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Insufficient funds in wallet '{target_wallet.name}'. Available balance is ₹{curr_balance:,.2f}, cannot spend ₹{amt:,.2f}."
+                )
 
     expense = Expense(
         amount=amt,
@@ -179,12 +206,14 @@ def create_expense(db: Session, expense_in: ExpenseCreate, user_id: Optional[int
         spent_on=d,
         payment_method=expense_in.payment_method or "UPI",
         type=expense_in.type or "EXPENSE",
+        wallet_id=wallet_id,
+        to_wallet_id=expense_in.to_wallet_id,
         user_id=user_id
     )
     db.add(expense)
     db.commit()
     db.refresh(expense)
-    return serialize_expense(expense)
+    return serialize_expense(expense, db=db)
 
 def update_expense(db: Session, expense_id: int, expense_in: ExpenseUpdate, user_id: Optional[int] = None) -> Optional[ExpenseResponse]:
     query = db.query(Expense).filter(Expense.id == expense_id)
@@ -210,9 +239,15 @@ def update_expense(db: Session, expense_id: int, expense_in: ExpenseUpdate, user
     if expense_in.payment_method is not None:
         expense.payment_method = expense_in.payment_method
 
+    if expense_in.wallet_id is not None:
+        expense.wallet_id = expense_in.wallet_id
+
+    if expense_in.to_wallet_id is not None:
+        expense.to_wallet_id = expense_in.to_wallet_id
+
     db.commit()
     db.refresh(expense)
-    return serialize_expense(expense)
+    return serialize_expense(expense, db=db)
 
 def delete_expense(db: Session, expense_id: int, user_id: Optional[int] = None) -> bool:
     query = db.query(Expense).filter(Expense.id == expense_id)
@@ -227,8 +262,13 @@ def delete_expense(db: Session, expense_id: int, user_id: Optional[int] = None) 
 
 # ==================== INCOME CRUD ====================
 
-def serialize_income(inc: Income) -> IncomeResponse:
+def serialize_income(inc: Income, db: Optional[Session] = None) -> IncomeResponse:
     rec_str = inc.received_on.isoformat() if isinstance(inc.received_on, (date, datetime)) else str(inc.received_on)
+    w_name = None
+    if inc.wallet_id and db:
+        w = db.query(Wallet).filter(Wallet.id == inc.wallet_id).first()
+        if w:
+            w_name = w.name
     return IncomeResponse(
         id=inc.id,
         amount=float(inc.amount),
@@ -239,6 +279,8 @@ def serialize_income(inc: Income) -> IncomeResponse:
         date=rec_str,
         received_on=rec_str,
         payment_method=inc.payment_method or "Bank Transfer",
+        wallet_id=inc.wallet_id,
+        wallet_name=w_name,
         user_id=inc.user_id,
         created_at=inc.created_at,
     )
@@ -285,20 +327,26 @@ def get_incomes(
     query = query.order_by(desc(order_col) if sort_order.lower() == "desc" else asc(order_col), desc(Income.id))
 
     records = query.offset(skip).limit(limit).all()
-    return [serialize_income(r) for r in records]
+    return [serialize_income(r, db=db) for r in records]
 
 def get_income(db: Session, income_id: int, user_id: Optional[int] = None) -> Optional[IncomeResponse]:
     query = db.query(Income).filter(Income.id == income_id)
     if user_id is not None:
         query = query.filter(Income.user_id == user_id)
     r = query.first()
-    return serialize_income(r) if r else None
+    return serialize_income(r, db=db) if r else None
 
 def create_income(db: Session, income_in: IncomeCreate, user_id: Optional[int] = None) -> IncomeResponse:
     amt = income_in.resolve_amount()
     cat = income_in.resolve_category()
     note = income_in.resolve_note()
     d = income_in.resolve_date()
+    wallet_id = income_in.wallet_id
+
+    if not wallet_id:
+        first_w = db.query(Wallet).filter(Wallet.user_id == user_id).first() if user_id else db.query(Wallet).first()
+        if first_w:
+            wallet_id = first_w.id
 
     income = Income(
         amount=amt,
@@ -306,12 +354,13 @@ def create_income(db: Session, income_in: IncomeCreate, user_id: Optional[int] =
         note=note,
         received_on=d,
         payment_method=income_in.payment_method or "Bank Transfer",
+        wallet_id=wallet_id,
         user_id=user_id
     )
     db.add(income)
     db.commit()
     db.refresh(income)
-    return serialize_income(income)
+    return serialize_income(income, db=db)
 
 def update_income(db: Session, income_id: int, income_in: IncomeUpdate, user_id: Optional[int] = None) -> Optional[IncomeResponse]:
     query = db.query(Income).filter(Income.id == income_id)
@@ -337,9 +386,12 @@ def update_income(db: Session, income_id: int, income_in: IncomeUpdate, user_id:
     if income_in.payment_method is not None:
         income.payment_method = income_in.payment_method
 
+    if income_in.wallet_id is not None:
+        income.wallet_id = income_in.wallet_id
+
     db.commit()
     db.refresh(income)
-    return serialize_income(income)
+    return serialize_income(income, db=db)
 
 def delete_income(db: Session, income_id: int, user_id: Optional[int] = None) -> bool:
     query = db.query(Income).filter(Income.id == income_id)

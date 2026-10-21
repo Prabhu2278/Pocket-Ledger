@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.database import engine, Base
 from app.models import User, Expense, Income, Budget
-from app.routers import expenses, income, insights, auth, transactions
+from app.routers import expenses, income, insights, auth, transactions, wallets
 from app.api.v1.router import api_router as v1_router
 
 # Create tables in PostgreSQL on startup if they do not exist
@@ -29,12 +29,14 @@ app.include_router(auth.router, prefix="/api")
 app.include_router(expenses.router, prefix="/api")
 app.include_router(income.router, prefix="/api")
 app.include_router(transactions.router, prefix="/api")
+app.include_router(wallets.router, prefix="/api")
 app.include_router(insights.router, prefix="/api")
 
 app.include_router(auth.router)
 app.include_router(expenses.router)
 app.include_router(income.router)
 app.include_router(transactions.router)
+app.include_router(wallets.router)
 app.include_router(insights.router)
 
 @app.get("/health", tags=["Health"])

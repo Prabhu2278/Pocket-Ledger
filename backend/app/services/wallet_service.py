@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from typing import List, Optional
 from fastapi import HTTPException
 
@@ -11,18 +11,22 @@ class WalletService:
     @staticmethod
     def calculate_wallet_balance(db: Session, wallet: Wallet) -> float:
         incomes = db.query(func.coalesce(func.sum(Expense.amount), 0.0))\
-            .filter(Expense.wallet_id == wallet.id, Expense.type == "INCOME").scalar()
+            .filter(Expense.wallet_id == wallet.id, func.upper(Expense.type) == "INCOME").scalar()
 
         expenses = db.query(func.coalesce(func.sum(Expense.amount), 0.0))\
-            .filter(Expense.wallet_id == wallet.id, Expense.type == "EXPENSE").scalar()
+            .filter(Expense.wallet_id == wallet.id, or_(func.upper(Expense.type) == "EXPENSE", Expense.type == None, Expense.type == "")).scalar()
+
+        from app.models.income import Income
+        incomes_table = db.query(func.coalesce(func.sum(Income.amount), 0.0))\
+            .filter(Income.wallet_id == wallet.id).scalar()
 
         transfers_in = db.query(func.coalesce(func.sum(Expense.amount), 0.0))\
-            .filter(Expense.to_wallet_id == wallet.id, Expense.type == "TRANSFER").scalar()
+            .filter(Expense.to_wallet_id == wallet.id, func.upper(Expense.type) == "TRANSFER").scalar()
 
         transfers_out = db.query(func.coalesce(func.sum(Expense.amount), 0.0))\
-            .filter(Expense.wallet_id == wallet.id, Expense.type == "TRANSFER").scalar()
+            .filter(Expense.wallet_id == wallet.id, func.upper(Expense.type) == "TRANSFER").scalar()
 
-        return round(float(wallet.initial_balance) + float(incomes) - float(expenses) + float(transfers_in) - float(transfers_out), 2)
+        return round(float(wallet.initial_balance) + float(incomes) + float(incomes_table) - float(expenses) + float(transfers_in) - float(transfers_out), 2)
 
     @classmethod
     def to_response_dto(cls, db: Session, wallet: Wallet) -> WalletResponse:
@@ -86,3 +90,20 @@ class WalletService:
             raise HTTPException(status_code=404, detail="Wallet not found")
         db.delete(wallet)
         db.commit()
+
+    # Aliases for v1 API compatibility
+    @classmethod
+    def get_all_wallets_with_balances(cls, db: Session, user_id: Optional[int] = None) -> List[WalletResponse]:
+        return cls.get_all(db, user_id=user_id)
+
+    @classmethod
+    def create_wallet(cls, db: Session, wallet_in: WalletCreate) -> WalletResponse:
+        return cls.create(db, wallet_in)
+
+    @classmethod
+    def update_wallet(cls, db: Session, wallet_id: int, wallet_in: WalletUpdate) -> WalletResponse:
+        return cls.update(db, wallet_id, wallet_in)
+
+    @classmethod
+    def delete_wallet(cls, db: Session, wallet_id: int) -> None:
+        return cls.delete(db, wallet_id)

@@ -4,6 +4,7 @@ import { useExpenses } from './hooks/useExpenses'
 import { MainLayout } from './layouts/MainLayout'
 import { Transactions } from './pages/Transactions'
 import { Insights } from './pages/Insights'
+import { Wallets } from './pages/Wallets'
 import { Settings } from './pages/Settings'
 import { Login } from './pages/Login'
 import { Register } from './pages/Register'
@@ -50,6 +51,25 @@ export function App() {
     isCurrentMonth,
     last7Days,
     activityLogs,
+    // Filter Drawer & Advanced Filters
+    isFilterDrawerOpen,
+    setIsFilterDrawerOpen,
+    openFilterDrawer,
+    closeFilterDrawer,
+    walletFilter,
+    setWalletFilter,
+    minAmount,
+    setMinAmount,
+    maxAmount,
+    setMaxAmount,
+    startDate,
+    setStartDate,
+    endDate,
+    setEndDate,
+    paymentMethodFilter,
+    setPaymentMethodFilter,
+    resetFilters,
+    activeFilterCount,
     // Unified Transaction Dialog
     dialogOpen,
     setDialogOpen,
@@ -64,6 +84,14 @@ export function App() {
     setNote,
     date,
     setDate,
+    walletId,
+    setWalletId,
+    toWalletId,
+    setToWalletId,
+    wallets,
+    addWallet,
+    updateWallet,
+    deleteWallet,
     formError,
     openTransactionDialog,
     saveTransaction,
@@ -133,6 +161,28 @@ export function App() {
       openCsvModal={openCsvModal}
       theme={theme}
       toggleTheme={toggleTheme}
+      // Filter Drawer props
+      isFilterDrawerOpen={isFilterDrawerOpen}
+      openFilterDrawer={openFilterDrawer}
+      closeFilterDrawer={closeFilterDrawer}
+      activeFilterCount={activeFilterCount}
+      typeFilter={typeFilter}
+      setTypeFilter={setTypeFilter}
+      categoryFilter={categoryFilter}
+      setCategoryFilter={setCategoryFilter}
+      walletFilter={walletFilter}
+      setWalletFilter={setWalletFilter}
+      minAmount={minAmount}
+      setMinAmount={setMinAmount}
+      maxAmount={maxAmount}
+      setMaxAmount={setMaxAmount}
+      startDate={startDate}
+      setStartDate={setStartDate}
+      endDate={endDate}
+      setEndDate={setEndDate}
+      paymentMethodFilter={paymentMethodFilter}
+      setPaymentMethodFilter={setPaymentMethodFilter}
+      resetFilters={resetFilters}
       // Transaction Form Dialog props
       dialogOpen={dialogOpen}
       setDialogOpen={setDialogOpen}
@@ -147,6 +197,11 @@ export function App() {
       setNote={setNote}
       date={date}
       setDate={setDate}
+      walletId={walletId}
+      setWalletId={setWalletId}
+      toWalletId={toWalletId}
+      setToWalletId={setToWalletId}
+      wallets={wallets}
       formError={formError}
       saveTransaction={saveTransaction}
       // CSV Import Modal props
@@ -157,7 +212,7 @@ export function App() {
       toast={toast}
       undoDelete={undoDelete}
     >
-      {page === 'insights' ? (
+      {page === 'dashboard' || page === 'insights' ? (
         <Insights
           totalSpent={totalSpent}
           totalIncome={totalIncome}
@@ -174,9 +229,18 @@ export function App() {
           rankedIncomeCategories={rankedIncomeCategories}
           last7Days={last7Days}
           activityLogs={activityLogs}
+          wallets={wallets}
           currency={currency}
           onUpdateBudget={updateBudget}
           onSelectCategoryFilter={selectCategoryFilter}
+        />
+      ) : page === 'wallets' ? (
+        <Wallets
+          wallets={wallets}
+          currency={currency}
+          onAddWallet={addWallet}
+          onUpdateWallet={updateWallet}
+          onDeleteWallet={deleteWallet}
         />
       ) : page === 'settings' ? (
         <Settings
@@ -207,6 +271,13 @@ export function App() {
           openTransactionDialog={openTransactionDialog}
           onDeleteTransaction={deleteTransaction}
           openCsvModal={openCsvModal}
+          walletFilter={walletFilter}
+          minAmount={minAmount}
+          maxAmount={maxAmount}
+          startDate={startDate}
+          endDate={endDate}
+          paymentMethodFilter={paymentMethodFilter}
+          wallets={wallets}
         />
       )}
     </MainLayout>

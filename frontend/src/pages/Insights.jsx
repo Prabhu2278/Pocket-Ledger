@@ -27,6 +27,7 @@ export function Insights({
   rankedIncomeCategories = [],
   last7Days = [],
   activityLogs = [],
+  wallets = [],
   currency = 'INR',
   onUpdateBudget,
   onSelectCategoryFilter,
@@ -64,7 +65,7 @@ export function Insights({
   const maxDayAmount = Math.max(1, ...last7Days.map((d) => d.amount || 0))
 
   return (
-    <section className="view on" id="v-insights" aria-label="Insights module">
+    <section className="view on" id="v-insights" aria-label="Dashboard module">
       {/* Cash Flow Summary Cards */}
       <div className="kpis">
         <div className="card kpi">
@@ -91,6 +92,48 @@ export function Insights({
           </b>
         </div>
       </div>
+
+      {/* Wallet Accounts Quick Bar */}
+      {wallets && wallets.length > 0 && (
+        <div className="card" style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--mute)' }}>
+              Accounts & Wallets Balance
+            </span>
+            <a href="#/wallets" style={{ fontSize: '13px', fontWeight: 600, color: 'var(--acc)', textDecoration: 'none' }}>
+              Manage Wallets →
+            </a>
+          </div>
+          <div style={{ display: 'flex', gap: '12px', overflowX: 'auto', paddingBottom: '4px' }}>
+            {wallets.map((w) => {
+              const b = Number(w.current_balance ?? w.balance ?? w.initial_balance ?? 0)
+              return (
+                <div
+                  key={w.id}
+                  style={{
+                    background: 'var(--bg)',
+                    border: '1px solid var(--line)',
+                    borderLeft: `4px solid ${w.color || '#10b981'}`,
+                    borderRadius: '8px',
+                    padding: '8px 14px',
+                    minWidth: '150px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '2px',
+                  }}
+                >
+                  <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--mute)', whiteSpace: 'nowrap' }}>
+                    {w.name}
+                  </span>
+                  <b style={{ fontSize: '15px', fontWeight: 700, color: b >= 0 ? 'var(--pos)' : 'var(--out)' }}>
+                    {money(b, currency)}
+                  </b>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="grid2">
         {/* Card 1: Budget Ring */}

@@ -12,11 +12,6 @@ export function Sidebar({
   user = null,
   onLogout,
 }) {
-  const monthDisplay = new Date(month.year, month.month, 1).toLocaleDateString(undefined, {
-    month: 'short',
-    year: 'numeric',
-  })
-
   const clampedPct = Math.min(Math.max(budgetPercent, 0), 1)
   const isTxnActive = page === 'transactions' || page === 'expenses' || page === 'income'
 
@@ -25,6 +20,28 @@ export function Sidebar({
       <div className="brand">Pocket Ledger</div>
 
       <nav aria-label="Modules">
+        <a
+          href="#/dashboard"
+          id="n-dashboard"
+          aria-current={page === 'dashboard' || page === 'insights' ? 'page' : undefined}
+        >
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            aria-hidden="true"
+          >
+            <rect x="3" y="3" width="7" height="9" rx="1" />
+            <rect x="14" y="3" width="7" height="5" rx="1" />
+            <rect x="14" y="12" width="7" height="9" rx="1" />
+            <rect x="3" y="16" width="7" height="5" rx="1" />
+          </svg>
+          Dashboard
+        </a>
+
         <a
           href="#/transactions"
           id="n-transactions"
@@ -46,9 +63,9 @@ export function Sidebar({
         </a>
 
         <a
-          href="#/insights"
-          id="n2"
-          aria-current={page === 'insights' ? 'page' : undefined}
+          href="#/wallets"
+          id="n-wallets"
+          aria-current={page === 'wallets' ? 'page' : undefined}
         >
           <svg
             width="20"
@@ -59,9 +76,11 @@ export function Sidebar({
             strokeWidth="2"
             aria-hidden="true"
           >
-            <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />
+            <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" />
+            <path d="M3 5v14a2 2 0 0 0 2 2h16v-5" />
+            <path d="M18 12a2 2 0 0 0 0 4h4v-4z" />
           </svg>
-          Insights
+          Wallets
         </a>
 
         <a
@@ -84,28 +103,6 @@ export function Sidebar({
           Settings
         </a>
       </nav>
-
-      <div className="month" role="group" aria-label="Choose month">
-        <button
-          id="prev"
-          aria-label="Previous month"
-          type="button"
-          onClick={() => changeMonth(-1)}
-        >
-          ‹
-        </button>
-        <span id="mlabel" aria-live="polite">
-          {monthDisplay}
-        </span>
-        <button
-          id="next"
-          aria-label="Next month"
-          type="button"
-          onClick={() => changeMonth(1)}
-        >
-          ›
-        </button>
-      </div>
 
       <div className="sidebud">
         <span>Budget used</span>

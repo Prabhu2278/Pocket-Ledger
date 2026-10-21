@@ -31,20 +31,28 @@ export const transactionApi = {
 
   // Create single transaction (income or expense)
   async createTransaction(payload) {
+    const body = {
+      type: payload.type || 'expense',
+      amount: Number(payload.amount || payload.amt),
+      amt: Number(payload.amount || payload.amt),
+      category: payload.category || payload.cat,
+      cat: payload.category || payload.cat,
+      note: payload.note || payload.title || '',
+      title: payload.note || payload.title || '',
+      date: payload.date || payload.spent_on || payload.received_on,
+      payment_method: payload.payment_method || 'UPI',
+    }
+    if (payload.wallet_id) {
+      body.wallet_id = Number(payload.wallet_id)
+    }
+    if (payload.to_wallet_id) {
+      body.to_wallet_id = Number(payload.to_wallet_id)
+    }
+
     const res = await fetch(`${API_BASE}/api/transactions`, {
       method: 'POST',
       headers: authApi.getAuthHeaders(),
-      body: JSON.stringify({
-        type: payload.type || 'expense',
-        amount: Number(payload.amount || payload.amt),
-        amt: Number(payload.amount || payload.amt),
-        category: payload.category || payload.cat,
-        cat: payload.category || payload.cat,
-        note: payload.note || payload.title || '',
-        title: payload.note || payload.title || '',
-        date: payload.date || payload.spent_on || payload.received_on,
-        payment_method: payload.payment_method || 'UPI',
-      }),
+      body: JSON.stringify(body),
     })
     if (!res.ok) {
       const err = await res.json().catch(() => ({}))
@@ -55,10 +63,14 @@ export const transactionApi = {
 
   // Update existing transaction
   async updateTransaction(id, type, payload) {
+    const body = { ...payload }
+    if (body.wallet_id) {
+      body.wallet_id = Number(body.wallet_id)
+    }
     if (type === 'income') {
-      return await incomeApi.updateIncome(id, payload)
+      return await incomeApi.updateIncome(id, body)
     } else {
-      return await expenseApi.updateExpense(id, payload)
+      return await expenseApi.updateExpense(id, body)
     }
   },
 

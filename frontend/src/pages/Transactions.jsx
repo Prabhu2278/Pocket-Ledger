@@ -1,13 +1,12 @@
 import React, { useState, useMemo } from 'react'
 import { money } from '../utils/formatCurrency'
-import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '../constants/categories'
 import { TransactionTable } from '../components/TransactionTable'
 import { exportTransactionsToCsv } from '../utils/csvExporter'
 
 export function Transactions({
   transactions = [],
   month = { year: new Date().getFullYear(), month: new Date().getMonth() },
-  typeFilter = 'all', // 'all', 'income', 'expense'
+  typeFilter = 'all', // 'all', 'income', 'expense', 'transfer'
   setTypeFilter,
   categoryFilter = 'All',
   setCategoryFilter,
@@ -19,8 +18,20 @@ export function Transactions({
   openTransactionDialog,
   onDeleteTransaction,
   openCsvModal,
+  // Advanced filters from drawer
+  walletFilter = 'all',
+  minAmount = '',
+  maxAmount = '',
+  startDate = '',
+  endDate = '',
+  paymentMethodFilter = 'all',
+  wallets = [],
 }) {
   const monthKey = `${month.year}-${String(month.month + 1).padStart(2, '0')}`
+
+  // Pagination state (default: 10 per page)
+  const [pageSize, setPageSize] = useState(10)
+  const [currentPage, setCurrentPage] = useState(1)
 
   // Filter transactions for this month
   const monthTransactions = useMemo(() => {
@@ -32,6 +43,14 @@ export function Transactions({
     })
   }, [transactions, month])
 
+  // Reset pagination to page 1 whenever any filter or search changes
+  const filterKey = `${typeFilter}-${categoryFilter}-${search}-${walletFilter}-${minAmount}-${maxAmount}-${startDate}-${endDate}-${paymentMethodFilter}-${monthKey}`
+  const [prevFilterKey, setPrevFilterKey] = useState(filterKey)
+  if (filterKey !== prevFilterKey) {
+    setPrevFilterKey(filterKey)
+    setCurrentPage(1)
+  }
+
   // Compute month KPIs
   const totalIncome = useMemo(() => {
     return monthTransactions
@@ -41,37 +60,84 @@ export function Transactions({
 
   const totalExpense = useMemo(() => {
     return monthTransactions
-      .filter((t) => (t.type || '').toLowerCase() !== 'income')
+      .filter((t) => (t.type || '').toLowerCase() === 'expense')
+      .reduce((sum, t) => sum + Number(t.amount || t.amt || 0), 0)
+  }, [monthTransactions])
+
+  const totalTransfers = useMemo(() => {
+    return monthTransactions
+      .filter((t) => (t.type || '').toLowerCase() === 'transfer')
       .reduce((sum, t) => sum + Number(t.amount || t.amt || 0), 0)
   }, [monthTransactions])
 
   const netCashFlow = totalIncome - totalExpense
   const incomeCount = monthTransactions.filter((t) => (t.type || '').toLowerCase() === 'income').length
-  const expenseCount = monthTransactions.filter((t) => (t.type || '').toLowerCase() !== 'income').length
+  const expenseCount = monthTransactions.filter((t) => (t.type || '').toLowerCase() === 'expense').length
+  const transferCount = monthTransactions.filter((t) => (t.type || '').toLowerCase() === 'transfer').length
 
   // Filter and sort for the table
   const visibleTransactions = useMemo(() => {
     let rows = monthTransactions
 
-    // Filter by type
+    // 1. Filter by type
     if (typeFilter === 'income') {
       rows = rows.filter((t) => (t.type || '').toLowerCase() === 'income')
     } else if (typeFilter === 'expense') {
-      rows = rows.filter((t) => (t.type || '').toLowerCase() !== 'income')
+      rows = rows.filter((t) => (t.type || '').toLowerCase() === 'expense')
+    } else if (typeFilter === 'transfer') {
+      rows = rows.filter((t) => (t.type || '').toLowerCase() === 'transfer')
     }
 
-    // Filter by category
+    // 2. Filter by category
     if (categoryFilter !== 'All') {
       rows = rows.filter((t) => (t.category || t.cat) === categoryFilter)
     }
 
-    // Filter by search query
+    // 3. Filter by search query
     if (search.trim()) {
       const q = search.trim().toLowerCase()
       rows = rows.filter((t) => {
         const text = `${t.note || t.title || ''} ${t.category || t.cat || ''} ${t.type || ''}`.toLowerCase()
         return text.includes(q)
       })
+    }
+
+    // 4. Filter by Account / Wallet
+    if (walletFilter && walletFilter !== 'all') {
+      const wId = String(walletFilter)
+      rows = rows.filter(
+        (t) => String(t.wallet_id) === wId || String(t.to_wallet_id) === wId
+      )
+    }
+
+    // 5. Filter by Date Range
+    if (startDate) {
+      rows = rows.filter((t) => {
+        const d = t.date || t.spent_on || t.received_on || ''
+        return d >= startDate
+      })
+    }
+    if (endDate) {
+      rows = rows.filter((t) => {
+        const d = t.date || t.spent_on || t.received_on || ''
+        return d <= endDate
+      })
+    }
+
+    // 6. Filter by Min / Max Amount
+    if (minAmount !== '' && !isNaN(Number(minAmount))) {
+      const min = Number(minAmount)
+      rows = rows.filter((t) => Number(t.amount || t.amt || 0) >= min)
+    }
+    if (maxAmount !== '' && !isNaN(Number(maxAmount))) {
+      const max = Number(maxAmount)
+      rows = rows.filter((t) => Number(t.amount || t.amt || 0) <= max)
+    }
+
+    // 7. Filter by Payment Method
+    if (paymentMethodFilter && paymentMethodFilter !== 'all') {
+      const pm = paymentMethodFilter.toLowerCase()
+      rows = rows.filter((t) => (t.payment_method || '').toLowerCase() === pm)
     }
 
     // Sort
@@ -86,24 +152,81 @@ export function Transactions({
       const comp = dateA.localeCompare(dateB) || a.id - b.id
       return comp * sort.direction
     })
-  }, [monthTransactions, typeFilter, categoryFilter, search, sort])
+  }, [
+    monthTransactions,
+    typeFilter,
+    categoryFilter,
+    search,
+    walletFilter,
+    startDate,
+    endDate,
+    minAmount,
+    maxAmount,
+    paymentMethodFilter,
+    sort,
+  ])
 
-  // Category filter options depending on type
-  const categoryOptions = useMemo(() => {
-    if (typeFilter === 'income') {
-      return ['All', ...INCOME_CATEGORIES.map((c) => c[0])]
+  // Pagination calculations
+  const totalCount = visibleTransactions.length
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
+  const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages)
+  const startIndex = (safeCurrentPage - 1) * pageSize
+  const paginatedTransactions = useMemo(() => {
+    return visibleTransactions.slice(startIndex, startIndex + pageSize)
+  }, [visibleTransactions, startIndex, pageSize])
+
+  // Smart pagination button generator
+  const renderPaginationButtons = () => {
+    if (totalPages <= 1) return null
+    const pages = []
+
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i)
+    } else {
+      if (safeCurrentPage <= 4) {
+        pages.push(1, 2, 3, 4, 5, '...', totalPages)
+      } else if (safeCurrentPage >= totalPages - 3) {
+        pages.push(1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages)
+      } else {
+        pages.push(1, '...', safeCurrentPage - 1, safeCurrentPage, safeCurrentPage + 1, '...', totalPages)
+      }
     }
-    if (typeFilter === 'expense') {
-      return ['All', ...EXPENSE_CATEGORIES.map((c) => c[0])]
-    }
-    // Combined unique categories from data
-    const set = new Set(['All'])
-    monthTransactions.forEach((t) => {
-      const c = t.category || t.cat
-      if (c) set.add(c)
+
+    return pages.map((p, idx) => {
+      if (p === '...') {
+        return (
+          <span key={`dots-${idx}`} style={{ padding: '0 4px', color: 'var(--mute)', fontSize: '13px' }}>
+            ...
+          </span>
+        )
+      }
+      const isCurrent = p === safeCurrentPage
+      return (
+        <button
+          key={`page-btn-${p}`}
+          type="button"
+          onClick={() => setCurrentPage(p)}
+          style={{
+            minWidth: '34px',
+            height: '34px',
+            padding: '0 8px',
+            borderRadius: '8px',
+            border: isCurrent ? '1px solid var(--acc)' : '1px solid var(--line)',
+            background: isCurrent ? 'var(--acc)' : 'var(--card)',
+            color: isCurrent ? '#fff' : 'var(--ink)',
+            fontSize: '13px',
+            fontWeight: 700,
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+          }}
+          aria-current={isCurrent ? 'page' : undefined}
+          aria-label={`Page ${p}`}
+        >
+          {p}
+        </button>
+      )
     })
-    return Array.from(set)
-  }, [typeFilter, monthTransactions])
+  }
 
   const handleExportCsv = () => {
     const filename = `pocket_ledger_transactions_${monthKey}.csv`
@@ -193,10 +316,55 @@ export function Transactions({
             >
               Expenses ({expenseCount})
             </button>
+            <button
+              type="button"
+              className="chip"
+              role="tab"
+              aria-selected={typeFilter === 'transfer'}
+              aria-pressed={typeFilter === 'transfer'}
+              onClick={() => {
+                setTypeFilter('transfer')
+                setCategoryFilter('All')
+              }}
+            >
+              Transfers ({transferCount})
+            </button>
           </div>
 
-          {/* CSV Import & Export Actions */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {/* CSV Import, Export, Pages Dropdown & Transfer Actions */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            {/* Pages dropdown near Import option */}
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+              <label htmlFor="pages-select" style={{ fontSize: '13px', fontWeight: 600, color: 'var(--mute)' }}>
+                Pages:
+              </label>
+              <select
+                id="pages-select"
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value))
+                  setCurrentPage(1)
+                }}
+                style={{
+                  padding: '6px 10px',
+                  borderRadius: '8px',
+                  border: '1px solid var(--line)',
+                  background: 'var(--card)',
+                  color: 'var(--ink)',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  minHeight: '38px',
+                }}
+                title="Number of transactions to show per page"
+              >
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={30}>30</option>
+                <option value={50}>50</option>
+              </select>
+            </div>
+
             <button
               type="button"
               className="ghost"
@@ -240,35 +408,86 @@ export function Transactions({
               </svg>
               Export CSV
             </button>
+
+            <button
+              type="button"
+              className="ghost"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 14px',
+                minHeight: '38px',
+                fontSize: '13px',
+                color: 'var(--acc)',
+                borderColor: 'var(--acc)',
+              }}
+              onClick={() => openTransactionDialog(null, 'transfer')}
+              title="Transfer funds between accounts"
+            >
+              <span aria-hidden="true">⇄</span>
+              Transfer
+            </button>
           </div>
         </div>
 
-        {/* Category Filter Chips */}
-        {categoryOptions.length > 1 && (
-          <div className="chips" role="group" aria-label="Filter by category" style={{ marginBottom: '14px' }}>
-            {categoryOptions.map((name) => (
-              <button
-                key={name}
-                type="button"
-                className="chip"
-                aria-pressed={categoryFilter === name}
-                onClick={() => setCategoryFilter(name)}
-              >
-                {name}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Transactions Table */}
+        {/* Transactions Table with Paginated Data */}
         <TransactionTable
-          transactions={visibleTransactions}
+          transactions={paginatedTransactions}
           sort={sort}
           currency={currency}
           onSort={onSort}
           onEdit={openTransactionDialog}
           onDelete={onDeleteTransaction}
         />
+
+        {/* Pagination Bar */}
+        {totalCount > 0 && (
+          <div className="pagination-bar">
+            <div style={{ fontSize: '13px', color: 'var(--mute)', fontWeight: 500 }}>
+              Showing <b>{startIndex + 1}</b> - <b>{Math.min(startIndex + pageSize, totalCount)}</b> of{' '}
+              <b>{totalCount}</b> transactions
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <button
+                type="button"
+                className="ghost"
+                style={{
+                  padding: '6px 12px',
+                  minHeight: '34px',
+                  fontSize: '12.5px',
+                  opacity: safeCurrentPage <= 1 ? 0.4 : 1,
+                  cursor: safeCurrentPage <= 1 ? 'not-allowed' : 'pointer',
+                }}
+                disabled={safeCurrentPage <= 1}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                aria-label="Previous page"
+              >
+                ‹ Prev
+              </button>
+
+              {renderPaginationButtons()}
+
+              <button
+                type="button"
+                className="ghost"
+                style={{
+                  padding: '6px 12px',
+                  minHeight: '34px',
+                  fontSize: '12.5px',
+                  opacity: safeCurrentPage >= totalPages ? 0.4 : 1,
+                  cursor: safeCurrentPage >= totalPages ? 'not-allowed' : 'pointer',
+                }}
+                disabled={safeCurrentPage >= totalPages}
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                aria-label="Next page"
+              >
+                Next ›
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </section>
   )

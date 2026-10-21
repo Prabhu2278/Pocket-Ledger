@@ -3,6 +3,7 @@ import { Sidebar } from '../components/Sidebar'
 import { Header } from '../components/Header'
 import { TransactionForm } from '../components/TransactionForm'
 import { CsvImportModal } from '../components/CsvImportModal'
+import { FilterDrawer } from '../components/FilterDrawer'
 
 export function MainLayout({
   children,
@@ -21,6 +22,29 @@ export function MainLayout({
   openCsvModal,
   theme,
   toggleTheme,
+  // Filter Drawer props
+  isFilterDrawerOpen,
+  openFilterDrawer,
+  closeFilterDrawer,
+  activeFilterCount,
+  typeFilter,
+  setTypeFilter,
+  categoryFilter,
+  setCategoryFilter,
+  walletFilter,
+  setWalletFilter,
+  minAmount,
+  setMinAmount,
+  maxAmount,
+  setMaxAmount,
+  startDate,
+  setStartDate,
+  endDate,
+  setEndDate,
+  paymentMethodFilter,
+  setPaymentMethodFilter,
+  resetFilters,
+  totalFilteredCount,
   // Transaction Form modal props
   dialogOpen,
   setDialogOpen,
@@ -35,6 +59,11 @@ export function MainLayout({
   setNote,
   date,
   setDate,
+  walletId,
+  setWalletId,
+  toWalletId,
+  setToWalletId,
+  wallets,
   formError,
   saveTransaction,
   // CSV Import modal props
@@ -62,12 +91,17 @@ export function MainLayout({
       <main>
         <Header
           page={page}
+          month={month}
+          changeMonth={changeMonth}
           search={search}
           setSearch={setSearch}
           openTransactionDialog={openTransactionDialog}
           openCsvModal={openCsvModal}
           theme={theme}
           toggleTheme={toggleTheme}
+          openFilterDrawer={openFilterDrawer}
+          isFilterDrawerOpen={isFilterDrawerOpen}
+          activeFilterCount={activeFilterCount}
         />
 
         {children}
@@ -88,6 +122,12 @@ export function MainLayout({
         setNote={setNote}
         date={date}
         setDate={setDate}
+        walletId={walletId}
+        setWalletId={setWalletId}
+        toWalletId={toWalletId}
+        setToWalletId={setToWalletId}
+        wallets={wallets}
+        currency={currency}
         formError={formError}
         saveTransaction={saveTransaction}
       />
@@ -98,6 +138,33 @@ export function MainLayout({
         onClose={closeCsvModal}
         onImportConfirm={handleCsvImport}
         currency={currency}
+      />
+
+      {/* Filter Drawer (Right Side Slide-Over) */}
+      <FilterDrawer
+        isOpen={isFilterDrawerOpen}
+        onClose={closeFilterDrawer}
+        typeFilter={typeFilter}
+        setTypeFilter={setTypeFilter}
+        categoryFilter={categoryFilter}
+        setCategoryFilter={setCategoryFilter}
+        walletFilter={walletFilter}
+        setWalletFilter={setWalletFilter}
+        minAmount={minAmount}
+        setMinAmount={setMinAmount}
+        maxAmount={maxAmount}
+        setMaxAmount={setMaxAmount}
+        startDate={startDate}
+        setStartDate={setStartDate}
+        endDate={endDate}
+        setEndDate={setEndDate}
+        paymentMethodFilter={paymentMethodFilter}
+        setPaymentMethodFilter={setPaymentMethodFilter}
+        wallets={wallets}
+        currency={currency}
+        totalFilteredCount={totalFilteredCount}
+        activeFilterCount={activeFilterCount}
+        onResetFilters={resetFilters}
       />
 
       {/* Toast Notification with Undo */}

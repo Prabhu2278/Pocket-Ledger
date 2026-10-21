@@ -12,6 +12,7 @@ class Income(Base):
     received_on = Column(Date, nullable=False, index=True)
     payment_method = Column(String(30), default="Bank Transfer", nullable=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)
+    wallet_id = Column(Integer, ForeignKey("wallets.id", ondelete="SET NULL"), nullable=True, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     @property

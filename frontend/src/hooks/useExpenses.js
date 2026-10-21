@@ -3,6 +3,7 @@ import { isoDate } from '../utils/dateUtils'
 import { transactionApi } from '../services/transactionApi'
 import { expenseApi } from '../services/expenseApi'
 import { authApi } from '../services/authApi'
+import { walletApi } from '../services/walletApi'
 
 export function useExpenses() {
   const now = useMemo(() => new Date(), [])
@@ -11,20 +12,21 @@ export function useExpenses() {
     month: now.getMonth(),
   })
 
-  // Hash-based routing: #/transactions, #/expenses, #/income, #/insights, #/settings, #/login, #/register
+  // Hash-based routing: #/transactions, #/expenses, #/income, #/dashboard, #/wallets, #/settings, #/login, #/register
   const [page, setPage] = useState(() => {
     if (typeof window !== 'undefined') {
       const hash = window.location.hash.toLowerCase()
       if (hash.includes('income')) return 'transactions'
       if (hash.includes('expenses')) return 'transactions'
       if (hash.includes('transactions')) return 'transactions'
-      if (hash.includes('insights')) return 'insights'
+      if (hash.includes('dashboard') || hash.includes('insights')) return 'dashboard'
+      if (hash.includes('wallets')) return 'wallets'
       if (hash.includes('settings')) return 'settings'
       if (hash.includes('register')) return 'register'
       if (hash.includes('login')) return 'login'
-      return 'transactions'
+      return 'dashboard'
     }
-    return 'transactions'
+    return 'dashboard'
   })
 
   // Type filter for unified transactions view: 'all', 'income', 'expense'
@@ -40,6 +42,48 @@ export function useExpenses() {
   const [categoryFilter, setCategoryFilter] = useState('All')
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState({ key: 'date', direction: -1 })
+
+  // Drawer & Advanced Filter state
+  const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false)
+  const [walletFilter, setWalletFilter] = useState('all')
+  const [minAmount, setMinAmount] = useState('')
+  const [maxAmount, setMaxAmount] = useState('')
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState('all')
+
+  const resetFilters = useCallback(() => {
+    setTypeFilter('all')
+    setCategoryFilter('All')
+    setWalletFilter('all')
+    setMinAmount('')
+    setMaxAmount('')
+    setStartDate('')
+    setEndDate('')
+    setPaymentMethodFilter('all')
+  }, [])
+
+  const activeFilterCount = useMemo(() => {
+    let count = 0
+    if (typeFilter && typeFilter !== 'all') count++
+    if (categoryFilter && categoryFilter !== 'All') count++
+    if (walletFilter && walletFilter !== 'all') count++
+    if (minAmount !== '') count++
+    if (maxAmount !== '') count++
+    if (startDate !== '') count++
+    if (endDate !== '') count++
+    if (paymentMethodFilter && paymentMethodFilter !== 'all') count++
+    return count
+  }, [
+    typeFilter,
+    categoryFilter,
+    walletFilter,
+    minAmount,
+    maxAmount,
+    startDate,
+    endDate,
+    paymentMethodFilter,
+  ])
 
   // Theme state
   const [theme, setThemeState] = useState(() => {
@@ -92,6 +136,9 @@ export function useExpenses() {
   const [budget, setBudgetState] = useState(20000)
   const [activityLogs, setActivityLogs] = useState([])
   const [insightsSummary, setInsightsSummary] = useState(null)
+  const [wallets, setWallets] = useState([])
+  const [walletId, setWalletId] = useState('')
+  const [toWalletId, setToWalletId] = useState('')
   const [loading, setLoading] = useState(false)
 
   // Unified Transaction Dialog state
@@ -127,8 +174,10 @@ export function useExpenses() {
       } else if (hash.includes('transactions')) {
         setPage('transactions')
         setTypeFilter('all')
-      } else if (hash.includes('insights')) {
-        setPage('insights')
+      } else if (hash.includes('dashboard') || hash.includes('insights')) {
+        setPage('dashboard')
+      } else if (hash.includes('wallets')) {
+        setPage('wallets')
       } else if (hash.includes('settings')) {
         setPage('settings')
       } else if (hash.includes('register')) {
@@ -136,7 +185,7 @@ export function useExpenses() {
       } else if (hash.includes('login')) {
         setPage('login')
       } else {
-        setPage('transactions')
+        setPage('dashboard')
       }
     }
     window.addEventListener('hashchange', handleHash)
@@ -164,14 +213,15 @@ export function useExpenses() {
       .catch(() => {})
   }, [])
 
-  // Load from FastAPI backend (Unified Transactions, Budget, Insights)
+  // Load from FastAPI backend (Unified Transactions, Budget, Insights, Wallets)
   const loadData = useCallback(async () => {
     setLoading(true)
     try {
-      const [txsResp, budgetResp, insightsResp] = await Promise.allSettled([
+      const [txsResp, budgetResp, insightsResp, walletsResp] = await Promise.allSettled([
         transactionApi.getTransactions({ month_key: monthKey }),
         expenseApi.getBudget(monthKey),
         expenseApi.getInsights(monthKey),
+        walletApi.getWallets(),
       ])
 
       if (txsResp.status === 'fulfilled' && Array.isArray(txsResp.value)) {
@@ -187,6 +237,16 @@ export function useExpenses() {
         if (insightsResp.value.recent_activity) {
           setActivityLogs(insightsResp.value.recent_activity)
         }
+      }
+
+      if (walletsResp.status === 'fulfilled' && Array.isArray(walletsResp.value)) {
+        setWallets(walletsResp.value)
+        setWalletId((prev) => {
+          if (prev && walletsResp.value.some((w) => String(w.id) === String(prev))) {
+            return prev
+          }
+          return walletsResp.value.length > 0 ? String(walletsResp.value[0].id) : ''
+        })
       }
     } catch (err) {
       console.error('Failed to load data from backend:', err)
@@ -219,7 +279,14 @@ export function useExpenses() {
   // Total Expenses
   const totalSpent = useMemo(() => {
     return monthTransactions
-      .filter((t) => (t.type || '').toLowerCase() !== 'income')
+      .filter((t) => (t.type || '').toLowerCase() === 'expense')
+      .reduce((acc, t) => acc + Number(t.amount || t.amt || 0), 0)
+  }, [monthTransactions])
+
+  // Total Transfers
+  const totalTransfers = useMemo(() => {
+    return monthTransactions
+      .filter((t) => (t.type || '').toLowerCase() === 'transfer')
       .reduce((acc, t) => acc + Number(t.amount || t.amt || 0), 0)
   }, [monthTransactions])
 
@@ -238,7 +305,7 @@ export function useExpenses() {
   const categoryTotals = useMemo(() => {
     const totals = {}
     monthTransactions
-      .filter((t) => (t.type || '').toLowerCase() !== 'income')
+      .filter((t) => (t.type || '').toLowerCase() === 'expense')
       .forEach((t) => {
         const c = t.category || t.cat || 'Other'
         const val = Number(t.amount || t.amt || 0)
@@ -287,7 +354,7 @@ export function useExpenses() {
       const tot = transactions
         .filter(
           (t) =>
-            (t.date || t.spent_on) === k && (t.type || '').toLowerCase() !== 'income'
+            (t.date || t.spent_on) === k && (t.type || '').toLowerCase() === 'expense'
         )
         .reduce((sum, t) => sum + Number(t.amount || t.amt || 0), 0)
       days.push({
@@ -323,25 +390,45 @@ export function useExpenses() {
   }, [])
 
   // Dialog Controls
-  const openTransactionDialog = useCallback((item = null, defaultType = 'expense') => {
-    if (item) {
-      setEditingId(item.id)
-      setTxnType((item.type || 'expense').toLowerCase())
-      setAmount(String(item.amount || item.amt || ''))
-      setCategory(item.category || item.cat || (item.type === 'income' ? 'Salary' : 'Food'))
-      setNote(item.note || item.title || '')
-      setDate(item.date || item.spent_on || item.received_on || isoDate(new Date()))
-    } else {
-      setEditingId(null)
-      setTxnType(defaultType)
-      setAmount('')
-      setCategory(defaultType === 'income' ? 'Salary' : 'Food')
-      setNote('')
-      setDate(isoDate(new Date()))
-    }
-    setFormError('')
-    setDialogOpen(true)
-  }, [])
+  const openTransactionDialog = useCallback(
+    (item = null, defaultType = 'expense') => {
+      if (item) {
+        setEditingId(item.id)
+        setTxnType((item.type || 'expense').toLowerCase())
+        setAmount(String(item.amount || item.amt || ''))
+        setCategory(item.category || item.cat || (item.type === 'income' ? 'Salary' : item.type === 'transfer' ? 'Transfer' : 'Food'))
+        setNote(item.note || item.title || '')
+        setDate(item.date || item.spent_on || item.received_on || isoDate(new Date()))
+        if (item.wallet_id) {
+          setWalletId(String(item.wallet_id))
+        } else if (wallets.length > 0) {
+          setWalletId(String(wallets[0].id))
+        }
+        if (item.to_wallet_id) {
+          setToWalletId(String(item.to_wallet_id))
+        } else if (wallets.length > 1) {
+          const other = wallets.find((w) => String(w.id) !== String(item.wallet_id))
+          if (other) setToWalletId(String(other.id))
+        }
+      } else {
+        setEditingId(null)
+        setTxnType(defaultType)
+        setAmount('')
+        setCategory(defaultType === 'income' ? 'Salary' : defaultType === 'transfer' ? 'Transfer' : 'Food')
+        setNote('')
+        setDate(isoDate(new Date()))
+        if (wallets.length > 0) {
+          setWalletId(String(wallets[0].id))
+        }
+        if (wallets.length > 1) {
+          setToWalletId(String(wallets[1].id))
+        }
+      }
+      setFormError('')
+      setDialogOpen(true)
+    },
+    [wallets]
+  )
 
   // Save Transaction (Add or Edit)
   const saveTransaction = useCallback(
@@ -357,16 +444,56 @@ export function useExpenses() {
         return
       }
 
+      // 1. Validation for Transfer
+      if (txnType === 'transfer') {
+        if (!walletId) {
+          setFormError('Please select a source account (From).')
+          return
+        }
+        if (!toWalletId) {
+          setFormError('Please select a destination account (To).')
+          return
+        }
+        if (String(walletId) === String(toWalletId)) {
+          setFormError('Source and destination accounts must be different.')
+          return
+        }
+        const srcWallet = wallets.find((w) => String(w.id) === String(walletId)) || wallets[0]
+        if (srcWallet) {
+          const avail = Number(srcWallet.current_balance ?? srcWallet.balance ?? srcWallet.initial_balance ?? 0)
+          if (numericAmount > avail) {
+            setFormError(
+              `Insufficient funds in wallet '${srcWallet.name}'. Available balance is ₹${avail.toLocaleString(undefined, { minimumFractionDigits: 2 })}, cannot transfer ₹${numericAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}.`
+            )
+            return
+          }
+        }
+      }
+
+      // 2. Strict Low Balance Check for Expenses
+      const targetWallet = wallets.find((w) => String(w.id) === String(walletId)) || wallets[0]
+      if (txnType === 'expense' && targetWallet) {
+        const avail = Number(targetWallet.current_balance ?? targetWallet.balance ?? targetWallet.initial_balance ?? 0)
+        if (numericAmount > avail) {
+          setFormError(
+            `Insufficient funds in wallet '${targetWallet.name}'. Available balance is ₹${avail.toLocaleString(undefined, { minimumFractionDigits: 2 })}, cannot spend ₹${numericAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}.`
+          )
+          return
+        }
+      }
+
       try {
         const payload = {
           type: txnType,
           amount: numericAmount,
           amt: numericAmount,
-          category,
-          cat: category,
+          category: txnType === 'transfer' ? 'Transfer' : category,
+          cat: txnType === 'transfer' ? 'Transfer' : category,
           note: note.trim(),
           title: note.trim(),
           date,
+          wallet_id: targetWallet ? targetWallet.id : (walletId ? Number(walletId) : undefined),
+          to_wallet_id: txnType === 'transfer' ? Number(toWalletId) : undefined,
         }
 
         if (editingId) {
@@ -374,7 +501,13 @@ export function useExpenses() {
           showToast('Changes saved', false)
         } else {
           await transactionApi.createTransaction(payload)
-          showToast(`${txnType === 'income' ? 'Income' : 'Expense'} added`, false)
+          const successMsg =
+            txnType === 'transfer'
+              ? 'Transfer completed successfully'
+              : txnType === 'income'
+              ? 'Income added'
+              : 'Expense added'
+          showToast(successMsg, false)
         }
 
         const [y, m] = date.split('-').map(Number)
@@ -385,7 +518,7 @@ export function useExpenses() {
         setFormError(err.message || 'Error saving transaction.')
       }
     },
-    [amount, txnType, category, note, date, editingId, loadData, showToast]
+    [amount, txnType, category, note, date, editingId, walletId, toWalletId, wallets, loadData, showToast]
   )
 
   // Delete Transaction
@@ -404,6 +537,49 @@ export function useExpenses() {
       }
     },
     [transactions, loadData, showToast]
+  )
+
+  // Wallet CRUD Operations
+  const addWallet = useCallback(
+    async (walletData) => {
+      try {
+        await walletApi.createWallet(walletData)
+        showToast('Account created successfully')
+        await loadData()
+      } catch (err) {
+        showToast(err.message || 'Failed to create account')
+        throw err
+      }
+    },
+    [loadData, showToast]
+  )
+
+  const updateWallet = useCallback(
+    async (id, walletData) => {
+      try {
+        await walletApi.updateWallet(id, walletData)
+        showToast('Account updated successfully')
+        await loadData()
+      } catch (err) {
+        showToast(err.message || 'Failed to update account')
+        throw err
+      }
+    },
+    [loadData, showToast]
+  )
+
+  const deleteWallet = useCallback(
+    async (id) => {
+      try {
+        await walletApi.deleteWallet(id)
+        showToast('Account deleted successfully')
+        await loadData()
+      } catch (err) {
+        showToast(err.message || 'Failed to delete account')
+        throw err
+      }
+    },
+    [loadData, showToast]
   )
 
   // Undo Delete
@@ -545,6 +721,25 @@ export function useExpenses() {
     isCurrentMonth,
     last7Days,
     activityLogs,
+    // Filter Drawer & Advanced Filters
+    isFilterDrawerOpen,
+    setIsFilterDrawerOpen,
+    openFilterDrawer: () => setIsFilterDrawerOpen(true),
+    closeFilterDrawer: () => setIsFilterDrawerOpen(false),
+    walletFilter,
+    setWalletFilter,
+    minAmount,
+    setMinAmount,
+    maxAmount,
+    setMaxAmount,
+    startDate,
+    setStartDate,
+    endDate,
+    setEndDate,
+    paymentMethodFilter,
+    setPaymentMethodFilter,
+    resetFilters,
+    activeFilterCount,
     // Unified Dialog
     dialogOpen,
     setDialogOpen,
@@ -559,6 +754,14 @@ export function useExpenses() {
     setNote,
     date,
     setDate,
+    walletId,
+    setWalletId,
+    toWalletId,
+    setToWalletId,
+    wallets,
+    addWallet,
+    updateWallet,
+    deleteWallet,
     formError,
     openTransactionDialog,
     saveTransaction,
