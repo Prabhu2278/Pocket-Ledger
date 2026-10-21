@@ -52,7 +52,7 @@ export function Insights({
   const todayDate = new Date().getDate()
   const dl = Math.max(daysInMonth - todayDate, 1)
 
-  let hintText = ''
+  let hintText
   if (!isCurrentMonth) {
     hintText = `This month is closed. Total spent: ${money(totalSpent, currency)}.`
   } else if (budgetLeft > 0) {

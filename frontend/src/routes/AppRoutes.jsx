@@ -1,17 +1,17 @@
 import React from 'react'
 import { useApp } from '@/context/AppContext'
-import { AuthPage } from '@/pages/auth/AuthPage'
-import { DashboardPage } from '@/pages/dashboard/DashboardPage'
-import { TransactionsPage } from '@/pages/transactions/TransactionsPage'
-import { WalletsPage } from '@/pages/wallets/WalletsPage'
-import { SettingsPage } from '@/pages/settings/SettingsPage'
+import { Login } from '@/pages/Login'
+import { Dashboard } from '@/pages/Dashboard'
+import { Transactions } from '@/pages/Transactions'
+import { Wallets } from '@/pages/Wallets'
+import { Settings } from '@/pages/Settings'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { WalletBar } from '@/components/wallets/WalletBar'
 import { ExpenseModal } from '@/components/transactions/ExpenseModal'
 import { DeleteConfirmModal } from '@/components/transactions/DeleteConfirmModal'
 import { BudgetConfirmModal } from '@/components/budget/BudgetConfirmModal'
-import { CsvImportModal } from '@/components/csv/CsvImportModal'
-import { FilterDrawer } from '@/components/filters/FilterDrawer'
+import { CsvImportModal } from '@/components/CsvImportModal'
+import { FilterDrawer } from '@/components/FilterDrawer'
 import { Toast } from '@/components/ui/Toast/Toast'
 import { LogoutConfirmModal } from '@/components/auth/LogoutConfirmModal'
 
@@ -26,7 +26,7 @@ export function AppRoutes() {
   }, [page])
 
   if (!currentUser) {
-    return <AuthPage />
+    return <Login />
   }
 
   return (
@@ -35,13 +35,13 @@ export function AppRoutes() {
       {page === 'dashboard' && <WalletBar />}
 
       {page === 'dashboard' ? (
-        <DashboardPage />
+        <Dashboard />
       ) : page === 'wallets' ? (
-        <WalletsPage />
+        <Wallets />
       ) : page === 'settings' ? (
-        <SettingsPage />
+        <Settings />
       ) : (
-        <TransactionsPage />
+        <Transactions />
       )}
 
       {/* Global Modals & Notifications */}

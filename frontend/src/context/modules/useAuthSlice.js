@@ -7,7 +7,9 @@ export function useAuthSlice(showToast, setPage) {
       if (stored) {
         try {
           return JSON.parse(stored)
-        } catch (e) {}
+        } catch {
+          // ignore corrupted local storage
+        }
       }
     }
     return { id: 1, username: 'demo_user', name: 'Treasury Officer' }

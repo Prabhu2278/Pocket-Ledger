@@ -21,3 +21,19 @@ class Expense(Base):
 
     wallet = relationship("Wallet", foreign_keys=[wallet_id], back_populates="transactions")
     to_wallet = relationship("Wallet", foreign_keys=[to_wallet_id])
+
+    @property
+    def amt(self):
+        return self.amount
+
+    @property
+    def cat(self):
+        return self.category
+
+    @property
+    def date(self):
+        return self.spent_on
+
+    @property
+    def title(self):
+        return self.note

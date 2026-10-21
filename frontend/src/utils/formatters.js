@@ -1,21 +1,6 @@
-export const money = (value) =>
-  new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    maximumFractionDigits: 0,
-  }).format(Number(value) || 0)
+import { money, formatCurrency } from './formatCurrency'
+import { formatDisplayDate } from './dateUtils'
 
-export const formatCurrency = money
-
-export const formatDate = (dateStr) => {
-  if (!dateStr) return ''
-  const d = new Date(dateStr)
-  if (isNaN(d.getTime())) return dateStr
-  return d.toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  })
-}
-
+export const formatDate = formatDisplayDate
+export { money, formatCurrency }
 export default money

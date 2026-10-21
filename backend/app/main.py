@@ -1,11 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.database import engine, Base
-from app.models import User, Expense, Income, Budget
-from app.routers import expenses, income, insights, auth, transactions, wallets
-from app.api.v1.router import api_router as v1_router
+from app.core.database import engine, Base
+from app.models import User, Expense, Income, Budget, Wallet
+from app.api.v1.router import api_router
 
-# Create tables in PostgreSQL on startup if they do not exist
+# Create tables in PostgreSQL/SQLite on startup if they do not exist
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
@@ -23,21 +22,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount Routers under both /api and root / for maximum frontend compatibility
-app.include_router(v1_router, prefix="/api/v1")
-app.include_router(auth.router, prefix="/api")
-app.include_router(expenses.router, prefix="/api")
-app.include_router(income.router, prefix="/api")
-app.include_router(transactions.router, prefix="/api")
-app.include_router(wallets.router, prefix="/api")
-app.include_router(insights.router, prefix="/api")
-
-app.include_router(auth.router)
-app.include_router(expenses.router)
-app.include_router(income.router)
-app.include_router(transactions.router)
-app.include_router(wallets.router)
-app.include_router(insights.router)
+# Mount Routers under /api/v1, /api, and root for full frontend and API compatibility
+app.include_router(api_router, prefix="/api/v1")
+app.include_router(api_router, prefix="/api")
+app.include_router(api_router)
 
 @app.get("/health", tags=["Health"])
 def health_check():
@@ -48,5 +36,5 @@ def root():
     return {
         "message": "Pocket Ledger API is running",
         "docs": "/docs",
-        "endpoints": ["/api/auth", "/api/expenses", "/api/income", "/api/insights"]
+        "endpoints": ["/api/v1/auth", "/api/v1/transactions", "/api/v1/wallets", "/api/v1/insights"]
     }
