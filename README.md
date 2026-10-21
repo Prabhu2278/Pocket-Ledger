@@ -150,3 +150,7 @@ npm run build
    - **Where your money went**: Category progress breakdown with direct click-to-filter navigation to Expenses.
    - **Last 7 days**: Interactive spending bar chart with today highlighted.
    - **Recent activity**: Chronological feed of ledger events with relative timestamps.
+
+<!-- updated -->
+
+<!-- updated -->
