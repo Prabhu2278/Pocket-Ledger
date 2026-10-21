@@ -71,6 +71,8 @@ class ExpenseBase(BaseModel):
     spent_on: Optional[dt.date] = None
     payment_method: Optional[str] = "UPI"
     type: Optional[str] = "EXPENSE"
+    wallet_id: Optional[int] = None
+    to_wallet_id: Optional[int] = None
 
 class ExpenseCreate(ExpenseBase):
     def resolve_amount(self) -> float:
@@ -99,6 +101,8 @@ class ExpenseUpdate(BaseModel):
     spent_on: Optional[dt.date] = None
     payment_method: Optional[str] = None
     type: Optional[str] = None
+    wallet_id: Optional[int] = None
+    to_wallet_id: Optional[int] = None
 
 class ExpenseResponse(BaseModel):
     id: int
@@ -111,6 +115,10 @@ class ExpenseResponse(BaseModel):
     spent_on: str
     payment_method: Optional[str] = "UPI"
     type: Optional[str] = "EXPENSE"
+    wallet_id: Optional[int] = None
+    wallet_name: Optional[str] = None
+    to_wallet_id: Optional[int] = None
+    to_wallet_name: Optional[str] = None
     user_id: Optional[int] = None
     created_at: Optional[dt.datetime] = None
 
@@ -129,6 +137,7 @@ class IncomeBase(BaseModel):
     date: Optional[dt.date] = None
     received_on: Optional[dt.date] = None
     payment_method: Optional[str] = "Bank Transfer"
+    wallet_id: Optional[int] = None
 
 class IncomeCreate(IncomeBase):
     def resolve_amount(self) -> float:
@@ -156,6 +165,7 @@ class IncomeUpdate(BaseModel):
     date: Optional[dt.date] = None
     received_on: Optional[dt.date] = None
     payment_method: Optional[str] = None
+    wallet_id: Optional[int] = None
 
 class IncomeResponse(BaseModel):
     id: int
@@ -167,6 +177,8 @@ class IncomeResponse(BaseModel):
     date: str
     received_on: str
     payment_method: Optional[str] = "Bank Transfer"
+    wallet_id: Optional[int] = None
+    wallet_name: Optional[str] = None
     user_id: Optional[int] = None
     created_at: Optional[dt.datetime] = None
 

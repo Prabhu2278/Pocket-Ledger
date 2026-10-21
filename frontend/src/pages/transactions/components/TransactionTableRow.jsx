@@ -86,8 +86,8 @@ export function TransactionTableRow({
             color: isIncome
               ? 'var(--pocket-accent, #10b981)'
               : isTransfer
-              ? 'var(--pocket-soft-blue, #6366f1)'
-              : 'var(--pocket-ink)',
+                ? 'var(--pocket-soft-blue, #6366f1)'
+                : 'var(--pocket-ink)',
           }}
         >
           {isIncome ? '+' : ''}

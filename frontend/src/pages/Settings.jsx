@@ -72,7 +72,7 @@ export function Settings({
   const handleCurrencyChange = (newCurr) => {
     setCurrency(newCurr)
     if (user) {
-      authApi.updateProfile({ currency: newCurr }).catch(() => {})
+      authApi.updateProfile({ currency: newCurr }).catch(() => { })
     }
     showToast(`Currency changed to ${newCurr}`)
   }

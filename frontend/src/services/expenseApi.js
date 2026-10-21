@@ -52,6 +52,8 @@ export const expenseApi = {
         date: payload.date || payload.spent_on,
         spent_on: payload.spent_on || payload.date,
         payment_method: payload.payment_method || 'UPI',
+        wallet_id: payload.wallet_id ? Number(payload.wallet_id) : undefined,
+        to_wallet_id: payload.to_wallet_id ? Number(payload.to_wallet_id) : undefined,
       }),
     })
     if (!res.ok) {
@@ -76,6 +78,8 @@ export const expenseApi = {
         date: payload.date || payload.spent_on,
         spent_on: payload.spent_on || payload.date,
         payment_method: payload.payment_method || 'UPI',
+        wallet_id: payload.wallet_id ? Number(payload.wallet_id) : undefined,
+        to_wallet_id: payload.to_wallet_id ? Number(payload.to_wallet_id) : undefined,
       }),
     })
     if (!res.ok) {

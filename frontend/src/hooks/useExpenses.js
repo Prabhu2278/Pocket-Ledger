@@ -210,7 +210,7 @@ export function useExpenses() {
           if (me.currency) setCurrencyState(me.currency)
         }
       })
-      .catch(() => {})
+      .catch(() => { })
   }, [])
 
   // Load from FastAPI backend (Unified Transactions, Budget, Insights, Wallets)
@@ -505,8 +505,8 @@ export function useExpenses() {
             txnType === 'transfer'
               ? 'Transfer completed successfully'
               : txnType === 'income'
-              ? 'Income added'
-              : 'Expense added'
+                ? 'Income added'
+                : 'Expense added'
           showToast(successMsg, false)
         }
 

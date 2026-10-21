@@ -63,10 +63,37 @@ export const transactionApi = {
 
   // Update existing transaction
   async updateTransaction(id, type, payload) {
-    const body = { ...payload }
-    if (body.wallet_id) {
-      body.wallet_id = Number(body.wallet_id)
+    const body = {
+      type: payload.type || type,
+      amount: Number(payload.amount || payload.amt),
+      amt: Number(payload.amount || payload.amt),
+      category: payload.category || payload.cat,
+      cat: payload.category || payload.cat,
+      note: payload.note || payload.title || '',
+      title: payload.note || payload.title || '',
+      date: payload.date || payload.spent_on || payload.received_on,
+      payment_method: payload.payment_method || 'UPI',
     }
+    if (payload.wallet_id) {
+      body.wallet_id = Number(payload.wallet_id)
+    }
+    if (payload.to_wallet_id) {
+      body.to_wallet_id = Number(payload.to_wallet_id)
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/api/transactions/${id}?type=${type || ''}`, {
+        method: 'PUT',
+        headers: authApi.getAuthHeaders(),
+        body: JSON.stringify(body),
+      })
+      if (res.ok) {
+        return await res.json()
+      }
+    } catch {
+      // Fallback to legacy endpoints if needed
+    }
+
     if (type === 'income') {
       return await incomeApi.updateIncome(id, body)
     } else {
@@ -76,6 +103,18 @@ export const transactionApi = {
 
   // Delete transaction
   async deleteTransaction(id, type) {
+    try {
+      const res = await fetch(`${API_BASE}/api/transactions/${id}?type=${type || ''}`, {
+        method: 'DELETE',
+        headers: authApi.getAuthHeaders(),
+      })
+      if (res.ok) {
+        return true
+      }
+    } catch {
+      // Fallback
+    }
+
     if (type === 'income') {
       return await incomeApi.deleteIncome(id)
     } else {

@@ -9,24 +9,76 @@ from app.schemas.wallet import WalletCreate, WalletUpdate, WalletResponse
 
 class WalletService:
     @staticmethod
-    def calculate_wallet_balance(db: Session, wallet: Wallet) -> float:
-        incomes = db.query(func.coalesce(func.sum(Expense.amount), 0.0))\
-            .filter(Expense.wallet_id == wallet.id, func.upper(Expense.type) == "INCOME").scalar()
-
-        expenses = db.query(func.coalesce(func.sum(Expense.amount), 0.0))\
-            .filter(Expense.wallet_id == wallet.id, or_(func.upper(Expense.type) == "EXPENSE", Expense.type == None, Expense.type == "")).scalar()
-
+    def auto_assign_orphaned_transactions(db: Session, user_id: Optional[int] = None) -> None:
+        """Assign any existing expenses or incomes without a wallet_id to the user's primary wallet."""
         from app.models.income import Income
-        incomes_table = db.query(func.coalesce(func.sum(Income.amount), 0.0))\
-            .filter(Income.wallet_id == wallet.id).scalar()
 
-        transfers_in = db.query(func.coalesce(func.sum(Expense.amount), 0.0))\
-            .filter(Expense.to_wallet_id == wallet.id, func.upper(Expense.type) == "TRANSFER").scalar()
+        query = db.query(Wallet)
+        if user_id is not None:
+            query = query.filter(Wallet.user_id == user_id)
+        default_wallet = query.order_by(Wallet.id.asc()).first()
+        if not default_wallet:
+            return
 
-        transfers_out = db.query(func.coalesce(func.sum(Expense.amount), 0.0))\
-            .filter(Expense.wallet_id == wallet.id, func.upper(Expense.type) == "TRANSFER").scalar()
+        # 1. Update expenses where wallet_id is None
+        exp_q = db.query(Expense).filter(Expense.wallet_id == None)
+        if user_id is not None:
+            exp_q = exp_q.filter(Expense.user_id == user_id)
+        exp_q.update({Expense.wallet_id: default_wallet.id}, synchronize_session=False)
 
-        return round(float(wallet.initial_balance) + float(incomes) + float(incomes_table) - float(expenses) + float(transfers_in) - float(transfers_out), 2)
+        # 2. Update incomes where wallet_id is None
+        inc_q = db.query(Income).filter(Income.wallet_id == None)
+        if user_id is not None:
+            inc_q = inc_q.filter(Income.user_id == user_id)
+        inc_q.update({Income.wallet_id: default_wallet.id}, synchronize_session=False)
+
+        db.commit()
+
+    @staticmethod
+    def calculate_wallet_balance(db: Session, wallet: Wallet) -> float:
+        from app.models.income import Income
+
+        incomes_q = db.query(func.coalesce(func.sum(Expense.amount), 0.0))\
+            .filter(Expense.wallet_id == wallet.id, func.upper(Expense.type) == "INCOME")
+        if wallet.user_id is not None:
+            incomes_q = incomes_q.filter(Expense.user_id == wallet.user_id)
+        else:
+            incomes_q = incomes_q.filter(Expense.user_id.is_(None))
+        incomes = incomes_q.scalar()
+
+        expenses_q = db.query(func.coalesce(func.sum(Expense.amount), 0.0))\
+            .filter(Expense.wallet_id == wallet.id, or_(func.upper(Expense.type) == "EXPENSE", Expense.type == None, Expense.type == ""))
+        if wallet.user_id is not None:
+            expenses_q = expenses_q.filter(Expense.user_id == wallet.user_id)
+        else:
+            expenses_q = expenses_q.filter(Expense.user_id.is_(None))
+        expenses = expenses_q.scalar()
+
+        incomes_table_q = db.query(func.coalesce(func.sum(Income.amount), 0.0))\
+            .filter(Income.wallet_id == wallet.id)
+        if wallet.user_id is not None:
+            incomes_table_q = incomes_table_q.filter(Income.user_id == wallet.user_id)
+        else:
+            incomes_table_q = incomes_table_q.filter(Income.user_id.is_(None))
+        incomes_table = incomes_table_q.scalar()
+
+        transfers_in_q = db.query(func.coalesce(func.sum(Expense.amount), 0.0))\
+            .filter(Expense.to_wallet_id == wallet.id, func.upper(Expense.type) == "TRANSFER")
+        if wallet.user_id is not None:
+            transfers_in_q = transfers_in_q.filter(Expense.user_id == wallet.user_id)
+        else:
+            transfers_in_q = transfers_in_q.filter(Expense.user_id.is_(None))
+        transfers_in = transfers_in_q.scalar()
+
+        transfers_out_q = db.query(func.coalesce(func.sum(Expense.amount), 0.0))\
+            .filter(Expense.wallet_id == wallet.id, func.upper(Expense.type) == "TRANSFER")
+        if wallet.user_id is not None:
+            transfers_out_q = transfers_out_q.filter(Expense.user_id == wallet.user_id)
+        else:
+            transfers_out_q = transfers_out_q.filter(Expense.user_id.is_(None))
+        transfers_out = transfers_out_q.scalar()
+
+        return round(float(wallet.initial_balance or 0.0) + float(incomes) + float(incomes_table) - float(expenses) + float(transfers_in) - float(transfers_out), 2)
 
     @classmethod
     def to_response_dto(cls, db: Session, wallet: Wallet) -> WalletResponse:
@@ -44,6 +96,7 @@ class WalletService:
 
     @classmethod
     def get_all(cls, db: Session, user_id: Optional[int] = None) -> List[WalletResponse]:
+        cls.auto_assign_orphaned_transactions(db, user_id=user_id)
         query = db.query(Wallet)
         if user_id is not None:
             query = query.filter(Wallet.user_id == user_id)

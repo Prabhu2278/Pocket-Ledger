@@ -47,6 +47,7 @@ export const incomeApi = {
         date: payload.date || payload.received_on,
         received_on: payload.received_on || payload.date,
         payment_method: payload.payment_method || 'Bank Transfer',
+        wallet_id: payload.wallet_id ? Number(payload.wallet_id) : undefined,
       }),
     })
     if (!res.ok) {
@@ -70,6 +71,7 @@ export const incomeApi = {
         date: payload.date || payload.received_on,
         received_on: payload.received_on || payload.date,
         payment_method: payload.payment_method || 'Bank Transfer',
+        wallet_id: payload.wallet_id ? Number(payload.wallet_id) : undefined,
       }),
     })
     if (!res.ok) {

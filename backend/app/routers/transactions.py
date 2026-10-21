@@ -56,6 +56,21 @@ class TransactionItemCreate(BaseModel):
         d = self.date or self.spent_on or self.received_on or dt.date.today()
         return d
 
+class TransactionItemUpdate(BaseModel):
+    type: Optional[str] = None
+    amount: Optional[float] = None
+    amt: Optional[float] = None
+    category: Optional[str] = None
+    cat: Optional[str] = None
+    note: Optional[str] = None
+    title: Optional[str] = None
+    date: Optional[dt.date] = None
+    spent_on: Optional[dt.date] = None
+    received_on: Optional[dt.date] = None
+    payment_method: Optional[str] = None
+    wallet_id: Optional[int] = None
+    to_wallet_id: Optional[int] = None
+
 class BulkTransactionImport(BaseModel):
     transactions: List[TransactionItemCreate]
 
@@ -371,6 +386,137 @@ def bulk_import_transactions(
         "imported": created_count,
         "message": f"Successfully imported {created_count} transactions.",
     }
+
+@router.put("/{tx_id}")
+def update_transaction(
+    tx_id: int,
+    tx_in: TransactionItemUpdate,
+    type: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user),
+):
+    user_id = current_user.id if current_user else None
+    t_type = (tx_in.type or type or "").strip().lower()
+
+    expense = None
+    income = None
+
+    if t_type in ("income", "deposit"):
+        iq = db.query(Income).filter(Income.id == tx_id)
+        if user_id:
+            iq = iq.filter(Income.user_id == user_id)
+        income = iq.first()
+    elif t_type in ("expense", "transfer"):
+        eq = db.query(Expense).filter(Expense.id == tx_id)
+        if user_id:
+            eq = eq.filter(Expense.user_id == user_id)
+        expense = eq.first()
+    else:
+        eq = db.query(Expense).filter(Expense.id == tx_id)
+        if user_id:
+            eq = eq.filter(Expense.user_id == user_id)
+        expense = eq.first()
+        if not expense:
+            iq = db.query(Income).filter(Income.id == tx_id)
+            if user_id:
+                iq = iq.filter(Income.user_id == user_id)
+            income = iq.first()
+
+    if not expense and not income:
+        raise HTTPException(status_code=404, detail="Transaction not found.")
+
+    amt = tx_in.amount if tx_in.amount is not None else tx_in.amt
+    cat = tx_in.category or tx_in.cat
+    note = tx_in.note if tx_in.note is not None else tx_in.title
+    d = tx_in.date or tx_in.spent_on or tx_in.received_on
+
+    if expense:
+        if amt is not None:
+            expense.amount = float(amt)
+        if cat is not None:
+            expense.category = cat
+        if note is not None:
+            expense.note = note
+        if d is not None:
+            expense.spent_on = d
+        if tx_in.payment_method is not None:
+            expense.payment_method = tx_in.payment_method
+        if tx_in.wallet_id is not None:
+            expense.wallet_id = tx_in.wallet_id
+        if tx_in.to_wallet_id is not None:
+            expense.to_wallet_id = tx_in.to_wallet_id
+        if tx_in.type is not None:
+            expense.type = tx_in.type.upper()
+        db.commit()
+        db.refresh(expense)
+        e_type = "transfer" if (expense.type or "").upper() == "TRANSFER" else "expense"
+        return serialize_unified(expense, e_type, db=db)
+    else:
+        if amt is not None:
+            income.amount = float(amt)
+        if cat is not None:
+            income.category = cat
+        if note is not None:
+            income.note = note
+        if d is not None:
+            income.received_on = d
+        if tx_in.payment_method is not None:
+            income.payment_method = tx_in.payment_method
+        if tx_in.wallet_id is not None:
+            income.wallet_id = tx_in.wallet_id
+        db.commit()
+        db.refresh(income)
+        return serialize_unified(income, "income", db=db)
+
+@router.delete("/{tx_id}")
+def delete_transaction(
+    tx_id: int,
+    type: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user),
+):
+    user_id = current_user.id if current_user else None
+    t_type = (type or "").strip().lower()
+
+    if t_type in ("income", "deposit"):
+        q = db.query(Income).filter(Income.id == tx_id)
+        if user_id:
+            q = q.filter(Income.user_id == user_id)
+        item = q.first()
+        if item:
+            db.delete(item)
+            db.commit()
+            return {"message": "Transaction deleted", "id": tx_id}
+    else:
+        q = db.query(Expense).filter(Expense.id == tx_id)
+        if user_id:
+            q = q.filter(Expense.user_id == user_id)
+        item = q.first()
+        if item:
+            db.delete(item)
+            db.commit()
+            return {"message": "Transaction deleted", "id": tx_id}
+
+    # Fallback search both
+    q_exp = db.query(Expense).filter(Expense.id == tx_id)
+    if user_id:
+        q_exp = q_exp.filter(Expense.user_id == user_id)
+    item_exp = q_exp.first()
+    if item_exp:
+        db.delete(item_exp)
+        db.commit()
+        return {"message": "Transaction deleted", "id": tx_id}
+
+    q_inc = db.query(Income).filter(Income.id == tx_id)
+    if user_id:
+        q_inc = q_inc.filter(Income.user_id == user_id)
+    item_inc = q_inc.first()
+    if item_inc:
+        db.delete(item_inc)
+        db.commit()
+        return {"message": "Transaction deleted", "id": tx_id}
+
+    raise HTTPException(status_code=404, detail="Transaction not found.")
 
 @router.get("/export-csv")
 def export_csv(

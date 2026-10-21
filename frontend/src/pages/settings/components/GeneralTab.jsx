@@ -1,6 +1,6 @@
 import React from 'react'
 
-export function GeneralTab({ theme = 'dark', onToggleTheme = () => {}, currency = 'INR', onCurrencyChange = () => {} }) {
+export function GeneralTab({ theme = 'dark', onToggleTheme = () => { }, currency = 'INR', onCurrencyChange = () => { } }) {
   return (
     <div className="pocket-settings-section">
       <h3>Appearance</h3>
