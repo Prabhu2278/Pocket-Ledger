@@ -1,8 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { INITIAL_TRANSACTIONS } from '../../utils/initialData'
-import { transactionApi } from '../../api/transactionApi'
-
-const STORAGE_KEY = 'pocket-ledger-web-v1'
+import { transactionApi } from '../../services/transactionApi'
 
 export function useExpensesSlice({
   currentUser,
@@ -15,32 +12,40 @@ export function useExpensesSlice({
   formSlice = {},
   showToast = () => {},
 }) {
-  const [data, setData] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const cached = localStorage.getItem(STORAGE_KEY)
-      if (cached) {
-        try {
-          return JSON.parse(cached)
-        } catch (e) {}
-      }
-    }
-    return {
-      budget: 45000,
-      tx: INITIAL_TRANSACTIONS,
-      log: [],
-    }
+  const [data, setData] = useState({
+    budget: 20000,
+    tx: [],
+    log: [],
   })
 
   const [sort, setSort] = useState({ key: 'date', direction: -1 })
   const [deleteConfirmId, setDeleteConfirmId] = useState(null)
   const [lastDeleted, setLastDeleted] = useState(null)
 
-  // Persist to localStorage
-  useEffect(() => {
+  const monthKey = `${month.year}-${String(month.month + 1).padStart(2, '0')}`
+
+  // Load transactions directly from PostgreSQL Database
+  const fetchFromDb = useCallback(async () => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
-    } catch (e) {}
-  }, [data])
+      const records = await transactionApi.getTransactions({ month_key: monthKey })
+      if (Array.isArray(records)) {
+        setData((prev) => ({
+          ...prev,
+          tx: records.map((r) => ({
+            ...r,
+            amt: r.amount,
+            cat: r.category,
+          })),
+        }))
+      }
+    } catch (err) {
+      console.error('Failed to fetch transactions from DB:', err)
+    }
+  }, [monthKey])
+
+  useEffect(() => {
+    fetchFromDb()
+  }, [fetchFromDb, currentUser])
 
   // Month transactions calculation
   const monthTransactions = useMemo(() => {
@@ -61,21 +66,21 @@ export function useExpensesSlice({
       list = list.filter((t) => (t.type || 'EXPENSE').toUpperCase() === typeFilter)
     }
     if (selectedWallet !== 'all') {
-      list = list.filter((t) => t.wallet_id === Number(selectedWallet) || t.to_wallet_id === Number(selectedWallet))
+      list = list.filter((t) => String(t.wallet_id) === String(selectedWallet))
     }
     if (search.trim()) {
-      const q = search.toLowerCase()
+      const term = search.toLowerCase()
       list = list.filter(
         (t) =>
-          (t.note || t.title || '').toLowerCase().includes(q) ||
-          (t.cat || t.category || '').toLowerCase().includes(q)
+          (t.note || t.title || '').toLowerCase().includes(term) ||
+          (t.cat || t.category || '').toLowerCase().includes(term)
       )
     }
 
     list.sort((a, b) => {
       let va = a[sort.key]
       let vb = b[sort.key]
-      if (sort.key === 'amount') {
+      if (sort.key === 'amt' || sort.key === 'amount') {
         va = Number(a.amt || a.amount) || 0
         vb = Number(b.amt || b.amount) || 0
       }
@@ -119,7 +124,7 @@ export function useExpensesSlice({
     return top
   }, [categoryTotals])
 
-  const saveExpense = useCallback(() => {
+  const saveExpense = useCallback(async () => {
     const num = parseFloat(formSlice.amount)
     if (!formSlice.amount || isNaN(num) || num <= 0) {
       formSlice.setFormError('Please enter a valid amount')
@@ -128,59 +133,67 @@ export function useExpensesSlice({
     formSlice.setFormError('')
 
     const payload = {
+      type: (formSlice.type || 'expense').toLowerCase(),
       amount: num,
+      amt: num,
       category: formSlice.category,
+      cat: formSlice.category,
       note: formSlice.note.trim() || formSlice.category,
+      title: formSlice.note.trim() || formSlice.category,
       date: formSlice.date,
-      type: formSlice.type,
-      wallet_id: Number(formSlice.walletId) || 1,
-      to_wallet_id: formSlice.toWalletId ? Number(formSlice.toWalletId) : null,
     }
 
-    if (formSlice.editingId) {
-      setData((prev) => ({
-        ...prev,
-        tx: prev.tx.map((t) => (t.id === formSlice.editingId ? { ...t, ...payload, amt: num, cat: formSlice.category } : t)),
-        log: [{ t: Date.now(), txt: `Updated "${payload.note}"` }, ...prev.log.slice(0, 19)],
-      }))
-      showToast('Transaction updated')
-    } else {
-      const newEntry = { ...payload, id: Date.now(), amt: num, cat: formSlice.category }
-      setData((prev) => ({
-        ...prev,
-        tx: [newEntry, ...prev.tx],
-        log: [{ t: Date.now(), txt: `Added "${payload.note}" (${payload.category})` }, ...prev.log.slice(0, 19)],
-      }))
-      showToast('Transaction added')
+    try {
+      if (formSlice.editingId) {
+        await transactionApi.updateTransaction(formSlice.editingId, payload.type, payload)
+        showToast('Transaction updated in database')
+      } else {
+        await transactionApi.createTransaction(payload)
+        showToast('Transaction saved to database')
+      }
+      await fetchFromDb()
+    } catch (err) {
+      showToast(err.message || 'Failed to save to database')
     }
 
     formSlice.setDialogOpen(false)
     formSlice.resetForm()
-  }, [formSlice, showToast])
+  }, [formSlice, fetchFromDb, showToast])
 
-  const deleteExpense = useCallback((id) => {
-    const target = data.tx.find((t) => t.id === id)
-    if (!target) return
-    setLastDeleted(target)
-    setData((prev) => ({
-      ...prev,
-      tx: prev.tx.filter((t) => t.id !== id),
-      log: [{ t: Date.now(), txt: `Removed "${target.note || target.title}"` }, ...prev.log.slice(0, 19)],
-    }))
-    setDeleteConfirmId(null)
-    showToast(`Removed "${target.note || target.title}"`, true)
-  }, [data.tx, showToast])
+  const deleteExpense = useCallback(
+    async (id, type = 'expense') => {
+      const target = data.tx.find((t) => t.id === id)
+      if (!target) return
+      setLastDeleted(target)
+      try {
+        await transactionApi.deleteTransaction(id, (target.type || type).toLowerCase())
+        showToast(`Removed "${target.note || target.title}" from database`, true)
+        await fetchFromDb()
+      } catch (err) {
+        showToast('Failed to delete from database')
+      }
+      setDeleteConfirmId(null)
+    },
+    [data.tx, fetchFromDb, showToast]
+  )
 
-  const undoDelete = useCallback(() => {
+  const undoDelete = useCallback(async () => {
     if (!lastDeleted) return
-    setData((prev) => ({
-      ...prev,
-      tx: [lastDeleted, ...prev.tx],
-      log: [{ t: Date.now(), txt: `Restored "${lastDeleted.note || lastDeleted.title}"` }, ...prev.log.slice(0, 19)],
-    }))
+    try {
+      await transactionApi.createTransaction({
+        type: (lastDeleted.type || 'expense').toLowerCase(),
+        amount: lastDeleted.amount || lastDeleted.amt,
+        category: lastDeleted.category || lastDeleted.cat,
+        note: lastDeleted.note || lastDeleted.title || '',
+        date: lastDeleted.date,
+      })
+      showToast('Transaction restored in database')
+      await fetchFromDb()
+    } catch (err) {
+      console.error('Failed to restore:', err)
+    }
     setLastDeleted(null)
-    showToast('Transaction restored')
-  }, [lastDeleted, showToast])
+  }, [lastDeleted, fetchFromDb, showToast])
 
   return {
     data,
@@ -198,5 +211,8 @@ export function useExpensesSlice({
     saveExpense,
     deleteExpense,
     undoDelete,
+    fetchFromDb,
   }
 }
+
+export default useExpensesSlice
