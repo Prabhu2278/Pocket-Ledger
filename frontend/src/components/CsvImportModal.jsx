@@ -116,8 +116,8 @@ export function CsvImportModal({
                 style={{
                   maxHeight: '220px',
                   overflowY: 'auto',
-                  border: '1px solid var(--line)',
-                  borderRadius: '12px',
+                  border: '1px solid var(--pl-border-default)',
+                  borderRadius: 'var(--pl-radius-md)',
                   marginBottom: '16px',
                 }}
               >
@@ -139,11 +139,11 @@ export function CsvImportModal({
                           <span
                             style={{
                               padding: '2px 8px',
-                              borderRadius: '6px',
+                              borderRadius: 'var(--pl-radius-sm)',
                               fontSize: '11px',
                               fontWeight: 700,
-                              background: row.type === 'income' ? 'var(--pos-soft)' : 'var(--soft)',
-                              color: row.type === 'income' ? 'var(--pos)' : 'var(--ink)',
+                              background: row.type === 'income' ? 'var(--pl-color-success-soft)' : 'var(--pl-color-primary-soft)',
+                              color: row.type === 'income' ? 'var(--pl-color-success)' : 'var(--pl-color-primary)',
                             }}
                           >
                             {row.type.toUpperCase()}
@@ -155,7 +155,7 @@ export function CsvImportModal({
                         </td>
                         <td
                           className={`r ${row.type === 'income' ? 'pos' : 'neg'}`}
-                          style={{ whiteSpace: 'nowrap' }}
+                          style={{ whiteSpace: 'nowrap', fontFamily: "'JetBrains Mono', monospace", fontWeight: 700 }}
                         >
                           {row.type === 'income' ? '+' : '-'}
                           {money(row.amount, currency)}
@@ -164,7 +164,7 @@ export function CsvImportModal({
                     ))}
                     {parsedRows.length > 6 && (
                       <tr>
-                        <td colSpan={5} style={{ textAlign: 'center', color: 'var(--mute)', fontSize: '12px' }}>
+                        <td colSpan={5} style={{ textAlign: 'center', color: 'var(--pl-text-muted)', fontSize: '12px' }}>
                           + {parsedRows.length - 6} more transactions
                         </td>
                       </tr>

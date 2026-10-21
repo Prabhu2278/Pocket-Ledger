@@ -80,24 +80,42 @@ export function TransactionTable({
 
             return (
               <tr key={`${tx.type}-${tx.id}`}>
-                <td style={{ whiteSpace: 'nowrap' }}>{dateStr}</td>
-                <td>{note}</td>
-                <td className="hide-s">
-                  <span
-                    className="dot"
-                    style={{ background: isTransfer ? '#3b82f6' : getCategoryColor(cat) }}
-                  ></span>
-                  {cat}
+                <td style={{ whiteSpace: 'nowrap', fontWeight: 600, color: 'var(--pl-text-secondary)', fontSize: '12px' }}>
+                  {dateStr}
+                </td>
+                <td style={{ fontWeight: 600, color: 'var(--pl-text-primary)' }}>
+                  {note}
                 </td>
                 <td className="hide-s">
                   <span
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',
-                      gap: '4px',
+                      gap: '6px',
                       fontSize: '12px',
-                      color: isTransfer ? 'var(--acc)' : 'var(--mute)',
+                      color: 'var(--pl-text-secondary)',
+                      fontWeight: 500,
+                    }}
+                  >
+                    <span
+                      className="dot"
+                      style={{ background: isTransfer ? 'var(--pl-color-info)' : getCategoryColor(cat) }}
+                    ></span>
+                    {cat}
+                  </span>
+                </td>
+                <td className="hide-s">
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      fontSize: '11.5px',
+                      color: isTransfer ? 'var(--pl-color-info)' : 'var(--pl-text-muted)',
                       fontWeight: 600,
+                      background: isTransfer ? 'var(--pl-color-info-soft)' : 'var(--pl-bg-muted)',
+                      padding: '2px 8px',
+                      borderRadius: 'var(--pl-radius-sm)',
                     }}
                     title={accountDisplay}
                   >
@@ -109,20 +127,20 @@ export function TransactionTable({
                     style={{
                       display: 'inline-block',
                       padding: '2px 8px',
-                      borderRadius: '6px',
-                      fontSize: '11px',
-                      fontWeight: 700,
-                      letterSpacing: '0.02em',
+                      borderRadius: 'var(--pl-radius-sm)',
+                      fontSize: '10.5px',
+                      fontWeight: 800,
+                      letterSpacing: '0.04em',
                       background: isIncome
-                        ? 'var(--pos-soft)'
+                        ? 'var(--pl-color-success-soft)'
                         : isTransfer
-                        ? 'rgba(59, 130, 246, 0.15)'
-                        : 'var(--soft)',
+                        ? 'var(--pl-color-info-soft)'
+                        : 'var(--pl-color-danger-soft)',
                       color: isIncome
-                        ? 'var(--pos)'
+                        ? 'var(--pl-color-success)'
                         : isTransfer
-                        ? '#3b82f6'
-                        : 'var(--acc)',
+                        ? 'var(--pl-color-info)'
+                        : 'var(--pl-color-danger)',
                     }}
                   >
                     {isIncome ? 'INCOME' : isTransfer ? 'TRANSFER' : 'EXPENSE'}
@@ -132,8 +150,11 @@ export function TransactionTable({
                   className={`r ${isIncome ? 'pos' : isTransfer ? '' : 'neg'}`}
                   style={{
                     whiteSpace: 'nowrap',
-                    fontWeight: 700,
-                    color: isTransfer ? 'var(--ink)' : undefined,
+                    fontWeight: 800,
+                    fontSize: '13px',
+                    fontVariantNumeric: 'tabular-nums',
+                    fontFamily: "'JetBrains Mono', monospace",
+                    color: isTransfer ? 'var(--pl-text-primary)' : undefined,
                   }}
                 >
                   {isIncome ? '+' : isTransfer ? '⇄ ' : '-'}
@@ -144,17 +165,19 @@ export function TransactionTable({
                     className="rowbtn"
                     type="button"
                     aria-label={`Edit ${note}`}
+                    title="Edit transaction"
                     onClick={() => onEdit(tx)}
                   >
-                    Edit
+                    ✎
                   </button>
                   <button
-                    className="rowbtn"
+                    className="rowbtn del"
                     type="button"
                     aria-label={`Delete ${note}`}
+                    title="Delete transaction"
                     onClick={() => onDelete(tx.id, tx.type)}
                   >
-                    Delete
+                    ✕
                   </button>
                 </td>
               </tr>

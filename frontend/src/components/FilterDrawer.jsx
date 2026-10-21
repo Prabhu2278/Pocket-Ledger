@@ -89,23 +89,23 @@ export function FilterDrawer({
               height="18"
               viewBox="0 0 24 24"
               fill="none"
-              stroke="var(--acc)"
+              stroke="var(--pl-color-primary)"
               strokeWidth="2.5"
               aria-hidden="true"
             >
               <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
             </svg>
-            <h2 id="filter-drawer-title" style={{ margin: 0, fontSize: '18px', fontWeight: 800 }}>
+            <h2 id="filter-drawer-title" style={{ margin: 0, fontSize: '16px', fontWeight: 800 }}>
               Filter Transactions
             </h2>
             {activeFilterCount > 0 && (
               <span
                 style={{
-                  background: 'var(--soft)',
-                  color: 'var(--acc)',
+                  background: 'var(--pl-color-primary-soft)',
+                  color: 'var(--pl-color-primary)',
                   fontSize: '11px',
                   fontWeight: 800,
-                  borderRadius: '8px',
+                  borderRadius: 'var(--pl-radius-pill)',
                   padding: '2px 8px',
                 }}
               >
@@ -121,10 +121,10 @@ export function FilterDrawer({
                 className="ghost"
                 onClick={onResetFilters}
                 style={{
-                  fontSize: '12.5px',
+                  fontSize: '12px',
                   padding: '4px 10px',
                   minHeight: '32px',
-                  color: 'var(--out)',
+                  color: 'var(--pl-color-danger)',
                 }}
               >
                 Reset All
@@ -142,8 +142,8 @@ export function FilterDrawer({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                borderRadius: '8px',
-                fontSize: '16px',
+                borderRadius: 'var(--pl-radius-md)',
+                fontSize: '15px',
               }}
             >
               ✕
@@ -155,7 +155,7 @@ export function FilterDrawer({
         <div className="filter-drawer-body">
           {/* 1. Transaction Type */}
           <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}>
+            <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, marginBottom: '6px' }}>
               Transaction Type
             </label>
             <div className="chips" role="radiogroup" aria-label="Transaction Type Filter" style={{ marginBottom: 0 }}>
@@ -174,7 +174,7 @@ export function FilterDrawer({
                     setTypeFilter(t.id)
                     setCategoryFilter('All')
                   }}
-                  style={{ fontSize: '12.5px', padding: '6px 12px' }}
+                  style={{ fontSize: '12px', padding: '5px 12px' }}
                 >
                   {t.label}
                 </button>
@@ -186,7 +186,7 @@ export function FilterDrawer({
           <div>
             <label
               htmlFor="drawer-wallet-select"
-              style={{ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}
+              style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, marginBottom: '6px' }}
             >
               Account / Wallet
             </label>
@@ -196,12 +196,12 @@ export function FilterDrawer({
               onChange={(e) => setWalletFilter(e.target.value)}
               style={{
                 width: '100%',
-                padding: '9px 12px',
-                borderRadius: '8px',
-                border: '1px solid var(--line)',
-                background: 'var(--card)',
-                color: 'var(--ink)',
-                fontSize: '13.5px',
+                padding: '8px 12px',
+                borderRadius: 'var(--pl-radius-md)',
+                border: '1px solid var(--pl-border-default)',
+                background: 'var(--pl-bg-surface)',
+                color: 'var(--pl-text-primary)',
+                fontSize: '13px',
                 fontWeight: 600,
                 cursor: 'pointer',
               }}
@@ -221,7 +221,7 @@ export function FilterDrawer({
           {/* 3. Category Filter Chips */}
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-              <label style={{ fontSize: '13px', fontWeight: 700 }}>
+              <label style={{ fontSize: '12.5px', fontWeight: 700 }}>
                 Category
               </label>
               {categoryFilter !== 'All' && (
@@ -233,7 +233,7 @@ export function FilterDrawer({
                     fontSize: '11px',
                     padding: '2px 8px',
                     minHeight: '24px',
-                    color: 'var(--mute)',
+                    color: 'var(--pl-text-muted)',
                   }}
                 >
                   Reset
@@ -255,9 +255,9 @@ export function FilterDrawer({
                       fontSize: '11.5px',
                       padding: '4px 10px',
                       minHeight: '28px',
-                      background: isSelected ? 'var(--acc)' : 'var(--card)',
-                      color: isSelected ? '#fff' : 'var(--ink)',
-                      borderColor: isSelected ? 'var(--acc)' : 'var(--line)',
+                      background: isSelected ? 'var(--pl-color-primary)' : 'var(--pl-bg-surface)',
+                      color: isSelected ? '#fff' : 'var(--pl-text-primary)',
+                      borderColor: isSelected ? 'var(--pl-color-primary)' : 'var(--pl-border-default)',
                       fontWeight: isSelected ? 700 : 500,
                       cursor: 'pointer',
                       transition: 'all 0.15s ease',
@@ -272,12 +272,12 @@ export function FilterDrawer({
 
           {/* 4. Date Range */}
           <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}>
+            <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, marginBottom: '6px' }}>
               Date Range
             </label>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
               <div>
-                <span style={{ fontSize: '11.5px', color: 'var(--mute)', display: 'block', marginBottom: '3px' }}>
+                <span style={{ fontSize: '11px', color: 'var(--pl-text-muted)', display: 'block', marginBottom: '3px' }}>
                   From
                 </span>
                 <input
@@ -288,16 +288,16 @@ export function FilterDrawer({
                   style={{
                     width: '100%',
                     padding: '8px 10px',
-                    borderRadius: '8px',
-                    border: '1px solid var(--line)',
-                    background: 'var(--card)',
-                    color: 'var(--ink)',
-                    fontSize: '13px',
+                    borderRadius: 'var(--pl-radius-md)',
+                    border: '1px solid var(--pl-border-default)',
+                    background: 'var(--pl-bg-surface)',
+                    color: 'var(--pl-text-primary)',
+                    fontSize: '12.5px',
                   }}
                 />
               </div>
               <div>
-                <span style={{ fontSize: '11.5px', color: 'var(--mute)', display: 'block', marginBottom: '3px' }}>
+                <span style={{ fontSize: '11px', color: 'var(--pl-text-muted)', display: 'block', marginBottom: '3px' }}>
                   To
                 </span>
                 <input
@@ -308,11 +308,11 @@ export function FilterDrawer({
                   style={{
                     width: '100%',
                     padding: '8px 10px',
-                    borderRadius: '8px',
-                    border: '1px solid var(--line)',
-                    background: 'var(--card)',
-                    color: 'var(--ink)',
-                    fontSize: '13px',
+                    borderRadius: 'var(--pl-radius-md)',
+                    border: '1px solid var(--pl-border-default)',
+                    background: 'var(--pl-bg-surface)',
+                    color: 'var(--pl-text-primary)',
+                    fontSize: '12.5px',
                   }}
                 />
               </div>
@@ -326,11 +326,11 @@ export function FilterDrawer({
                   setEndDate('')
                 }}
                 style={{
-                  fontSize: '11.5px',
+                  fontSize: '11px',
                   padding: '2px 8px',
                   minHeight: '26px',
                   marginTop: '6px',
-                  color: 'var(--mute)',
+                  color: 'var(--pl-text-muted)',
                 }}
               >
                 Clear date range
@@ -340,12 +340,12 @@ export function FilterDrawer({
 
           {/* 5. Amount Range */}
           <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}>
+            <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, marginBottom: '6px' }}>
               Amount Range ({currency})
             </label>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
               <div>
-                <span style={{ fontSize: '11.5px', color: 'var(--mute)', display: 'block', marginBottom: '3px' }}>
+                <span style={{ fontSize: '11px', color: 'var(--pl-text-muted)', display: 'block', marginBottom: '3px' }}>
                   Min Amount
                 </span>
                 <input
@@ -359,16 +359,16 @@ export function FilterDrawer({
                   style={{
                     width: '100%',
                     padding: '8px 10px',
-                    borderRadius: '8px',
-                    border: '1px solid var(--line)',
-                    background: 'var(--card)',
-                    color: 'var(--ink)',
-                    fontSize: '13px',
+                    borderRadius: 'var(--pl-radius-md)',
+                    border: '1px solid var(--pl-border-default)',
+                    background: 'var(--pl-bg-surface)',
+                    color: 'var(--pl-text-primary)',
+                    fontSize: '12.5px',
                   }}
                 />
               </div>
               <div>
-                <span style={{ fontSize: '11.5px', color: 'var(--mute)', display: 'block', marginBottom: '3px' }}>
+                <span style={{ fontSize: '11px', color: 'var(--pl-text-muted)', display: 'block', marginBottom: '3px' }}>
                   Max Amount
                 </span>
                 <input
@@ -382,11 +382,11 @@ export function FilterDrawer({
                   style={{
                     width: '100%',
                     padding: '8px 10px',
-                    borderRadius: '8px',
-                    border: '1px solid var(--line)',
-                    background: 'var(--card)',
-                    color: 'var(--ink)',
-                    fontSize: '13px',
+                    borderRadius: 'var(--pl-radius-md)',
+                    border: '1px solid var(--pl-border-default)',
+                    background: 'var(--pl-bg-surface)',
+                    color: 'var(--pl-text-primary)',
+                    fontSize: '12.5px',
                   }}
                 />
               </div>
@@ -397,7 +397,7 @@ export function FilterDrawer({
           <div>
             <label
               htmlFor="drawer-payment-select"
-              style={{ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}
+              style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, marginBottom: '6px' }}
             >
               Payment Method
             </label>
@@ -407,12 +407,12 @@ export function FilterDrawer({
               onChange={(e) => setPaymentMethodFilter(e.target.value)}
               style={{
                 width: '100%',
-                padding: '9px 12px',
-                borderRadius: '8px',
-                border: '1px solid var(--line)',
-                background: 'var(--card)',
-                color: 'var(--ink)',
-                fontSize: '13.5px',
+                padding: '8px 12px',
+                borderRadius: 'var(--pl-radius-md)',
+                border: '1px solid var(--pl-border-default)',
+                background: 'var(--pl-bg-surface)',
+                color: 'var(--pl-text-primary)',
+                fontSize: '13px',
                 fontWeight: 600,
                 cursor: 'pointer',
               }}
@@ -435,8 +435,8 @@ export function FilterDrawer({
             disabled={activeFilterCount === 0}
             style={{
               flex: 1,
-              padding: '10px 14px',
-              fontSize: '13.5px',
+              padding: '8px 14px',
+              fontSize: '12.5px',
               fontWeight: 600,
               opacity: activeFilterCount === 0 ? 0.4 : 1,
               cursor: activeFilterCount === 0 ? 'not-allowed' : 'pointer',
@@ -450,8 +450,8 @@ export function FilterDrawer({
             onClick={onClose}
             style={{
               flex: 2,
-              padding: '10px 18px',
-              fontSize: '13.5px',
+              padding: '8px 18px',
+              fontSize: '12.5px',
               fontWeight: 700,
             }}
           >

@@ -195,7 +195,7 @@ export function Transactions({
     return pages.map((p, idx) => {
       if (p === '...') {
         return (
-          <span key={`dots-${idx}`} style={{ padding: '0 4px', color: 'var(--mute)', fontSize: '13px' }}>
+          <span key={`dots-${idx}`} style={{ padding: '0 4px', color: 'var(--pl-text-muted)', fontSize: '12px' }}>
             ...
           </span>
         )
@@ -207,14 +207,14 @@ export function Transactions({
           type="button"
           onClick={() => setCurrentPage(p)}
           style={{
-            minWidth: '34px',
-            height: '34px',
-            padding: '0 8px',
-            borderRadius: '8px',
-            border: isCurrent ? '1px solid var(--acc)' : '1px solid var(--line)',
-            background: isCurrent ? 'var(--acc)' : 'var(--card)',
-            color: isCurrent ? '#fff' : 'var(--ink)',
-            fontSize: '13px',
+            minWidth: '32px',
+            height: '32px',
+            padding: '0 6px',
+            borderRadius: 'var(--pl-radius-sm)',
+            border: isCurrent ? '1px solid var(--pl-color-primary)' : '1px solid var(--pl-border-default)',
+            background: isCurrent ? 'var(--pl-color-primary)' : 'var(--pl-bg-surface)',
+            color: isCurrent ? '#fff' : 'var(--pl-text-primary)',
+            fontSize: '12px',
             fontWeight: 700,
             cursor: 'pointer',
             transition: 'all 0.15s ease',
@@ -335,8 +335,8 @@ export function Transactions({
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
             {/* Pages dropdown near Import option */}
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-              <label htmlFor="pages-select" style={{ fontSize: '13px', fontWeight: 600, color: 'var(--mute)' }}>
-                Pages:
+              <label htmlFor="pages-select" style={{ fontSize: '12px', fontWeight: 600, color: 'var(--pl-text-muted)' }}>
+                Rows:
               </label>
               <select
                 id="pages-select"
@@ -346,15 +346,17 @@ export function Transactions({
                   setCurrentPage(1)
                 }}
                 style={{
-                  padding: '6px 10px',
-                  borderRadius: '8px',
-                  border: '1px solid var(--line)',
-                  background: 'var(--card)',
-                  color: 'var(--ink)',
-                  fontSize: '13px',
+                  padding: '4px 8px',
+                  borderRadius: 'var(--pl-radius-md)',
+                  border: '1px solid var(--pl-border-default)',
+                  background: 'var(--pl-bg-surface)',
+                  color: 'var(--pl-text-primary)',
+                  fontSize: '12px',
                   fontWeight: 600,
                   cursor: 'pointer',
-                  minHeight: '38px',
+                  minHeight: '34px',
+                  height: '34px',
+                  width: 'auto',
                 }}
                 title="Number of transactions to show per page"
               >
@@ -371,20 +373,21 @@ export function Transactions({
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '6px',
-                padding: '6px 14px',
-                minHeight: '38px',
-                fontSize: '13px',
+                gap: '5px',
+                padding: '0 12px',
+                minHeight: '34px',
+                height: '34px',
+                fontSize: '12px',
               }}
               onClick={openCsvModal}
               title="Import bank statements or CSV file"
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                 <polyline points="17 8 12 3 7 8" />
                 <line x1="12" y1="3" x2="12" y2="15" />
               </svg>
-              Import CSV
+              <span>Import</span>
             </button>
 
             <button
@@ -393,20 +396,21 @@ export function Transactions({
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '6px',
-                padding: '6px 14px',
-                minHeight: '38px',
-                fontSize: '13px',
+                gap: '5px',
+                padding: '0 12px',
+                minHeight: '34px',
+                height: '34px',
+                fontSize: '12px',
               }}
               onClick={handleExportCsv}
               title="Export current transactions as CSV"
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                 <polyline points="7 10 12 15 17 10" />
                 <line x1="12" y1="15" x2="12" y2="3" />
               </svg>
-              Export CSV
+              <span>Export</span>
             </button>
 
             <button
@@ -415,18 +419,21 @@ export function Transactions({
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '6px',
-                padding: '6px 14px',
-                minHeight: '38px',
-                fontSize: '13px',
-                color: 'var(--acc)',
-                borderColor: 'var(--acc)',
+                gap: '5px',
+                padding: '0 12px',
+                minHeight: '34px',
+                height: '34px',
+                fontSize: '12px',
+                color: 'var(--pl-color-primary)',
+                borderColor: 'var(--pl-color-primary)',
+                background: 'var(--pl-color-primary-soft)',
+                fontWeight: 700,
               }}
               onClick={() => openTransactionDialog(null, 'transfer')}
               title="Transfer funds between accounts"
             >
-              <span aria-hidden="true">⇄</span>
-              Transfer
+              <span aria-hidden="true" style={{ fontSize: '13px' }}>⇄</span>
+              <span>Transfer</span>
             </button>
           </div>
         </div>

@@ -95,12 +95,12 @@ export function Insights({
 
       {/* Wallet Accounts Quick Bar */}
       {wallets && wallets.length > 0 && (
-        <div className="card" style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <div className="card" style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--mute)' }}>
-              Accounts & Wallets Balance
+            <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--pl-text-muted)' }}>
+              Accounts & Wallets
             </span>
-            <a href="#/wallets" style={{ fontSize: '13px', fontWeight: 600, color: 'var(--acc)', textDecoration: 'none' }}>
+            <a href="#/wallets" style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--pl-color-primary)', textDecoration: 'none' }}>
               Manage Wallets →
             </a>
           </div>
@@ -111,21 +111,22 @@ export function Insights({
                 <div
                   key={w.id}
                   style={{
-                    background: 'var(--bg)',
-                    border: '1px solid var(--line)',
-                    borderLeft: `4px solid ${w.color || '#10b981'}`,
-                    borderRadius: '8px',
-                    padding: '8px 14px',
-                    minWidth: '150px',
+                    background: 'var(--pl-bg-muted)',
+                    border: '1px solid var(--pl-border-default)',
+                    borderLeft: `3.5px solid ${w.color || '#10b981'}`,
+                    borderRadius: 'var(--pl-radius-md)',
+                    padding: '9px 14px',
+                    minWidth: '155px',
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: '2px',
+                    gap: '3px',
+                    transition: 'all 0.15s ease',
                   }}
                 >
-                  <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--mute)', whiteSpace: 'nowrap' }}>
+                  <span style={{ fontSize: '11.5px', fontWeight: 600, color: 'var(--pl-text-muted)', whiteSpace: 'nowrap' }}>
                     {w.name}
                   </span>
-                  <b style={{ fontSize: '15px', fontWeight: 700, color: b >= 0 ? 'var(--pos)' : 'var(--out)' }}>
+                  <b style={{ fontSize: '15px', fontWeight: 800, fontVariantNumeric: 'tabular-nums', color: b >= 0 ? 'var(--pl-color-success)' : 'var(--pl-color-danger)' }}>
                     {money(b, currency)}
                   </b>
                 </div>
@@ -298,7 +299,7 @@ export function Insights({
                 </li>
               ))
             ) : (
-              <li style={{ color: 'var(--mute)' }}>No recent activity.</li>
+              <li style={{ color: 'var(--pl-text-muted)' }}>No recent activity.</li>
             )}
           </ul>
         </div>

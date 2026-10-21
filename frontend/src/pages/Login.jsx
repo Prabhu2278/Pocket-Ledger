@@ -30,7 +30,7 @@ export function Login({ onLoginSuccess, onNavigateToRegister }) {
     <div className="auth-wrapper">
       <div className="auth-card">
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--acc)" strokeWidth="2.5">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--pl-color-primary)" strokeWidth="2.5">
             <path d="M6 3h12v18l-3-2-3 2-3-2-3 2z" />
             <path d="M9 8h6M9 12h6" />
           </svg>
@@ -95,7 +95,7 @@ export function Login({ onLoginSuccess, onNavigateToRegister }) {
         </div>
 
         <div style={{ marginTop: '12px', textAlign: 'center', fontSize: '13px' }}>
-          <a href="#/expenses" style={{ color: 'var(--mute)', textDecoration: 'none' }}>
+          <a href="#/expenses" style={{ color: 'var(--pl-text-muted)', textDecoration: 'none' }}>
             ← Continue as guest
           </a>
         </div>

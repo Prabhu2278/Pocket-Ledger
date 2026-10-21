@@ -138,7 +138,7 @@ export function Sidebar({
           <a
             href="#/login"
             className="side-logout-btn"
-            style={{ textDecoration: 'none', color: 'var(--acc)' }}
+            style={{ textDecoration: 'none', color: 'var(--pl-color-primary)' }}
           >
             Sign in
           </a>

@@ -72,25 +72,14 @@ export function Header({
             type="button"
             id="btn-filter"
             className={`ghost filter-btn ${activeFilterCount > 0 ? 'active' : ''}`}
-            style={{
-              padding: '0 12px',
-              minHeight: '44px',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              fontSize: '13.5px',
-              fontWeight: 600,
-              borderColor: activeFilterCount > 0 ? 'var(--acc)' : undefined,
-              color: activeFilterCount > 0 ? 'var(--acc)' : undefined,
-            }}
             onClick={openFilterDrawer}
             title="Filter transactions"
             aria-label="Filter transactions"
             aria-expanded={isFilterDrawerOpen}
           >
             <svg
-              width="16"
-              height="16"
+              width="15"
+              height="15"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -103,7 +92,7 @@ export function Header({
             {activeFilterCount > 0 && (
               <span
                 style={{
-                  background: 'var(--acc)',
+                  background: 'var(--pl-color-primary)',
                   color: '#fff',
                   fontSize: '11px',
                   fontWeight: 800,
@@ -133,19 +122,11 @@ export function Header({
           <button
             type="button"
             className="ghost"
-            style={{
-              padding: '0 14px',
-              minHeight: '44px',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              fontSize: '14px',
-            }}
             onClick={toggleTheme}
             title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
             aria-label="Toggle color theme"
           >
-            <span aria-hidden="true">{theme === 'dark' ? '☀️' : '🌙'}</span>
+            <span aria-hidden="true" style={{ fontSize: '14px' }}>{theme === 'dark' ? '☀️' : '🌙'}</span>
             <span className="hide-s">{theme === 'dark' ? 'Light' : 'Dark'}</span>
           </button>
         )}
@@ -154,24 +135,15 @@ export function Header({
           <button
             type="button"
             className="ghost"
-            style={{
-              padding: '0 14px',
-              minHeight: '44px',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              fontSize: '13px',
-              fontWeight: 600,
-            }}
             onClick={openCsvModal}
             title="Import bank statements or CSV file"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
               <polyline points="17 8 12 3 7 8" />
               <line x1="12" y1="3" x2="12" y2="15" />
             </svg>
-            <span className="hide-s">Import CSV</span>
+            <span className="hide-s">Import</span>
           </button>
         )}
 
@@ -182,7 +154,8 @@ export function Header({
             type="button"
             onClick={() => openTransactionDialog()}
           >
-            + Add transaction
+            <span aria-hidden="true" style={{ fontSize: '15px', fontWeight: 800 }}>+</span>
+            <span>Transaction</span>
           </button>
         )}
       </div>

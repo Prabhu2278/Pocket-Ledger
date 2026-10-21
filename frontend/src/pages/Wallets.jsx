@@ -323,7 +323,7 @@ export function Wallets({
           <div className="dialog-content wallet-dialog-content">
             <div className="f">
               <h2>Delete Account</h2>
-              <p style={{ color: 'var(--mute)', fontSize: '14px', margin: '4px 0 16px' }}>
+              <p style={{ color: 'var(--pl-text-muted)', fontSize: '13px', margin: '4px 0 16px' }}>
                 Are you sure you want to delete this account? Transactions linked to it may lose their wallet association.
               </p>
               <div className="btns">
@@ -333,7 +333,7 @@ export function Wallets({
                 <button
                   type="button"
                   className="primary"
-                  style={{ background: 'var(--out)', borderColor: 'var(--out)' }}
+                  style={{ background: 'var(--pl-color-danger)', borderColor: 'var(--pl-color-danger)' }}
                   onClick={handleConfirmDelete}
                 >
                   Confirm Delete

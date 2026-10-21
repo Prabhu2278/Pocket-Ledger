@@ -15,10 +15,10 @@ export function BudgetRing({
 
   const strokeColor =
     pct >= 1
-      ? 'var(--out)'
+      ? 'var(--pl-color-danger)'
       : pct >= 0.8
-      ? 'var(--warn)'
-      : 'var(--acc)'
+      ? 'var(--pl-color-warning)'
+      : 'var(--pl-color-primary)'
 
   return (
     <div className="ringbox">
@@ -34,8 +34,8 @@ export function BudgetRing({
             cy="60"
             r="52"
             fill="none"
-            stroke="var(--bg)"
-            strokeWidth="12"
+            stroke="var(--pl-border-default)"
+            strokeWidth="11"
           />
           <circle
             id="arc"
