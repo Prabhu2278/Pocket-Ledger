@@ -1,4 +1,5 @@
-:root {
+:root,
+[data-theme="light"] {
   --bg: #eef2f6;
   --card: #fff;
   --ink: #1b2433;
@@ -8,14 +9,33 @@
   --soft: #e8e7fd;
   --out: #b42c45;
   --warn: #b45309;
+  --pos: #15803d;
+  --pos-soft: #dcfce7;
   --onacc: #fff;
   --side: #141a2b;
   --sideink: #c9d1e3;
   box-sizing: border-box;
 }
 
+[data-theme="dark"] {
+  --bg: #0d1118;
+  --card: #171d29;
+  --ink: #eef1f6;
+  --mute: #a3adbd;
+  --line: #262f3f;
+  --acc: #8b87ff;
+  --soft: #262a52;
+  --out: #ff7a8a;
+  --warn: #fbbf24;
+  --pos: #4ade80;
+  --pos-soft: rgba(74, 222, 128, 0.15);
+  --onacc: #10141c;
+  --side: #0a0e15;
+  --sideink: #c9d1e3;
+}
+
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #0d1118;
     --card: #171d29;
     --ink: #eef1f6;
@@ -25,8 +45,11 @@
     --soft: #262a52;
     --out: #ff7a8a;
     --warn: #fbbf24;
+    --pos: #4ade80;
+    --pos-soft: rgba(74, 222, 128, 0.15);
     --onacc: #10141c;
     --side: #0a0e15;
+    --sideink: #c9d1e3;
   }
 }
 
@@ -39,9 +62,10 @@ body {
   background: var(--bg);
   color: var(--ink);
   font: 400 15px/1.45 Manrope, system-ui, -apple-system, "Segoe UI", sans-serif;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-button, input, select {
+button, input, select, textarea {
   font: inherit;
   color: inherit;
 }
@@ -63,10 +87,11 @@ button, input, select {
   padding: 24px 16px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
   position: sticky;
   top: 0;
   height: 100vh;
+  box-sizing: border-box;
 }
 
 .brand {
@@ -75,6 +100,9 @@ button, input, select {
   color: #fff;
   letter-spacing: -0.02em;
   padding: 0 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .side nav {
@@ -93,6 +121,7 @@ button, input, select {
   text-decoration: none;
   font-weight: 600;
   cursor: pointer;
+  transition: background 0.15s ease;
 }
 
 .side a:hover {
@@ -166,6 +195,53 @@ button, input, select {
   transition: width 0.5s;
 }
 
+.side-user {
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.side-user-info {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.side-user-name {
+  color: #fff;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.side-user-email {
+  color: var(--mute);
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.side-logout-btn {
+  border: 0;
+  background: none;
+  color: #ff7a8a;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 8px;
+}
+
+.side-logout-btn:hover {
+  background: rgba(255, 122, 138, 0.15);
+}
+
 main {
   padding: 24px 28px 40px;
   min-width: 0;
@@ -189,22 +265,30 @@ h1 {
 
 .actions {
   display: flex;
+  align-items: center;
   gap: 10px;
   flex-wrap: wrap;
 }
 
 input[type="text"],
+input[type="email"],
+input[type="password"],
 input[type="number"],
 input[type="date"],
 input[type="search"],
 select {
   background: var(--card);
   border: 1px solid var(--line);
+  color: var(--ink);
   border-radius: 12px;
   padding: 10px 12px;
   min-height: 44px;
   width: 100%;
   box-sizing: border-box;
+}
+
+input:focus, select:focus {
+  border-color: var(--acc);
 }
 
 .actions input {
@@ -223,11 +307,17 @@ select {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  transition: opacity 0.15s ease;
+}
+
+.primary:hover {
+  opacity: 0.92;
 }
 
 .ghost {
   border: 1px solid var(--line);
   background: var(--card);
+  color: var(--ink);
   border-radius: 12px;
   min-height: 44px;
   padding: 0 16px;
@@ -238,12 +328,34 @@ select {
   justify-content: center;
 }
 
+.ghost:hover {
+  background: var(--soft);
+}
+
+.theme-toggle-btn {
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--ink);
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.theme-toggle-btn:hover {
+  background: var(--soft);
+}
+
 .card {
   background: var(--card);
   border: 1px solid var(--line);
   border-radius: 18px;
   padding: 20px;
   min-width: 0;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
 .card h2 {
@@ -252,6 +364,7 @@ select {
   margin: 0 0 14px;
   display: flex;
   justify-content: space-between;
+  align-items: center;
   gap: 8px;
 }
 
@@ -278,6 +391,7 @@ select {
   font-weight: 800;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
+  margin-top: 4px;
 }
 
 .chips {
@@ -290,6 +404,7 @@ select {
 .chip {
   border: 1px solid var(--line);
   background: var(--card);
+  color: var(--ink);
   border-radius: 999px;
   padding: 0 14px;
   min-height: 40px;
@@ -355,6 +470,11 @@ tr:hover td {
   font-weight: 800;
 }
 
+.pos {
+  color: var(--pos);
+  font-weight: 800;
+}
+
 .dot {
   display: inline-block;
   width: 10px;
@@ -390,6 +510,7 @@ tr:hover td {
   display: block;
   color: var(--ink);
   font-size: 17px;
+  margin-bottom: 4px;
 }
 
 .grid2 {
@@ -518,6 +639,7 @@ tr:hover td {
   border-radius: 10px;
   padding: 0 6px;
   font-variant-numeric: tabular-nums;
+  color: var(--ink);
 }
 
 .lg:hover {
@@ -583,12 +705,13 @@ tr:hover td {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(10, 15, 25, 0.55);
+  background: rgba(10, 15, 25, 0.65);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 100;
   padding: 16px;
+  backdrop-filter: blur(2px);
 }
 
 dialog,
@@ -599,11 +722,7 @@ dialog,
   width: min(440px, 92vw);
   background: var(--card);
   color: var(--ink);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
-}
-
-dialog::backdrop {
-  background: rgba(10, 15, 25, 0.55);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
 }
 
 dialog h2,
@@ -662,7 +781,8 @@ dialog h2,
   gap: 14px;
   align-items: center;
   z-index: 999;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  font-weight: 600;
 }
 
 .toast[hidden] {
@@ -685,6 +805,99 @@ dialog h2,
 
 .view.on {
   display: block;
+}
+
+/* ==================== SETTINGS PAGE STYLES ==================== */
+.settings-container {
+  display: grid;
+  gap: 20px;
+  max-width: 800px;
+}
+
+.settings-group {
+  display: grid;
+  gap: 14px;
+}
+
+.theme-options {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.theme-card {
+  border: 2px solid var(--line);
+  background: var(--card);
+  border-radius: 14px;
+  padding: 16px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.theme-card[aria-checked="true"] {
+  border-color: var(--acc);
+  background: var(--soft);
+}
+
+.theme-card b {
+  font-size: 15px;
+}
+
+.theme-card p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--mute);
+}
+
+/* ==================== AUTH PAGES (LOGIN / REGISTER) ==================== */
+.auth-wrapper {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: var(--bg);
+}
+
+.auth-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 32px;
+  width: min(440px, 100%);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+}
+
+.auth-card h1 {
+  font-size: 24px;
+  font-weight: 800;
+  margin: 0 0 6px;
+}
+
+.auth-card p.subtitle {
+  color: var(--mute);
+  font-size: 14px;
+  margin: 0 0 20px;
+}
+
+.auth-footer {
+  margin-top: 18px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--mute);
+}
+
+.auth-footer a {
+  color: var(--acc);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.auth-footer a:hover {
+  text-decoration: underline;
 }
 
 @media (max-width: 900px) {
@@ -710,6 +923,10 @@ dialog h2,
   }
   .sidebud {
     display: none;
+  }
+  .side-user {
+    order: 2;
+    padding: 6px 10px;
   }
   main {
     padding: 16px;

@@ -12,6 +12,7 @@ export function Expenses({
   setFilter,
   visibleTransactions = [],
   sort = { key: 'date', direction: -1 },
+  currency = 'INR',
   onSort,
   openExpenseDialog,
   onDeleteExpense,
@@ -23,13 +24,13 @@ export function Expenses({
       <div className="kpis">
         <div className="card kpi">
           <span>Spent this month</span>
-          <b id="k1">{money(totalSpent)}</b>
+          <b id="k1">{money(totalSpent, currency)}</b>
         </div>
         <div className="card kpi">
           <span>Left in budget</span>
           <b id="k2">
             {budgetLeft < 0 ? '-' : ''}
-            {money(Math.abs(budgetLeft))}
+            {money(Math.abs(budgetLeft), currency)}
           </b>
         </div>
         <div className="card kpi">
@@ -48,6 +49,7 @@ export function Expenses({
           visibleTransactions={visibleTransactions}
           monthTransactions={monthTransactions}
           sort={sort}
+          currency={currency}
           onSort={onSort}
           onEdit={openExpenseDialog}
           onDelete={onDeleteExpense}

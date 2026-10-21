@@ -1,14 +1,31 @@
 import React from 'react'
 
-export function Header({ page, search, setSearch, openExpenseDialog }) {
+export function Header({
+  page,
+  search = '',
+  setSearch,
+  incomeSearch = '',
+  setIncomeSearch,
+  openExpenseDialog,
+  openIncomeDialog,
+  theme = 'dark',
+  toggleTheme,
+}) {
   const isExpenses = page === 'expenses'
-  const title = page === 'insights' ? 'Insights' : page === 'settings' ? 'Settings' : 'Expenses'
+  const isIncome = page === 'income'
+  const isInsights = page === 'insights'
+  const isSettings = page === 'settings'
+
+  let title = 'Expenses'
+  if (isIncome) title = 'Income'
+  else if (isInsights) title = 'Insights'
+  else if (isSettings) title = 'Settings'
 
   return (
     <div className="top">
       <h1 id="title">{title}</h1>
       <div className="actions">
-        {isExpenses && (
+        {isExpenses && setSearch && (
           <input
             id="q"
             type="search"
@@ -18,14 +35,58 @@ export function Header({ page, search, setSearch, openExpenseDialog }) {
             onChange={(e) => setSearch(e.target.value)}
           />
         )}
-        <button
-          className="primary"
-          id="open"
-          type="button"
-          onClick={() => openExpenseDialog()}
-        >
-          + Add expense
-        </button>
+
+        {isIncome && setIncomeSearch && (
+          <input
+            id="q-income"
+            type="search"
+            placeholder="Search income"
+            aria-label="Search income"
+            value={incomeSearch}
+            onChange={(e) => setIncomeSearch(e.target.value)}
+          />
+        )}
+
+        {toggleTheme && (
+          <button
+            type="button"
+            className="ghost"
+            style={{
+              padding: '0 14px',
+              minHeight: '44px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '14px',
+            }}
+            onClick={toggleTheme}
+            title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+            aria-label="Toggle color theme"
+          >
+            <span aria-hidden="true">{theme === 'dark' ? '☀️' : '🌙'}</span>
+            <span className="hide-s">{theme === 'dark' ? 'Light' : 'Dark'}</span>
+          </button>
+        )}
+
+        {isIncome ? (
+          <button
+            className="primary"
+            id="open-income"
+            type="button"
+            onClick={() => openIncomeDialog()}
+          >
+            + Add income
+          </button>
+        ) : isSettings ? null : (
+          <button
+            className="primary"
+            id="open"
+            type="button"
+            onClick={() => openExpenseDialog()}
+          >
+            + Add expense
+          </button>
+        )}
       </div>
     </div>
   )

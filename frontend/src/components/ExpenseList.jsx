@@ -6,6 +6,7 @@ export function ExpenseList({
   visibleTransactions = [],
   monthTransactions = [],
   sort = { key: 'date', direction: -1 },
+  currency = 'INR',
   onSort,
   onEdit,
   onDelete,
@@ -73,7 +74,7 @@ export function ExpenseList({
                   ></span>
                   {cat}
                 </td>
-                <td className="r neg">-{money(amountVal)}</td>
+                <td className="r neg">-{money(amountVal, currency)}</td>
                 <td className="r" style={{ whiteSpace: 'nowrap' }}>
                   <button
                     className="rowbtn"

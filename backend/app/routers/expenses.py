@@ -3,7 +3,9 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 
 from app.database import get_db
+from app.models import User
 from app.schemas import ExpenseCreate, ExpenseUpdate, ExpenseResponse
+from app.deps import get_optional_current_user
 from app import crud
 
 router = APIRouter(prefix="/expenses", tags=["Expenses"])
@@ -17,10 +19,13 @@ def read_expenses(
     month_key: Optional[str] = Query(None),
     sort_by: str = Query("date"),
     sort_order: str = Query("desc"),
+    current_user: Optional[User] = Depends(get_optional_current_user),
     db: Session = Depends(get_db)
 ):
+    user_id = current_user.id if current_user else None
     return crud.get_expenses(
         db,
+        user_id=user_id,
         skip=skip,
         limit=limit,
         category=category,
@@ -31,26 +36,47 @@ def read_expenses(
     )
 
 @router.post("", response_model=ExpenseResponse, status_code=status.HTTP_201_CREATED)
-def create_expense(expense_in: ExpenseCreate, db: Session = Depends(get_db)):
-    return crud.create_expense(db, expense_in)
+def create_expense(
+    expense_in: ExpenseCreate,
+    current_user: Optional[User] = Depends(get_optional_current_user),
+    db: Session = Depends(get_db)
+):
+    user_id = current_user.id if current_user else None
+    return crud.create_expense(db, expense_in, user_id=user_id)
 
 @router.get("/{expense_id}", response_model=ExpenseResponse)
-def read_expense(expense_id: int, db: Session = Depends(get_db)):
-    expense = crud.get_expense(db, expense_id)
+def read_expense(
+    expense_id: int,
+    current_user: Optional[User] = Depends(get_optional_current_user),
+    db: Session = Depends(get_db)
+):
+    user_id = current_user.id if current_user else None
+    expense = crud.get_expense(db, expense_id, user_id=user_id)
     if not expense:
         raise HTTPException(status_code=404, detail="Expense not found")
     return expense
 
 @router.put("/{expense_id}", response_model=ExpenseResponse)
-def update_expense(expense_id: int, expense_in: ExpenseUpdate, db: Session = Depends(get_db)):
-    updated = crud.update_expense(db, expense_id, expense_in)
+def update_expense(
+    expense_id: int,
+    expense_in: ExpenseUpdate,
+    current_user: Optional[User] = Depends(get_optional_current_user),
+    db: Session = Depends(get_db)
+):
+    user_id = current_user.id if current_user else None
+    updated = crud.update_expense(db, expense_id, expense_in, user_id=user_id)
     if not updated:
-        raise HTTPException(status_code=404, detail="Expense not found")
+        raise HTTPException(status_code=404, detail="Expense not found or unauthorized")
     return updated
 
 @router.delete("/{expense_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_expense(expense_id: int, db: Session = Depends(get_db)):
-    success = crud.delete_expense(db, expense_id)
+def delete_expense(
+    expense_id: int,
+    current_user: Optional[User] = Depends(get_optional_current_user),
+    db: Session = Depends(get_db)
+):
+    user_id = current_user.id if current_user else None
+    success = crud.delete_expense(db, expense_id, user_id=user_id)
     if not success:
-        raise HTTPException(status_code=404, detail="Expense not found")
+        raise HTTPException(status_code=404, detail="Expense not found or unauthorized")
     return None

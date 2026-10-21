@@ -1,6 +1,8 @@
 /**
- * expenseApi.js - Dedicated API service communicating with FastAPI backend
+ * expenseApi.js - Centralized API Service for Expenses, Budgets, and Insights
  */
+
+import { authApi } from './authApi'
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/api$/, '')
 
@@ -15,7 +17,9 @@ export const expenseApi = {
     if (params.sort_order) query.append('sort_order', params.sort_order)
     query.append('limit', '500')
 
-    const res = await fetch(`${API_BASE}/api/expenses?${query.toString()}`)
+    const res = await fetch(`${API_BASE}/api/expenses?${query.toString()}`, {
+      headers: authApi.getAuthHeaders(),
+    })
     if (!res.ok) {
       throw new Error(`Failed to fetch expenses: ${res.statusText}`)
     }
@@ -24,7 +28,9 @@ export const expenseApi = {
 
   // Fetch single expense by ID
   async getExpense(id) {
-    const res = await fetch(`${API_BASE}/api/expenses/${id}`)
+    const res = await fetch(`${API_BASE}/api/expenses/${id}`, {
+      headers: authApi.getAuthHeaders(),
+    })
     if (!res.ok) {
       throw new Error(`Failed to fetch expense ${id}`)
     }
@@ -35,7 +41,7 @@ export const expenseApi = {
   async createExpense(payload) {
     const res = await fetch(`${API_BASE}/api/expenses`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authApi.getAuthHeaders(),
       body: JSON.stringify({
         amt: Number(payload.amt || payload.amount),
         amount: Number(payload.amount || payload.amt),
@@ -59,7 +65,7 @@ export const expenseApi = {
   async updateExpense(id, payload) {
     const res = await fetch(`${API_BASE}/api/expenses/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authApi.getAuthHeaders(),
       body: JSON.stringify({
         amt: Number(payload.amt || payload.amount),
         amount: Number(payload.amount || payload.amt),
@@ -83,6 +89,7 @@ export const expenseApi = {
   async deleteExpense(id) {
     const res = await fetch(`${API_BASE}/api/expenses/${id}`, {
       method: 'DELETE',
+      headers: authApi.getAuthHeaders(),
     })
     if (!res.ok && res.status !== 204) {
       throw new Error('Failed to delete expense')
@@ -92,7 +99,9 @@ export const expenseApi = {
 
   // Get monthly budget
   async getBudget(monthKey) {
-    const res = await fetch(`${API_BASE}/api/insights/budget?month_key=${monthKey}`)
+    const res = await fetch(`${API_BASE}/api/insights/budget?month_key=${monthKey}`, {
+      headers: authApi.getAuthHeaders(),
+    })
     if (!res.ok) {
       throw new Error('Failed to fetch budget')
     }
@@ -103,7 +112,7 @@ export const expenseApi = {
   async setBudget(monthKey, targetAmount) {
     const res = await fetch(`${API_BASE}/api/insights/budget`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authApi.getAuthHeaders(),
       body: JSON.stringify({
         month_key: monthKey,
         target_amount: Number(targetAmount),
@@ -117,7 +126,9 @@ export const expenseApi = {
 
   // Get full insights summary
   async getInsights(monthKey) {
-    const res = await fetch(`${API_BASE}/api/insights?month_key=${monthKey}`)
+    const res = await fetch(`${API_BASE}/api/insights?month_key=${monthKey}`, {
+      headers: authApi.getAuthHeaders(),
+    })
     if (!res.ok) {
       throw new Error('Failed to fetch insights')
     }

@@ -7,6 +7,7 @@ export function BudgetRing({
   budgetLeft = 0,
   budgetPercent = 0,
   daysLeft = 'Closed',
+  currency = 'INR',
 }) {
   const pct = Math.max(budgetPercent, 0)
   const clampedPct = Math.min(pct, 1)
@@ -53,7 +54,7 @@ export function BudgetRing({
         <div className="mid">
           <b id="left">
             {budgetLeft < 0 ? '-' : ''}
-            {money(Math.abs(budgetLeft))}
+            {money(Math.abs(budgetLeft), currency)}
           </b>
           <small id="leftlbl">
             {budgetLeft < 0 ? 'over budget' : 'left to spend'}
@@ -64,11 +65,11 @@ export function BudgetRing({
       <div>
         <div className="st">
           <span>Spent</span>
-          <b id="spent">{money(totalSpent)}</b>
+          <b id="spent">{money(totalSpent, currency)}</b>
         </div>
         <div className="st">
           <span>Budget</span>
-          <b id="bud">{money(budget)}</b>
+          <b id="bud">{money(budget, currency)}</b>
         </div>
         <div className="st">
           <span>Days left</span>

@@ -3,13 +3,32 @@ import './App.css'
 import { useExpenses } from './hooks/useExpenses'
 import { MainLayout } from './layouts/MainLayout'
 import { Expenses } from './pages/Expenses'
+import { Income } from './pages/Income'
 import { Insights } from './pages/Insights'
+import { Settings } from './pages/Settings'
+import { Login } from './pages/Login'
+import { Register } from './pages/Register'
 
 export function App() {
   const {
+    // Core & Nav
     month,
     changeMonth,
     page,
+    setPage,
+    // Theme & Currency
+    theme,
+    setTheme,
+    toggleTheme,
+    currency,
+    setCurrency,
+    // Auth
+    user,
+    login,
+    logout,
+    register,
+    onUserUpdate,
+    // Expenses
     filter,
     setFilter,
     search,
@@ -46,8 +65,72 @@ export function App() {
     undoDelete,
     updateBudget,
     selectCategoryFilter,
+    // Income
+    incomeFilter,
+    setIncomeFilter,
+    incomeSearch,
+    setIncomeSearch,
+    incomeSort,
+    toggleIncomeSort,
+    monthIncomes,
+    visibleIncomes,
+    totalIncome,
+    netCashFlow,
+    incomeCategoryTotals,
+    rankedIncomeCategories,
+    incomeDialogOpen,
+    setIncomeDialogOpen,
+    editingIncomeId,
+    incomeAmount,
+    setIncomeAmount,
+    incomeCategory,
+    setIncomeCategory,
+    incomeNote,
+    setIncomeNote,
+    incomeDate,
+    setIncomeDate,
+    incomeFormError,
+    openIncomeDialog,
+    saveIncome,
+    deleteIncome,
+    // Toast
     toast,
+    showToast,
   } = useExpenses()
+
+  // Full-page Login view
+  if (page === 'login') {
+    return (
+      <>
+        <Login
+          onLoginSuccess={login}
+          onNavigateToRegister={() => {
+            window.location.hash = '#/register'
+          }}
+        />
+        <div className="toast" id="toast" role="status" hidden={toast.hidden}>
+          <span id="tmsg">{toast.message}</span>
+        </div>
+      </>
+    )
+  }
+
+  // Full-page Register view
+  if (page === 'register') {
+    return (
+      <>
+        <Register
+          onRegisterSuccess={register}
+          onNavigateToLogin={() => {
+            window.location.hash = '#/login'
+          }}
+        />
+        <div className="toast" id="toast" role="status" hidden={toast.hidden}>
+          <span id="tmsg">{toast.message}</span>
+        </div>
+      </>
+    )
+  }
 
   return (
     <MainLayout
@@ -57,9 +140,18 @@ export function App() {
       totalSpent={totalSpent}
       budget={budget}
       budgetPercent={budgetPercent}
+      currency={currency}
+      user={user}
+      onLogout={logout}
       search={search}
       setSearch={setSearch}
+      incomeSearch={incomeSearch}
+      setIncomeSearch={setIncomeSearch}
       openExpenseDialog={openExpenseDialog}
+      openIncomeDialog={openIncomeDialog}
+      theme={theme}
+      toggleTheme={toggleTheme}
+      // Expense Dialog props
       dialogOpen={dialogOpen}
       setDialogOpen={setDialogOpen}
       editingId={editingId}
@@ -73,12 +165,43 @@ export function App() {
       setDate={setDate}
       formError={formError}
       saveExpense={saveExpense}
+      // Income Dialog props
+      incomeDialogOpen={incomeDialogOpen}
+      setIncomeDialogOpen={setIncomeDialogOpen}
+      editingIncomeId={editingIncomeId}
+      incomeAmount={incomeAmount}
+      setIncomeAmount={setIncomeAmount}
+      incomeCategory={incomeCategory}
+      setIncomeCategory={setIncomeCategory}
+      incomeNote={incomeNote}
+      setIncomeNote={setIncomeNote}
+      incomeDate={incomeDate}
+      setDate={setIncomeDate}
+      formError={incomeFormError}
+      saveIncome={saveIncome}
+      // Toast props
       toast={toast}
       undoDelete={undoDelete}
     >
-      {page === 'insights' ? (
+      {page === 'income' ? (
+        <Income
+          totalIncome={totalIncome}
+          monthIncomes={monthIncomes}
+          rankedIncomeCategories={rankedIncomeCategories}
+          filter={incomeFilter}
+          setFilter={setIncomeFilter}
+          visibleIncomes={visibleIncomes}
+          sort={incomeSort}
+          currency={currency}
+          onSort={toggleIncomeSort}
+          openIncomeDialog={openIncomeDialog}
+          onDeleteIncome={deleteIncome}
+        />
+      ) : page === 'insights' ? (
         <Insights
           totalSpent={totalSpent}
+          totalIncome={totalIncome}
+          netCashFlow={netCashFlow}
           budget={budget}
           budgetLeft={budgetLeft}
           budgetPercent={budgetPercent}
@@ -87,10 +210,26 @@ export function App() {
           isCurrentMonth={isCurrentMonth}
           categoryTotals={categoryTotals}
           rankedCategories={rankedCategories}
+          incomeCategoryTotals={incomeCategoryTotals}
+          rankedIncomeCategories={rankedIncomeCategories}
           last7Days={last7Days}
           activityLogs={activityLogs}
+          currency={currency}
           onUpdateBudget={updateBudget}
           onSelectCategoryFilter={selectCategoryFilter}
+        />
+      ) : page === 'settings' ? (
+        <Settings
+          user={user}
+          onUserUpdate={onUserUpdate}
+          onLogout={logout}
+          theme={theme}
+          setTheme={setTheme}
+          currency={currency}
+          setCurrency={setCurrency}
+          budget={budget}
+          onUpdateBudget={updateBudget}
+          showToast={showToast}
         />
       ) : (
         <Expenses
@@ -102,6 +241,7 @@ export function App() {
           setFilter={setFilter}
           visibleTransactions={visibleTransactions}
           sort={sort}
+          currency={currency}
           onSort={toggleSort}
           openExpenseDialog={openExpenseDialog}
           onDeleteExpense={deleteExpense}

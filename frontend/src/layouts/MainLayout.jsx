@@ -2,6 +2,7 @@ import React from 'react'
 import { Sidebar } from '../components/Sidebar'
 import { Header } from '../components/Header'
 import { ExpenseForm } from '../components/ExpenseForm'
+import { IncomeForm } from '../components/IncomeForm'
 
 export function MainLayout({
   children,
@@ -11,9 +12,18 @@ export function MainLayout({
   totalSpent,
   budget,
   budgetPercent,
+  currency,
+  user,
+  onLogout,
   search,
   setSearch,
+  incomeSearch,
+  setIncomeSearch,
   openExpenseDialog,
+  openIncomeDialog,
+  theme,
+  toggleTheme,
+  // Expense Form
   dialogOpen,
   setDialogOpen,
   editingId,
@@ -27,6 +37,21 @@ export function MainLayout({
   setDate,
   formError,
   saveExpense,
+  // Income Form
+  incomeDialogOpen,
+  setIncomeDialogOpen,
+  editingIncomeId,
+  incomeAmount,
+  setIncomeAmount,
+  incomeCategory,
+  setIncomeCategory,
+  incomeNote,
+  setIncomeNote,
+  incomeDate,
+  setIncomeDate,
+  incomeFormError,
+  saveIncome,
+  // Toast
   toast,
   undoDelete,
 }) {
@@ -39,6 +64,9 @@ export function MainLayout({
         totalSpent={totalSpent}
         budget={budget}
         budgetPercent={budgetPercent}
+        currency={currency}
+        user={user}
+        onLogout={onLogout}
       />
 
       <main>
@@ -46,7 +74,12 @@ export function MainLayout({
           page={page}
           search={search}
           setSearch={setSearch}
+          incomeSearch={incomeSearch}
+          setIncomeSearch={setIncomeSearch}
           openExpenseDialog={openExpenseDialog}
+          openIncomeDialog={openIncomeDialog}
+          theme={theme}
+          toggleTheme={toggleTheme}
         />
 
         {children}
@@ -67,6 +100,23 @@ export function MainLayout({
         setDate={setDate}
         formError={formError}
         saveExpense={saveExpense}
+      />
+
+      {/* Add / Edit Income Dialog */}
+      <IncomeForm
+        dialogOpen={incomeDialogOpen}
+        setDialogOpen={setIncomeDialogOpen}
+        editingId={editingIncomeId}
+        amount={incomeAmount}
+        setAmount={setIncomeAmount}
+        category={incomeCategory}
+        setCategory={setIncomeCategory}
+        note={incomeNote}
+        setNote={setIncomeNote}
+        date={incomeDate}
+        setDate={setIncomeDate}
+        formError={incomeFormError}
+        saveIncome={saveIncome}
       />
 
       {/* Toast Notification with Undo */}
