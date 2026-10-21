@@ -18,6 +18,7 @@ export function Sidebar({
   })
 
   const clampedPct = Math.min(Math.max(budgetPercent, 0), 1)
+  const isTxnActive = page === 'transactions' || page === 'expenses' || page === 'income'
 
   return (
     <aside className="side">
@@ -25,9 +26,9 @@ export function Sidebar({
 
       <nav aria-label="Modules">
         <a
-          href="#/expenses"
-          id="n1"
-          aria-current={page === 'expenses' ? 'page' : undefined}
+          href="#/transactions"
+          id="n-transactions"
+          aria-current={isTxnActive ? 'page' : undefined}
         >
           <svg
             width="20"
@@ -41,27 +42,7 @@ export function Sidebar({
             <path d="M6 3h12v18l-3-2-3 2-3-2-3 2z" />
             <path d="M9 8h6M9 12h6" />
           </svg>
-          Expenses
-        </a>
-
-        <a
-          href="#/income"
-          id="n-income"
-          aria-current={page === 'income' ? 'page' : undefined}
-        >
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            aria-hidden="true"
-          >
-            <path d="M12 19V5M5 12l7-7 7 7" />
-            <path d="M5 19h14" />
-          </svg>
-          Income
+          Transactions
         </a>
 
         <a

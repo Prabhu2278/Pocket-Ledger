@@ -1,8 +1,8 @@
 import React from 'react'
 import { Sidebar } from '../components/Sidebar'
 import { Header } from '../components/Header'
-import { ExpenseForm } from '../components/ExpenseForm'
-import { IncomeForm } from '../components/IncomeForm'
+import { TransactionForm } from '../components/TransactionForm'
+import { CsvImportModal } from '../components/CsvImportModal'
 
 export function MainLayout({
   children,
@@ -17,16 +17,16 @@ export function MainLayout({
   onLogout,
   search,
   setSearch,
-  incomeSearch,
-  setIncomeSearch,
-  openExpenseDialog,
-  openIncomeDialog,
+  openTransactionDialog,
+  openCsvModal,
   theme,
   toggleTheme,
-  // Expense Form
+  // Transaction Form modal props
   dialogOpen,
   setDialogOpen,
   editingId,
+  txnType,
+  setTxnType,
   amount,
   setAmount,
   category,
@@ -36,22 +36,12 @@ export function MainLayout({
   date,
   setDate,
   formError,
-  saveExpense,
-  // Income Form
-  incomeDialogOpen,
-  setIncomeDialogOpen,
-  editingIncomeId,
-  incomeAmount,
-  setIncomeAmount,
-  incomeCategory,
-  setIncomeCategory,
-  incomeNote,
-  setIncomeNote,
-  incomeDate,
-  setIncomeDate,
-  incomeFormError,
-  saveIncome,
-  // Toast
+  saveTransaction,
+  // CSV Import modal props
+  csvModalOpen,
+  closeCsvModal,
+  handleCsvImport,
+  // Toast props
   toast,
   undoDelete,
 }) {
@@ -74,10 +64,8 @@ export function MainLayout({
           page={page}
           search={search}
           setSearch={setSearch}
-          incomeSearch={incomeSearch}
-          setIncomeSearch={setIncomeSearch}
-          openExpenseDialog={openExpenseDialog}
-          openIncomeDialog={openIncomeDialog}
+          openTransactionDialog={openTransactionDialog}
+          openCsvModal={openCsvModal}
           theme={theme}
           toggleTheme={toggleTheme}
         />
@@ -85,11 +73,13 @@ export function MainLayout({
         {children}
       </main>
 
-      {/* Add / Edit Expense Dialog */}
-      <ExpenseForm
+      {/* Add / Edit Transaction Dialog */}
+      <TransactionForm
         dialogOpen={dialogOpen}
         setDialogOpen={setDialogOpen}
         editingId={editingId}
+        type={txnType}
+        setType={setTxnType}
         amount={amount}
         setAmount={setAmount}
         category={category}
@@ -99,24 +89,15 @@ export function MainLayout({
         date={date}
         setDate={setDate}
         formError={formError}
-        saveExpense={saveExpense}
+        saveTransaction={saveTransaction}
       />
 
-      {/* Add / Edit Income Dialog */}
-      <IncomeForm
-        dialogOpen={incomeDialogOpen}
-        setDialogOpen={setIncomeDialogOpen}
-        editingId={editingIncomeId}
-        amount={incomeAmount}
-        setAmount={setIncomeAmount}
-        category={incomeCategory}
-        setCategory={setIncomeCategory}
-        note={incomeNote}
-        setNote={setIncomeNote}
-        date={incomeDate}
-        setDate={setIncomeDate}
-        formError={incomeFormError}
-        saveIncome={saveIncome}
+      {/* CSV Import Modal */}
+      <CsvImportModal
+        isOpen={csvModalOpen}
+        onClose={closeCsvModal}
+        onImportConfirm={handleCsvImport}
+        currency={currency}
       />
 
       {/* Toast Notification with Undo */}

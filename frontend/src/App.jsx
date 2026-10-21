@@ -2,8 +2,7 @@ import React from 'react'
 import './App.css'
 import { useExpenses } from './hooks/useExpenses'
 import { MainLayout } from './layouts/MainLayout'
-import { Expenses } from './pages/Expenses'
-import { Income } from './pages/Income'
+import { Transactions } from './pages/Transactions'
 import { Insights } from './pages/Insights'
 import { Settings } from './pages/Settings'
 import { Login } from './pages/Login'
@@ -15,7 +14,6 @@ export function App() {
     month,
     changeMonth,
     page,
-    setPage,
     // Theme & Currency
     theme,
     setTheme,
@@ -28,28 +26,36 @@ export function App() {
     logout,
     register,
     onUserUpdate,
-    // Expenses
-    filter,
-    setFilter,
+    // Unified Transactions & Filtering
+    transactions,
+    typeFilter,
+    setTypeFilter,
+    categoryFilter,
+    setCategoryFilter,
     search,
     setSearch,
     sort,
     toggleSort,
-    budget,
+    totalIncome,
     totalSpent,
+    netCashFlow,
+    budget,
     budgetLeft,
     budgetPercent,
-    monthTransactions,
-    visibleTransactions,
     categoryTotals,
     rankedCategories,
+    incomeCategoryTotals,
+    rankedIncomeCategories,
     daysLeft,
     isCurrentMonth,
     last7Days,
     activityLogs,
+    // Unified Transaction Dialog
     dialogOpen,
     setDialogOpen,
     editingId,
+    txnType,
+    setTxnType,
     amount,
     setAmount,
     category,
@@ -59,40 +65,18 @@ export function App() {
     date,
     setDate,
     formError,
-    openExpenseDialog,
-    saveExpense,
-    deleteExpense,
+    openTransactionDialog,
+    saveTransaction,
+    deleteTransaction,
     undoDelete,
+    // CSV Modal
+    csvModalOpen,
+    openCsvModal,
+    closeCsvModal,
+    handleCsvImport,
+    // Actions
     updateBudget,
     selectCategoryFilter,
-    // Income
-    incomeFilter,
-    setIncomeFilter,
-    incomeSearch,
-    setIncomeSearch,
-    incomeSort,
-    toggleIncomeSort,
-    monthIncomes,
-    visibleIncomes,
-    totalIncome,
-    netCashFlow,
-    incomeCategoryTotals,
-    rankedIncomeCategories,
-    incomeDialogOpen,
-    setIncomeDialogOpen,
-    editingIncomeId,
-    incomeAmount,
-    setIncomeAmount,
-    incomeCategory,
-    setIncomeCategory,
-    incomeNote,
-    setIncomeNote,
-    incomeDate,
-    setIncomeDate,
-    incomeFormError,
-    openIncomeDialog,
-    saveIncome,
-    deleteIncome,
     // Toast
     toast,
     showToast,
@@ -145,16 +129,16 @@ export function App() {
       onLogout={logout}
       search={search}
       setSearch={setSearch}
-      incomeSearch={incomeSearch}
-      setIncomeSearch={setIncomeSearch}
-      openExpenseDialog={openExpenseDialog}
-      openIncomeDialog={openIncomeDialog}
+      openTransactionDialog={openTransactionDialog}
+      openCsvModal={openCsvModal}
       theme={theme}
       toggleTheme={toggleTheme}
-      // Expense Dialog props
+      // Transaction Form Dialog props
       dialogOpen={dialogOpen}
       setDialogOpen={setDialogOpen}
       editingId={editingId}
+      txnType={txnType}
+      setTxnType={setTxnType}
       amount={amount}
       setAmount={setAmount}
       category={category}
@@ -164,40 +148,16 @@ export function App() {
       date={date}
       setDate={setDate}
       formError={formError}
-      saveExpense={saveExpense}
-      // Income Dialog props
-      incomeDialogOpen={incomeDialogOpen}
-      setIncomeDialogOpen={setIncomeDialogOpen}
-      editingIncomeId={editingIncomeId}
-      incomeAmount={incomeAmount}
-      setIncomeAmount={setIncomeAmount}
-      incomeCategory={incomeCategory}
-      setIncomeCategory={setIncomeCategory}
-      incomeNote={incomeNote}
-      setIncomeNote={setIncomeNote}
-      incomeDate={incomeDate}
-      setDate={setIncomeDate}
-      formError={incomeFormError}
-      saveIncome={saveIncome}
+      saveTransaction={saveTransaction}
+      // CSV Import Modal props
+      csvModalOpen={csvModalOpen}
+      closeCsvModal={closeCsvModal}
+      handleCsvImport={handleCsvImport}
       // Toast props
       toast={toast}
       undoDelete={undoDelete}
     >
-      {page === 'income' ? (
-        <Income
-          totalIncome={totalIncome}
-          monthIncomes={monthIncomes}
-          rankedIncomeCategories={rankedIncomeCategories}
-          filter={incomeFilter}
-          setFilter={setIncomeFilter}
-          visibleIncomes={visibleIncomes}
-          sort={incomeSort}
-          currency={currency}
-          onSort={toggleIncomeSort}
-          openIncomeDialog={openIncomeDialog}
-          onDeleteIncome={deleteIncome}
-        />
-      ) : page === 'insights' ? (
+      {page === 'insights' ? (
         <Insights
           totalSpent={totalSpent}
           totalIncome={totalIncome}
@@ -232,19 +192,21 @@ export function App() {
           showToast={showToast}
         />
       ) : (
-        <Expenses
-          totalSpent={totalSpent}
-          budgetLeft={budgetLeft}
-          monthTransactions={monthTransactions}
-          rankedCategories={rankedCategories}
-          filter={filter}
-          setFilter={setFilter}
-          visibleTransactions={visibleTransactions}
+        <Transactions
+          transactions={transactions}
+          month={month}
+          typeFilter={typeFilter}
+          setTypeFilter={setTypeFilter}
+          categoryFilter={categoryFilter}
+          setCategoryFilter={setCategoryFilter}
+          search={search}
+          setSearch={setSearch}
           sort={sort}
-          currency={currency}
           onSort={toggleSort}
-          openExpenseDialog={openExpenseDialog}
-          onDeleteExpense={deleteExpense}
+          currency={currency}
+          openTransactionDialog={openTransactionDialog}
+          onDeleteTransaction={deleteTransaction}
+          openCsvModal={openCsvModal}
         />
       )}
     </MainLayout>
