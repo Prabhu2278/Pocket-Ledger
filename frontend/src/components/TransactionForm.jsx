@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '../constants/categories'
 import { money } from '../utils/formatCurrency'
 
@@ -25,11 +25,55 @@ export function TransactionForm({
   formError,
   saveTransaction,
 }) {
-  if (!dialogOpen) return null
+  const [customCategories, setCustomCategories] = useState(() => {
+    try {
+      const stored = localStorage.getItem('pocket_ledger_custom_categories')
+      return stored ? JSON.parse(stored) : []
+    } catch {
+      return []
+    }
+  })
+  const [isCustomMode, setIsCustomMode] = useState(false)
+  const [customCategoryInput, setCustomCategoryInput] = useState('')
+
+  // Scroll Lock: disable background/outside scrolling when modal is open
+  useEffect(() => {
+    if (dialogOpen) {
+      document.body.classList.add('modal-open')
+      document.documentElement.classList.add('modal-open')
+    }
+    return () => {
+      document.body.classList.remove('modal-open')
+      document.documentElement.classList.remove('modal-open')
+    }
+  }, [dialogOpen])
 
   const isEditing = editingId !== null
   const isTransfer = type === 'transfer'
   const activeCategories = type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES
+
+  // Sync category mode when editing or opening
+  useEffect(() => {
+    if (dialogOpen) {
+      if (category && category !== 'Transfer') {
+        const isStandard = activeCategories.some(
+          ([c]) => c.toLowerCase() === category.toLowerCase()
+        )
+        if (!isStandard) {
+          setIsCustomMode(true)
+          setCustomCategoryInput(category)
+        } else {
+          setIsCustomMode(false)
+          setCustomCategoryInput('')
+        }
+      } else {
+        setIsCustomMode(false)
+        setCustomCategoryInput('')
+      }
+    }
+  }, [dialogOpen, category, activeCategories])
+
+  if (!dialogOpen) return null
 
   // Find currently selected source wallet
   const selectedWallet =
@@ -50,6 +94,27 @@ export function TransactionForm({
   const isSameWallet = isTransfer && selectedWallet && selectedToWallet && String(selectedWallet.id) === String(selectedToWallet.id)
   const isBlocked = isInsufficient || isSameWallet || (isTransfer && wallets.length < 2)
 
+  const handleSubmit = (e) => {
+    if (e && e.preventDefault) e.preventDefault()
+    if (isCustomMode && customCategoryInput.trim()) {
+      const trimmed = customCategoryInput.trim()
+      setCustomCategories((prev) => {
+        if (!prev.includes(trimmed)) {
+          const updated = [...prev, trimmed]
+          try {
+            localStorage.setItem('pocket_ledger_custom_categories', JSON.stringify(updated))
+          } catch {
+            // ignore
+          }
+          return updated
+        }
+        return prev
+      })
+      setCategory(trimmed)
+    }
+    saveTransaction(e)
+  }
+
   return (
     <div
       className="modal-overlay"
@@ -61,7 +126,7 @@ export function TransactionForm({
       }}
     >
       <div className="dialog-content">
-        <form className="f" onSubmit={saveTransaction} noValidate>
+        <form className="f" onSubmit={handleSubmit} noValidate>
           <h2 id="txn-dialog-title">
             {isEditing
               ? `Edit ${isTransfer ? 'Transfer' : type}`
@@ -84,7 +149,9 @@ export function TransactionForm({
                 aria-pressed={type === 'expense'}
                 onClick={() => {
                   setType('expense')
-                  setCategory('Food')
+                  setCategory('')
+                  setIsCustomMode(false)
+                  setCustomCategoryInput('')
                 }}
               >
                 Expense
@@ -95,7 +162,9 @@ export function TransactionForm({
                 aria-pressed={type === 'income'}
                 onClick={() => {
                   setType('income')
-                  setCategory('Salary')
+                  setCategory('')
+                  setIsCustomMode(false)
+                  setCustomCategoryInput('')
                 }}
               >
                 Income
@@ -107,6 +176,8 @@ export function TransactionForm({
                 onClick={() => {
                   setType('transfer')
                   setCategory('Transfer')
+                  setIsCustomMode(false)
+                  setCustomCategoryInput('')
                   if (!toWalletId && wallets.length > 1) {
                     const otherWallet = wallets.find((w) => String(w.id) !== String(selectedWallet?.id))
                     if (otherWallet) setToWalletId(String(otherWallet.id))
@@ -125,7 +196,7 @@ export function TransactionForm({
                 From Account (Source)
                 <select
                   id="txn-from-wallet"
-                  value={walletId || (selectedWallet ? selectedWallet.id : '')}
+                  value={walletId || ''}
                   onChange={(e) => setWalletId && setWalletId(e.target.value)}
                   style={{
                     width: '100%',
@@ -140,6 +211,7 @@ export function TransactionForm({
                     cursor: 'pointer',
                   }}
                 >
+                  <option value="">-- Select Source Account --</option>
                   {wallets.map((w) => {
                     const bal = Number(w.current_balance ?? w.balance ?? w.initial_balance ?? 0)
                     return (
@@ -155,7 +227,7 @@ export function TransactionForm({
                 To Account (Destination)
                 <select
                   id="txn-to-wallet"
-                  value={toWalletId || (selectedToWallet ? selectedToWallet.id : '')}
+                  value={toWalletId || ''}
                   onChange={(e) => setToWalletId && setToWalletId(e.target.value)}
                   style={{
                     width: '100%',
@@ -170,6 +242,7 @@ export function TransactionForm({
                     cursor: 'pointer',
                   }}
                 >
+                  <option value="">-- Select Destination Account --</option>
                   {wallets.map((w) => {
                     const bal = Number(w.current_balance ?? w.balance ?? w.initial_balance ?? 0)
                     return (
@@ -187,7 +260,7 @@ export function TransactionForm({
               {type === 'income' ? 'Deposit Into Wallet / Account' : 'Pay From Wallet / Account'}
               <select
                 id="txn-wallet"
-                value={walletId || (selectedWallet ? selectedWallet.id : '')}
+                value={walletId || ''}
                 onChange={(e) => setWalletId && setWalletId(e.target.value)}
                 style={{
                   width: '100%',
@@ -202,18 +275,15 @@ export function TransactionForm({
                   cursor: 'pointer',
                 }}
               >
-                {wallets.length === 0 ? (
-                  <option value="">Default Wallet</option>
-                ) : (
-                  wallets.map((w) => {
-                    const bal = Number(w.current_balance ?? w.balance ?? w.initial_balance ?? 0)
-                    return (
-                      <option key={w.id} value={w.id}>
-                        {w.name} ({money(bal, currency)} available)
-                      </option>
-                    )
-                  })
-                )}
+                <option value="">-- Select Wallet / Account --</option>
+                {wallets.map((w) => {
+                  const bal = Number(w.current_balance ?? w.balance ?? w.initial_balance ?? 0)
+                  return (
+                    <option key={w.id} value={w.id}>
+                      {w.name} ({money(bal, currency)} available)
+                    </option>
+                  )
+                })}
               </select>
             </label>
           )}
@@ -230,9 +300,17 @@ export function TransactionForm({
                 fontSize: '12.5px',
                 fontWeight: 600,
                 margin: '4px 0',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
               }}
             >
-              ⚠️ You need at least 2 accounts to make a transfer. Please add another account in the Wallets tab first.
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                <line x1="12" y1="9" x2="12" y2="13" />
+                <line x1="12" y1="17" x2="12.01" y2="17" />
+              </svg>
+              <span>You need at least 2 accounts to make a transfer. Please add another account in the Wallets tab first.</span>
             </div>
           )}
 
@@ -248,10 +326,18 @@ export function TransactionForm({
                 fontSize: '12.5px',
                 fontWeight: 600,
                 margin: '4px 0',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
               }}
               role="alert"
             >
-              ⚠️ Source and Destination accounts cannot be the same. Please choose different accounts.
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                <line x1="12" y1="9" x2="12" y2="13" />
+                <line x1="12" y1="17" x2="12.01" y2="17" />
+              </svg>
+              <span>Source and Destination accounts cannot be the same. Please choose different accounts.</span>
             </div>
           )}
 
@@ -290,31 +376,102 @@ export function TransactionForm({
               }}
               role="alert"
             >
-              <span aria-hidden="true" style={{ fontSize: '16px' }}>⚠️</span>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                <line x1="12" y1="9" x2="12" y2="13" />
+                <line x1="12" y1="17" x2="12.01" y2="17" />
+              </svg>
               <span>
                 Low Balance! Available in <b>{selectedWallet.name}</b> is {money(walletBalance, currency)}. You cannot {isTransfer ? 'transfer' : 'spend'} {money(numericAmount, currency)}.
               </span>
             </div>
           )}
 
-          {/* Category Chips (Only shown for Expense and Income) */}
+          {/* Category Dropdown (Shown for Expense and Income) */}
           {!isTransfer && (
-            <>
-              <label style={{ margin: '6px 0 2px', fontSize: '13px', fontWeight: 600 }}>Category</label>
-              <div className="chips" role="group" aria-label="Category Selection">
-                {activeCategories.map(([catName]) => (
-                  <button
-                    key={catName}
-                    type="button"
-                    className="chip"
-                    aria-pressed={category === catName}
-                    onClick={() => setCategory(catName)}
-                  >
-                    {catName}
-                  </button>
-                ))}
-              </div>
-            </>
+            <label style={{ display: 'grid', gap: '5px' }}>
+              Category
+              <select
+                id="txn-category"
+                value={isCustomMode ? '__custom__' : category || ''}
+                onChange={(e) => {
+                  const val = e.target.value
+                  if (val === '__custom__') {
+                    setIsCustomMode(true)
+                    setCategory(customCategoryInput.trim() || '')
+                  } else {
+                    setIsCustomMode(false)
+                    setCategory(val)
+                  }
+                }}
+                required
+                style={{
+                  width: '100%',
+                  padding: '9px 12px',
+                  borderRadius: 'var(--pl-radius-md)',
+                  border: '1px solid var(--pl-border-default)',
+                  background: 'var(--pl-bg-surface)',
+                  color: 'var(--pl-text-primary)',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  minHeight: '38px',
+                  height: '38px',
+                }}
+              >
+                <option value="">-- Select Category --</option>
+                <optgroup label="Standard Categories">
+                  {activeCategories.map(([catName]) => (
+                    <option key={catName} value={catName}>
+                      {catName}
+                    </option>
+                  ))}
+                </optgroup>
+                {customCategories.length > 0 && (
+                  <optgroup label="Custom Categories">
+                    {customCategories.map((c) => (
+                      <option key={`custom-${c}`} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+                <option value="__custom__">✨ + Customize Category...</option>
+              </select>
+
+              {/* Show input box when user chooses "Customize Category" */}
+              {isCustomMode && (
+                <div style={{ marginTop: '6px' }}>
+                  <input
+                    id="txn-custom-category-input"
+                    type="text"
+                    placeholder="Enter custom category name (e.g. Gym, Subscriptions, Pet Care)"
+                    value={customCategoryInput}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      setCustomCategoryInput(val)
+                      setCategory(val)
+                    }}
+                    autoFocus
+                    required
+                    style={{
+                      width: '100%',
+                      padding: '9px 12px',
+                      borderRadius: 'var(--pl-radius-md)',
+                      border: '1px solid var(--pl-color-primary)',
+                      background: 'var(--pl-bg-surface)',
+                      color: 'var(--pl-text-primary)',
+                      fontSize: '13px',
+                      minHeight: '38px',
+                      height: '38px',
+                    }}
+                  />
+                  <small style={{ color: 'var(--pl-text-muted)', fontSize: '11px', marginTop: '2px', display: 'block' }}>
+                    This category will be saved to your custom category list.
+                  </small>
+                </div>
+              )}
+            </label>
           )}
 
           <label>

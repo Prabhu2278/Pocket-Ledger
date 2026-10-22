@@ -19,8 +19,6 @@ export function FilterDrawer({
   setStartDate,
   endDate = '',
   setEndDate,
-  paymentMethodFilter = 'all',
-  setPaymentMethodFilter,
   wallets = [],
   currency = 'INR',
   totalFilteredCount = 0,
@@ -37,6 +35,18 @@ export function FilterDrawer({
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [isOpen, onClose])
+
+  // Scroll Lock: disable background/outside scrolling when filter drawer is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.classList.add('modal-open')
+      document.documentElement.classList.add('modal-open')
+    }
+    return () => {
+      document.body.classList.remove('modal-open')
+      document.documentElement.classList.remove('modal-open')
+    }
+  }, [isOpen])
 
   if (!isOpen) return null
 
@@ -58,17 +68,6 @@ export function FilterDrawer({
             ])
           ),
         ]
-
-  const paymentMethods = [
-    'All',
-    'UPI',
-    'Bank Transfer',
-    'Cash',
-    'Credit Card',
-    'Debit Card',
-    'Wallet Transfer',
-    'Net Banking',
-  ]
 
   return (
     <div
@@ -146,7 +145,10 @@ export function FilterDrawer({
                 fontSize: '15px',
               }}
             >
-              ✕
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
             </button>
           </div>
         </div>
@@ -182,13 +184,13 @@ export function FilterDrawer({
             </div>
           </div>
 
-          {/* 2. Wallet / Account Filter */}
+          {/* 2. Wallet Filter */}
           <div>
             <label
               htmlFor="drawer-wallet-select"
               style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, marginBottom: '6px' }}
             >
-              Account / Wallet
+              Wallet
             </label>
             <select
               id="drawer-wallet-select"
@@ -206,7 +208,7 @@ export function FilterDrawer({
                 cursor: 'pointer',
               }}
             >
-              <option value="all">All Accounts</option>
+              <option value="all">All Wallets</option>
               {wallets.map((w) => {
                 const bal = Number(w.current_balance ?? w.balance ?? w.initial_balance ?? 0)
                 return (
@@ -392,38 +394,6 @@ export function FilterDrawer({
               </div>
             </div>
           </div>
-
-          {/* 6. Payment Method */}
-          <div>
-            <label
-              htmlFor="drawer-payment-select"
-              style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, marginBottom: '6px' }}
-            >
-              Payment Method
-            </label>
-            <select
-              id="drawer-payment-select"
-              value={paymentMethodFilter}
-              onChange={(e) => setPaymentMethodFilter(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '8px 12px',
-                borderRadius: 'var(--pl-radius-md)',
-                border: '1px solid var(--pl-border-default)',
-                background: 'var(--pl-bg-surface)',
-                color: 'var(--pl-text-primary)',
-                fontSize: '13px',
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              {paymentMethods.map((pm) => (
-                <option key={pm} value={pm === 'All' ? 'all' : pm}>
-                  {pm === 'All' ? 'All Payment Methods' : pm}
-                </option>
-              ))}
-            </select>
-          </div>
         </div>
 
         {/* Footer */}
@@ -455,7 +425,7 @@ export function FilterDrawer({
               fontWeight: 700,
             }}
           >
-            Show {totalFilteredCount} {totalFilteredCount === 1 ? 'Result' : 'Results'}
+            Apply Filter ({totalFilteredCount} {totalFilteredCount === 1 ? 'Result' : 'Results'})
           </button>
         </div>
       </div>

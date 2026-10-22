@@ -1,13 +1,15 @@
-import React from 'react'
+import React, { useState } from 'react'
 import './App.css'
 import { useExpenses } from './hooks/useExpenses'
 import { MainLayout } from './layouts/MainLayout'
 import { Transactions } from './pages/Transactions'
 import { Insights } from './pages/Insights'
+import { Dashboard } from './pages/Dashboard'
 import { Wallets } from './pages/Wallets'
 import { Settings } from './pages/Settings'
 import { Login } from './pages/Login'
 import { Register } from './pages/Register'
+import { ConfirmModal } from './components/ConfirmDialog'
 
 export function App() {
   const {
@@ -29,6 +31,7 @@ export function App() {
     onUserUpdate,
     // Unified Transactions & Filtering
     transactions,
+    monthTransactions,
     typeFilter,
     setTypeFilter,
     categoryFilter,
@@ -53,7 +56,6 @@ export function App() {
     activityLogs,
     // Filter Drawer & Advanced Filters
     isFilterDrawerOpen,
-    setIsFilterDrawerOpen,
     openFilterDrawer,
     closeFilterDrawer,
     walletFilter,
@@ -70,6 +72,7 @@ export function App() {
     setPaymentMethodFilter,
     resetFilters,
     activeFilterCount,
+    totalFilteredCount,
     // Unified Transaction Dialog
     dialogOpen,
     setDialogOpen,
@@ -110,31 +113,41 @@ export function App() {
     showToast,
   } = useExpenses()
 
-  // Full-page Login view
-  if (page === 'login') {
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
+
+  const handleRequestLogout = () => {
+    setShowLogoutConfirm(true)
+  }
+
+  const handleConfirmLogout = () => {
+    setShowLogoutConfirm(false)
+    logout()
+  }
+
+  // Mandatory Auth Gate: Users must sign in or create an account first
+  if (!user) {
+    if (page === 'register') {
+      return (
+        <>
+          <Register
+            onRegisterSuccess={register}
+            onNavigateToLogin={() => {
+              window.location.hash = '#/login'
+            }}
+          />
+          <div className="toast" id="toast" role="status" hidden={toast.hidden}>
+            <span id="tmsg">{toast.message}</span>
+          </div>
+        </>
+      )
+    }
+
     return (
       <>
         <Login
           onLoginSuccess={login}
           onNavigateToRegister={() => {
             window.location.hash = '#/register'
-          }}
-        />
-        <div className="toast" id="toast" role="status" hidden={toast.hidden}>
-          <span id="tmsg">{toast.message}</span>
-        </div>
-      </>
-    )
-  }
-
-  // Full-page Register view
-  if (page === 'register') {
-    return (
-      <>
-        <Register
-          onRegisterSuccess={register}
-          onNavigateToLogin={() => {
-            window.location.hash = '#/login'
           }}
         />
         <div className="toast" id="toast" role="status" hidden={toast.hidden}>
@@ -154,7 +167,7 @@ export function App() {
       budgetPercent={budgetPercent}
       currency={currency}
       user={user}
-      onLogout={logout}
+      onLogout={handleRequestLogout}
       search={search}
       setSearch={setSearch}
       openTransactionDialog={openTransactionDialog}
@@ -166,6 +179,7 @@ export function App() {
       openFilterDrawer={openFilterDrawer}
       closeFilterDrawer={closeFilterDrawer}
       activeFilterCount={activeFilterCount}
+      totalFilteredCount={totalFilteredCount}
       typeFilter={typeFilter}
       setTypeFilter={setTypeFilter}
       categoryFilter={categoryFilter}
@@ -212,7 +226,18 @@ export function App() {
       toast={toast}
       undoDelete={undoDelete}
     >
-      {page === 'dashboard' || page === 'insights' ? (
+      {page === 'dashboard' ? (
+        <Dashboard
+          transactions={transactions}
+          monthTransactions={monthTransactions}
+          totalIncome={totalIncome}
+          totalSpent={totalSpent}
+          netCashFlow={netCashFlow}
+          wallets={wallets}
+          currency={currency}
+          month={month}
+        />
+      ) : page === 'insights' ? (
         <Insights
           totalSpent={totalSpent}
           totalIncome={totalIncome}
@@ -246,7 +271,7 @@ export function App() {
         <Settings
           user={user}
           onUserUpdate={onUserUpdate}
-          onLogout={logout}
+          onLogout={handleRequestLogout}
           theme={theme}
           setTheme={setTheme}
           currency={currency}
@@ -275,11 +300,24 @@ export function App() {
           minAmount={minAmount}
           maxAmount={maxAmount}
           startDate={startDate}
+          setStartDate={setStartDate}
           endDate={endDate}
+          setEndDate={setEndDate}
           paymentMethodFilter={paymentMethodFilter}
           wallets={wallets}
         />
       )}
+
+      <ConfirmModal
+        isOpen={showLogoutConfirm}
+        title="Sign Out of Pocket Ledger?"
+        message="Are you sure you want to sign out of your account? You will need to sign back in with your credentials to access your ledger."
+        confirmText="Sign Out"
+        cancelText="Cancel"
+        variant="warning"
+        onConfirm={handleConfirmLogout}
+        onCancel={() => setShowLogoutConfirm(false)}
+      />
     </MainLayout>
   )
 }

@@ -38,6 +38,7 @@ class UserLogin(BaseModel):
 class UserUpdate(BaseModel):
     full_name: Optional[str] = None
     currency: Optional[str] = None
+    theme: Optional[str] = None
 
 class PasswordChange(BaseModel):
     current_password: str
@@ -48,10 +49,13 @@ class UserResponse(BaseModel):
     full_name: Optional[str] = None
     email: Optional[str] = None
     currency: Optional[str] = "INR"
+    theme: Optional[str] = "dark"
     created_at: Optional[dt.datetime] = None
 
     class Config:
         from_attributes = True
+
+from app.schemas.setting import SettingsBase, SettingsUpdate, SettingsResponse
 
 class TokenResponse(BaseModel):
     access_token: str

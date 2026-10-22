@@ -1,10 +1,22 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 
 export function CreateWalletModal({ isOpen, onClose, onSave }) {
   const [name, setName] = useState('')
   const [walletType, setWalletType] = useState('BANK')
   const [initialBalance, setInitialBalance] = useState('')
   const [color, setColor] = useState('#10b981')
+
+  // Scroll Lock: disable background/outside scrolling when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.classList.add('modal-open')
+      document.documentElement.classList.add('modal-open')
+    }
+    return () => {
+      document.body.classList.remove('modal-open')
+      document.documentElement.classList.remove('modal-open')
+    }
+  }, [isOpen])
 
   if (!isOpen) return null
 

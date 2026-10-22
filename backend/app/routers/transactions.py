@@ -115,21 +115,34 @@ def serialize_unified(item, item_type: str, db: Optional[Session] = None) -> dic
 def fetch_transactions(
     db: Session,
     month_key: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
     item_type: str = "all",
     category: Optional[str] = None,
     search: Optional[str] = None,
     wallet_id: Optional[int] = None,
     sort_by: str = "date",
     sort_order: str = "desc",
-    limit: int = 500,
+    limit: int = 5000,
     user_id: Optional[int] = None,
 ) -> List[dict]:
     type_clean = (item_type or "all").strip().lower()
     results = []
 
-    # Filter date range if month_key provided
+    # Filter date range: prioritize explicit start_date / end_date, then fallback to month_key
     start_d, end_d = None, None
-    if month_key and len(month_key.split("-")) == 2:
+    if start_date:
+        try:
+            start_d = dt.date.fromisoformat(start_date)
+        except Exception:
+            pass
+    if end_date:
+        try:
+            end_d = dt.date.fromisoformat(end_date)
+        except Exception:
+            pass
+
+    if not start_d and not end_d and month_key and len(month_key.split("-")) == 2:
         try:
             year, month = map(int, month_key.split("-"))
             _, last_day = calendar.monthrange(year, month)
@@ -150,8 +163,10 @@ def fetch_transactions(
 
         if wallet_id is not None:
             eq = eq.filter(or_(Expense.wallet_id == wallet_id, Expense.to_wallet_id == wallet_id))
-        if start_d and end_d:
-            eq = eq.filter(Expense.spent_on >= start_d, Expense.spent_on <= end_d)
+        if start_d:
+            eq = eq.filter(Expense.spent_on >= start_d)
+        if end_d:
+            eq = eq.filter(Expense.spent_on <= end_d)
         if category and category != "All":
             eq = eq.filter(Expense.category == category)
         expenses = eq.all()
@@ -166,8 +181,10 @@ def fetch_transactions(
             iq = iq.filter(Income.user_id == user_id)
         if wallet_id is not None:
             iq = iq.filter(Income.wallet_id == wallet_id)
-        if start_d and end_d:
-            iq = iq.filter(Income.received_on >= start_d, Income.received_on <= end_d)
+        if start_d:
+            iq = iq.filter(Income.received_on >= start_d)
+        if end_d:
+            iq = iq.filter(Income.received_on <= end_d)
         if category and category != "All":
             iq = iq.filter(Income.category == category)
         incomes = iq.all()
@@ -194,13 +211,15 @@ def fetch_transactions(
 @router.get("")
 def get_transactions(
     month_key: Optional[str] = Query(None, description="Month in YYYY-MM format"),
+    start_date: Optional[str] = Query(None, description="Start date in YYYY-MM-DD format"),
+    end_date: Optional[str] = Query(None, description="End date in YYYY-MM-DD format"),
     type: Optional[str] = Query("all", description="Filter by type: 'all', 'income', 'expense', 'transfer'"),
     category: Optional[str] = Query(None, description="Filter by category"),
     search: Optional[str] = Query(None, description="Search term in note or category"),
     wallet_id: Optional[int] = Query(None, description="Filter by wallet ID"),
     sort_by: Optional[str] = Query("date", description="'date' or 'amount'"),
     sort_order: Optional[str] = Query("desc", description="'asc' or 'desc'"),
-    limit: int = Query(500, ge=1, le=1000),
+    limit: int = Query(5000, ge=1, le=10000),
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_optional_current_user),
 ):
@@ -208,6 +227,8 @@ def get_transactions(
     return fetch_transactions(
         db=db,
         month_key=month_key,
+        start_date=start_date,
+        end_date=end_date,
         item_type=type or "all",
         category=category,
         search=search,

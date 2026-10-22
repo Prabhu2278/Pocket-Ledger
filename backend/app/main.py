@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.database import engine, Base
-from app.models import User, Expense, Income, Budget, Wallet
+from app.models import User, Expense, Income, Budget, Wallet, Setting
 from app.api.v1.router import api_router
 
 # Create tables in PostgreSQL/SQLite on startup if they do not exist

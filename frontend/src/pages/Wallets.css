@@ -1,55 +1,166 @@
+/* ==========================================================================
+   Pocket Ledger - Wallets Page Stylesheet
+   ========================================================================== */
+
 .wallets-view {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 24px;
+  width: 100%;
+  animation: fadeIn 0.2s ease-out;
 }
 
-.wallets-top-bar { 
+/* --------------------------------------------------------------------------
+   1. Top Header Bar
+   -------------------------------------------------------------------------- */
+.wallets-top-bar {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 16px;
+  width: 100%;
+}
+
+.wallets-header-info {
+  max-width: 720px;
 }
 
 .wallets-header-info h2 {
-  font-size: 16px;
+  font-size: 20px;
   font-weight: 800;
   color: var(--pl-text-primary);
-  margin: 0 0 3px;
+  margin: 0 0 4px;
   letter-spacing: -0.01em;
 }
 
 .wallets-header-info p {
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--pl-text-muted);
+  line-height: 1.4;
   margin: 0;
 }
 
+/* --------------------------------------------------------------------------
+   2. KPI Summary Cards (4 Across on Desktop) - Row 1
+   -------------------------------------------------------------------------- */
 .wallets-kpis {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(4, 1fr);
   gap: 14px;
+  width: 100%;
 }
 
+.wallets-kpi-card {
+  background: var(--pl-bg-surface);
+  border: 1px solid var(--pl-border-default);
+  border-top: 3.5px solid var(--kpi-accent, var(--pl-color-primary));
+  border-radius: var(--pl-radius-lg);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 88px;
+  box-shadow: var(--pl-shadow-sm);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  position: relative;
+}
+
+.wallets-kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--pl-shadow-md);
+  border-color: var(--pl-border-strong);
+}
+
+.wallets-kpi-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--pl-text-muted);
+  line-height: 1.2;
+}
+
+.wallets-kpi-value {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--pl-text-primary);
+  margin-top: 4px;
+  line-height: 1.2;
+}
+
+.wallets-kpi-value.pos {
+  color: var(--pl-color-success);
+}
+
+.wallets-kpi-value.neg {
+  color: var(--pl-color-danger);
+}
+
+/* --------------------------------------------------------------------------
+   3. Row Separation Divider & Section Header
+   -------------------------------------------------------------------------- */
+.wallets-section-divider {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 18px;
+  border-top: 1px solid var(--pl-border-default);
+  margin-top: 6px;
+  margin-bottom: 2px;
+}
+
+.wallets-section-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.wallets-section-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--pl-text-primary);
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+.wallets-section-badge {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--pl-text-muted);
+  background: var(--pl-bg-muted);
+  border: 1px solid var(--pl-border-default);
+  padding: 2px 8px;
+  border-radius: var(--pl-radius-pill);
+  text-transform: lowercase;
+}
+
+/* --------------------------------------------------------------------------
+   4. Wallets Grid (Row 2 - My Wallets & Accounts)
+   -------------------------------------------------------------------------- */
 .wallets-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 14px;
+  width: 100%;
 }
 
 .wallet-tile {
   background: var(--pl-bg-surface);
   border: 1px solid var(--pl-border-default);
+  border-top: 3.5px solid var(--wallet-border-color, #10b981);
   border-radius: var(--pl-radius-lg);
-  padding: 18px 20px;
+  padding: 14px 16px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  position: relative;
-  overflow: hidden;
+  justify-content: space-between;
+  min-height: 136px;
   box-shadow: var(--pl-shadow-sm);
   transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  position: relative;
+  overflow: hidden;
 }
 
 .wallet-tile:hover {
@@ -58,25 +169,30 @@
   border-color: var(--pl-border-strong);
 }
 
+/* Row 1 inside tile: Header */
 .wallet-tile-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 8px;
+  padding-bottom: 7px;
+  border-bottom: 1px solid var(--pl-border-subtle);
+  margin-bottom: 7px;
 }
 
 .wallet-tile-name-group {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 7px;
+  min-width: 0;
 }
 
 .wallet-color-dot {
-  width: 12px;
-  height: 12px;
+  width: 8.5px;
+  height: 8.5px;
   border-radius: 50%;
   flex-shrink: 0;
-  box-shadow: 0 0 0 2px var(--pl-bg-surface), 0 0 0 3px var(--pl-border-default);
+  box-shadow: 0 0 0 1.5px var(--pl-bg-surface), 0 0 0 2.5px var(--pl-border-default);
 }
 
 .wallet-tile-name {
@@ -86,28 +202,49 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 170px;
+  max-width: 135px;
 }
 
 .wallet-badge {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.04em;
   padding: 2px 7px;
-  border-radius: var(--pl-radius-sm);
-  background: var(--pl-color-primary-soft);
-  color: var(--pl-color-primary);
+  border-radius: var(--pl-radius-pill);
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
+.wallet-badge.bank {
+  background: rgba(37, 99, 235, 0.12);
+  color: #2563eb;
+}
+
+.wallet-badge.cash {
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+}
+
+.wallet-badge.digital {
+  background: rgba(139, 92, 246, 0.12);
+  color: #8b5cf6;
+}
+
+.wallet-badge.credit {
+  background: rgba(245, 158, 11, 0.12);
+  color: #f59e0b;
+}
+
+/* Row 2 inside tile: Balance Box */
 .wallet-balance-box {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  margin-bottom: 7px;
 }
 
 .wallet-balance-label {
-  font-size: 11px;
+  font-size: 9.5px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -115,44 +252,44 @@
 }
 
 .wallet-balance-value {
-  font-size: 22px;
+  font-size: 15px;
   font-weight: 800;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
-  color: var(--pl-text-primary);
-}
-
-.wallet-balance-value.pos {
   color: var(--pl-color-success);
+  line-height: 1.2;
 }
 
 .wallet-balance-value.neg {
   color: var(--pl-color-danger);
 }
 
+/* Row 3 inside tile: Meta */
 .wallet-tile-meta {
   display: flex;
   justify-content: space-between;
-  font-size: 11.5px;
+  font-size: 11px;
   color: var(--pl-text-muted);
-  padding-top: 10px;
-  border-top: 1px solid var(--pl-border-default);
+  padding-top: 6px;
+  border-top: 1px solid var(--pl-border-subtle);
+  margin-bottom: 8px;
   font-variant-numeric: tabular-nums;
 }
 
+/* Row 4 inside tile: Actions */
 .wallet-tile-actions {
   display: flex;
-  gap: 8px;
+  gap: 7px;
   margin-top: auto;
 }
 
 .wallet-btn {
   flex: 1;
-  padding: 6px 12px;
-  min-height: 34px;
-  font-size: 12px;
-  font-weight: 600;
-  border-radius: var(--pl-radius-md);
+  padding: 4px 8px;
+  min-height: 27px;
+  font-size: 11.5px;
+  font-weight: 700;
+  border-radius: var(--pl-radius-sm);
   border: 1px solid var(--pl-border-default);
   background: var(--pl-bg-surface);
   color: var(--pl-text-primary);
@@ -160,13 +297,13 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
+  gap: 4px;
   transition: all 0.15s ease;
 }
 
 .wallet-btn:hover {
-  background: var(--pl-color-primary-soft);
-  border-color: var(--pl-color-primary);
+  background: var(--pl-bg-muted);
+  border-color: var(--pl-border-strong);
   color: var(--pl-color-primary);
 }
 
@@ -176,7 +313,60 @@
   color: var(--pl-color-danger);
 }
 
-/* Modal form adjustments */
+/* Add New Account Dashed Tile */
+.wallet-add-tile {
+  border: 1.5px dashed var(--pl-border-default);
+  background: transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  cursor: pointer;
+  min-height: 136px;
+  border-radius: var(--pl-radius-md);
+  padding: 12px 10px;
+  transition: all 0.15s ease;
+  color: inherit;
+  gap: 4px;
+}
+
+.wallet-add-tile:hover {
+  border-color: var(--pl-color-primary);
+  background: var(--pl-color-primary-soft);
+  transform: translateY(-2px);
+}
+
+.wallet-add-icon {
+  width: 27px;
+  height: 27px;
+  border-radius: 50%;
+  background: var(--pl-color-primary-soft);
+  color: var(--pl-color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 800;
+  margin-bottom: 2px;
+}
+
+.wallet-add-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--pl-text-primary);
+}
+
+.wallet-add-sub {
+  font-size: 11px;
+  color: var(--pl-text-muted);
+  max-width: 170px;
+  line-height: 1.3;
+}
+
+/* --------------------------------------------------------------------------
+   4. Modal Form Adjustments
+   -------------------------------------------------------------------------- */
 .wallet-dialog-content {
   width: 100%;
   max-width: 440px;
@@ -230,4 +420,46 @@
 .wallet-color-swatch.active {
   border-color: var(--pl-text-primary);
   box-shadow: 0 0 0 2px var(--pl-bg-surface);
+}
+
+/* --------------------------------------------------------------------------
+   5. Responsive Breakpoints
+   -------------------------------------------------------------------------- */
+@media (max-width: 1024px) {
+  .wallets-kpis {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+}
+
+@media (max-width: 680px) {
+  .wallets-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .wallets-top-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .wallets-top-bar button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 520px) {
+  .wallets-kpis {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .wallets-kpi-card {
+    min-height: 76px;
+    padding: 14px 16px;
+  }
+
+  .wallets-kpi-value {
+    font-size: 16px;
+  }
 }

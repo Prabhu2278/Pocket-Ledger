@@ -2,6 +2,8 @@ import React, { useState, useMemo } from 'react'
 import { money } from '../utils/formatCurrency'
 import { TransactionTable } from '../components/TransactionTable'
 import { exportTransactionsToCsv } from '../utils/csvExporter'
+import { normalizeDateStr } from '../utils/dateUtils'
+import { ConfirmModal } from '../components/ConfirmDialog'
 
 export function Transactions({
   transactions = [],
@@ -11,13 +13,13 @@ export function Transactions({
   categoryFilter = 'All',
   setCategoryFilter,
   search = '',
-  setSearch,
+  setSearch: _setSearch,
   sort = { key: 'date', direction: -1 },
   onSort,
   currency = 'INR',
   openTransactionDialog,
   onDeleteTransaction,
-  openCsvModal,
+  openCsvModal: _openCsvModal,
   // Advanced filters from drawer
   walletFilter = 'all',
   minAmount = '',
@@ -25,7 +27,9 @@ export function Transactions({
   startDate = '',
   endDate = '',
   paymentMethodFilter = 'all',
-  wallets = [],
+  wallets: _wallets = [],
+  setStartDate,
+  setEndDate,
 }) {
   const monthKey = `${month.year}-${String(month.month + 1).padStart(2, '0')}`
 
@@ -33,15 +37,58 @@ export function Transactions({
   const [pageSize, setPageSize] = useState(10)
   const [currentPage, setCurrentPage] = useState(1)
 
-  // Filter transactions for this month
+  // Delete transaction confirmation state
+  const [deleteTarget, setDeleteTarget] = useState(null)
+
+  const handleRequestDelete = (id, type) => {
+    const item = transactions.find(
+      (t) => String(t.id) === String(id) && (t.type || '').toLowerCase() === (type || '').toLowerCase()
+    )
+    setDeleteTarget({
+      id,
+      type: type || 'expense',
+      note: item?.note || item?.title || item?.category || 'this transaction',
+      amount: item?.amount || item?.amt || 0,
+    })
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return
+    const { id, type } = deleteTarget
+    setDeleteTarget(null)
+    if (onDeleteTransaction) {
+      await onDeleteTransaction(id, type)
+    }
+  }
+
+  // Filter transactions for this month (default fallback)
   const monthTransactions = useMemo(() => {
     return transactions.filter((t) => {
-      const d = t.date || t.spent_on || t.received_on
+      const d = normalizeDateStr(t.date || t.spent_on || t.received_on)
       if (!d) return false
       const [y, m] = d.split('-').map(Number)
       return y === month.year && m === month.month + 1
     })
   }, [transactions, month])
+
+  const hasCustomDateRange = Boolean(startDate || endDate)
+
+  // Scope transactions: When a custom date range is set, search across all transactions
+  // allowing data from previous or next months to be shown; otherwise default to monthTransactions
+  const scopedTransactions = useMemo(() => {
+    if (hasCustomDateRange) {
+      const normStart = normalizeDateStr(startDate)
+      const normEnd = normalizeDateStr(endDate)
+      return transactions.filter((t) => {
+        const d = normalizeDateStr(t.date || t.spent_on || t.received_on)
+        if (!d) return false
+        if (normStart && d < normStart) return false
+        if (normEnd && d > normEnd) return false
+        return true
+      })
+    }
+    return monthTransactions
+  }, [hasCustomDateRange, startDate, endDate, transactions, monthTransactions])
 
   // Reset pagination to page 1 whenever any filter or search changes
   const filterKey = `${typeFilter}-${categoryFilter}-${search}-${walletFilter}-${minAmount}-${maxAmount}-${startDate}-${endDate}-${paymentMethodFilter}-${monthKey}`
@@ -51,33 +98,33 @@ export function Transactions({
     setCurrentPage(1)
   }
 
-  // Compute month KPIs
+  // Compute KPIs for active scope
   const totalIncome = useMemo(() => {
-    return monthTransactions
+    return scopedTransactions
       .filter((t) => (t.type || '').toLowerCase() === 'income')
       .reduce((sum, t) => sum + Number(t.amount || t.amt || 0), 0)
-  }, [monthTransactions])
+  }, [scopedTransactions])
 
   const totalExpense = useMemo(() => {
-    return monthTransactions
+    return scopedTransactions
       .filter((t) => (t.type || '').toLowerCase() === 'expense')
       .reduce((sum, t) => sum + Number(t.amount || t.amt || 0), 0)
-  }, [monthTransactions])
+  }, [scopedTransactions])
 
-  const totalTransfers = useMemo(() => {
-    return monthTransactions
+  const _totalTransfers = useMemo(() => {
+    return scopedTransactions
       .filter((t) => (t.type || '').toLowerCase() === 'transfer')
       .reduce((sum, t) => sum + Number(t.amount || t.amt || 0), 0)
-  }, [monthTransactions])
+  }, [scopedTransactions])
 
   const netCashFlow = totalIncome - totalExpense
-  const incomeCount = monthTransactions.filter((t) => (t.type || '').toLowerCase() === 'income').length
-  const expenseCount = monthTransactions.filter((t) => (t.type || '').toLowerCase() === 'expense').length
-  const transferCount = monthTransactions.filter((t) => (t.type || '').toLowerCase() === 'transfer').length
+  const incomeCount = scopedTransactions.filter((t) => (t.type || '').toLowerCase() === 'income').length
+  const expenseCount = scopedTransactions.filter((t) => (t.type || '').toLowerCase() === 'expense').length
+  const transferCount = scopedTransactions.filter((t) => (t.type || '').toLowerCase() === 'transfer').length
 
   // Filter and sort for the table
   const visibleTransactions = useMemo(() => {
-    let rows = monthTransactions
+    let rows = scopedTransactions
 
     // 1. Filter by type
     if (typeFilter === 'income') {
@@ -110,21 +157,7 @@ export function Transactions({
       )
     }
 
-    // 5. Filter by Date Range
-    if (startDate) {
-      rows = rows.filter((t) => {
-        const d = t.date || t.spent_on || t.received_on || ''
-        return d >= startDate
-      })
-    }
-    if (endDate) {
-      rows = rows.filter((t) => {
-        const d = t.date || t.spent_on || t.received_on || ''
-        return d <= endDate
-      })
-    }
-
-    // 6. Filter by Min / Max Amount
+    // 5. Filter by Min / Max Amount
     if (minAmount !== '' && !isNaN(Number(minAmount))) {
       const min = Number(minAmount)
       rows = rows.filter((t) => Number(t.amount || t.amt || 0) >= min)
@@ -134,12 +167,6 @@ export function Transactions({
       rows = rows.filter((t) => Number(t.amount || t.amt || 0) <= max)
     }
 
-    // 7. Filter by Payment Method
-    if (paymentMethodFilter && paymentMethodFilter !== 'all') {
-      const pm = paymentMethodFilter.toLowerCase()
-      rows = rows.filter((t) => (t.payment_method || '').toLowerCase() === pm)
-    }
-
     // Sort
     return [...rows].sort((a, b) => {
       if (sort.key === 'amt' || sort.key === 'amount') {
@@ -147,22 +174,19 @@ export function Transactions({
         const valB = Number(b.amount || b.amt || 0)
         return (valA - valB) * sort.direction
       }
-      const dateA = a.date || a.spent_on || a.received_on || ''
-      const dateB = b.date || b.spent_on || b.received_on || ''
+      const dateA = normalizeDateStr(a.date || a.spent_on || a.received_on)
+      const dateB = normalizeDateStr(b.date || b.spent_on || b.received_on)
       const comp = dateA.localeCompare(dateB) || a.id - b.id
       return comp * sort.direction
     })
   }, [
-    monthTransactions,
+    scopedTransactions,
     typeFilter,
     categoryFilter,
     search,
     walletFilter,
-    startDate,
-    endDate,
     minAmount,
     maxAmount,
-    paymentMethodFilter,
     sort,
   ])
 
@@ -228,34 +252,69 @@ export function Transactions({
     })
   }
 
+  // Check if any filter is actively applied on the transactions view
+  const isFilterApplied = useMemo(() => {
+    return Boolean(
+      (typeFilter && typeFilter.toLowerCase() !== 'all') ||
+      (categoryFilter && categoryFilter !== 'All') ||
+      (search && search.trim() !== '') ||
+      (walletFilter && walletFilter !== 'all') ||
+      (minAmount !== '' && !isNaN(Number(minAmount))) ||
+      (maxAmount !== '' && !isNaN(Number(maxAmount))) ||
+      startDate ||
+      endDate
+    )
+  }, [typeFilter, categoryFilter, search, walletFilter, minAmount, maxAmount, startDate, endDate])
+
   const handleExportCsv = () => {
-    const filename = `pocket_ledger_transactions_${monthKey}.csv`
-    exportTransactionsToCsv(visibleTransactions, filename)
+    // If any filter is applied on the table, export only the filtered data;
+    // otherwise default to all transactions for that month
+    const exportData = isFilterApplied ? visibleTransactions : monthTransactions
+
+    if (!exportData || exportData.length === 0) {
+      alert(
+        isFilterApplied
+          ? 'No matching filtered transactions to export.'
+          : 'No transactions found for this month to export.'
+      )
+      return
+    }
+
+    let filename = `pocket_ledger_transactions_${monthKey}.csv`
+    if (isFilterApplied) {
+      if (hasCustomDateRange) {
+        filename = `pocket_ledger_filtered_${startDate || 'start'}_to_${endDate || 'end'}.csv`
+      } else {
+        filename = `pocket_ledger_filtered_${monthKey}.csv`
+      }
+    }
+
+    exportTransactionsToCsv(exportData, filename)
   }
 
   return (
     <section className="view on" id="v-transactions" aria-label="Transactions ledger">
       {/* KPI Cards */}
       <div className="kpis">
-        <div className="card kpi">
+        <div className={`card kpi ${netCashFlow >= 0 ? 'kpi-pos' : 'kpi-neg'}`}>
           <span>Net Cash Flow</span>
           <b className={netCashFlow >= 0 ? 'pos' : 'neg'}>
             {netCashFlow >= 0 ? '+' : '-'}
             {money(Math.abs(netCashFlow), currency)}
           </b>
         </div>
-        <div className="card kpi">
+        <div className="card kpi kpi-income">
           <span>Total Income</span>
           <b className="pos">+{money(totalIncome, currency)}</b>
         </div>
-        <div className="card kpi">
+        <div className="card kpi kpi-expense">
           <span>Total Expenses</span>
           <b className="neg">-{money(totalExpense, currency)}</b>
         </div>
-        <div className="card kpi">
-          <span>Total Transactions</span>
+        <div className="card kpi kpi-primary">
+          <span>{hasCustomDateRange ? 'Filtered Transactions' : 'Total Transactions'}</span>
           <b>
-            {monthTransactions.length}{' '}
+            {scopedTransactions.length}{' '}
             <small style={{ fontSize: '11px', fontWeight: 'normal', color: 'var(--mute)' }}>
               ({incomeCount} inc · {expenseCount} exp)
             </small>
@@ -264,6 +323,60 @@ export function Transactions({
       </div>
 
       <div className="card">
+        {/* Custom Date Range Active Indicator */}
+        {hasCustomDateRange && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '9px 14px',
+              borderRadius: 'var(--pl-radius-md)',
+              background: 'var(--pl-color-primary-soft)',
+              border: '1px solid var(--pl-color-primary)',
+              color: 'var(--pl-text-primary)',
+              fontSize: '12px',
+              fontWeight: 600,
+              marginBottom: '14px',
+              gap: '10px',
+              flexWrap: 'wrap',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                <line x1="16" y1="2" x2="16" y2="6" />
+                <line x1="8" y1="2" x2="8" y2="6" />
+                <line x1="3" y1="10" x2="21" y2="10" />
+              </svg>
+              <span>
+                Date Filter Active: <b>{startDate || 'Any start date'}</b> to <b>{endDate || 'Any end date'}</b> ({visibleTransactions.length} matching transactions from all months)
+              </span>
+            </div>
+            {setStartDate && setEndDate && (
+              <button
+                type="button"
+                className="ghost"
+                onClick={() => {
+                  setStartDate('')
+                  setEndDate('')
+                }}
+                style={{
+                  fontSize: '11.5px',
+                  fontWeight: 700,
+                  padding: '2px 10px',
+                  minHeight: '26px',
+                  color: 'var(--pl-color-primary)',
+                  borderColor: 'currentColor',
+                  cursor: 'pointer',
+                }}
+              >
+                Clear Date Filter
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Module Toolbar: Type Tabs & CSV Actions */}
         <div
           style={{
@@ -288,7 +401,7 @@ export function Transactions({
                 setCategoryFilter('All')
               }}
             >
-              All ({monthTransactions.length})
+              All ({scopedTransactions.length})
             </button>
             <button
               type="button"
@@ -379,31 +492,12 @@ export function Transactions({
                 height: '34px',
                 fontSize: '12px',
               }}
-              onClick={openCsvModal}
-              title="Import bank statements or CSV file"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="17 8 12 3 7 8" />
-                <line x1="12" y1="3" x2="12" y2="15" />
-              </svg>
-              <span>Import</span>
-            </button>
-
-            <button
-              type="button"
-              className="ghost"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '5px',
-                padding: '0 12px',
-                minHeight: '34px',
-                height: '34px',
-                fontSize: '12px',
-              }}
               onClick={handleExportCsv}
-              title="Export current transactions as CSV"
+              title={
+                isFilterApplied
+                  ? `Export ${visibleTransactions.length} filtered transactions as CSV`
+                  : `Export all ${monthTransactions.length} transactions for this month as CSV`
+              }
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -411,29 +505,6 @@ export function Transactions({
                 <line x1="12" y1="15" x2="12" y2="3" />
               </svg>
               <span>Export</span>
-            </button>
-
-            <button
-              type="button"
-              className="ghost"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '5px',
-                padding: '0 12px',
-                minHeight: '34px',
-                height: '34px',
-                fontSize: '12px',
-                color: 'var(--pl-color-primary)',
-                borderColor: 'var(--pl-color-primary)',
-                background: 'var(--pl-color-primary-soft)',
-                fontWeight: 700,
-              }}
-              onClick={() => openTransactionDialog(null, 'transfer')}
-              title="Transfer funds between accounts"
-            >
-              <span aria-hidden="true" style={{ fontSize: '13px' }}>⇄</span>
-              <span>Transfer</span>
             </button>
           </div>
         </div>
@@ -445,7 +516,7 @@ export function Transactions({
           currency={currency}
           onSort={onSort}
           onEdit={openTransactionDialog}
-          onDelete={onDeleteTransaction}
+          onDelete={handleRequestDelete}
         />
 
         {/* Pagination Bar */}
@@ -496,6 +567,18 @@ export function Transactions({
           </div>
         )}
       </div>
+
+      {/* Delete Transaction Confirmation Alert */}
+      <ConfirmModal
+        isOpen={Boolean(deleteTarget)}
+        title="Delete Transaction?"
+        message={`Are you sure you want to delete "${deleteTarget?.note}" (${money(deleteTarget?.amount || 0, currency)})? This will permanently remove the record from your ledger.`}
+        confirmText="Delete Transaction"
+        cancelText="Cancel"
+        variant="danger"
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </section>
   )
 }

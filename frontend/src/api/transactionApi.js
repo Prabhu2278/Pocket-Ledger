@@ -13,12 +13,14 @@ export const transactionApi = {
   async getTransactions(params = {}) {
     const query = new URLSearchParams()
     if (params.month_key) query.append('month_key', params.month_key)
+    if (params.start_date) query.append('start_date', params.start_date)
+    if (params.end_date) query.append('end_date', params.end_date)
     if (params.type && params.type !== 'all') query.append('type', params.type)
     if (params.category && params.category !== 'All') query.append('category', params.category)
     if (params.search) query.append('search', params.search)
     if (params.sort_by) query.append('sort_by', params.sort_by)
     if (params.sort_order) query.append('sort_order', params.sort_order)
-    query.append('limit', '1000')
+    query.append('limit', String(params.limit || 5000))
 
     const res = await fetch(`${API_BASE}/api/transactions?${query.toString()}`, {
       headers: authApi.getAuthHeaders(),

@@ -22,22 +22,22 @@ export function Expenses({
   return (
     <section className="view on" id="v1" aria-label="Expenses module">
       <div className="kpis">
-        <div className="card kpi">
+        <div className="card kpi kpi-expense">
           <span>Spent this month</span>
-          <b id="k1">{money(totalSpent, currency)}</b>
+          <b id="k1" className="neg">-{money(totalSpent, currency)}</b>
         </div>
-        <div className="card kpi">
+        <div className={`card kpi ${budgetLeft >= 0 ? 'kpi-pos' : 'kpi-neg'}`}>
           <span>Left in budget</span>
-          <b id="k2">
-            {budgetLeft < 0 ? '-' : ''}
+          <b id="k2" className={budgetLeft >= 0 ? 'pos' : 'neg'}>
+            {budgetLeft < 0 ? '-' : '+'}
             {money(Math.abs(budgetLeft), currency)}
           </b>
         </div>
-        <div className="card kpi">
+        <div className="card kpi kpi-purple">
           <span>Transactions</span>
           <b id="k3">{monthTransactions.length}</b>
         </div>
-        <div className="card kpi">
+        <div className="card kpi kpi-warning">
           <span>Biggest category</span>
           <b id="k4">{biggestCategory}</b>
         </div>

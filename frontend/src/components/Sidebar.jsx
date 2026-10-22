@@ -1,18 +1,10 @@
 import React from 'react'
-import { money } from '../utils/formatCurrency'
 
 export function Sidebar({
   page,
-  month,
-  changeMonth,
-  totalSpent = 0,
-  budget = 20000,
-  budgetPercent = 0,
-  currency = 'INR',
   user = null,
   onLogout,
 }) {
-  const clampedPct = Math.min(Math.max(budgetPercent, 0), 1)
   const isTxnActive = page === 'transactions' || page === 'expenses' || page === 'income'
 
   return (
@@ -103,16 +95,6 @@ export function Sidebar({
           Settings
         </a>
       </nav>
-
-      <div className="sidebud">
-        <span>Budget used</span>
-        <b id="sbtxt">
-          {money(totalSpent, currency)} of {money(budget, currency)}
-        </b>
-        <div className="meter">
-          <i id="sbbar" style={{ width: `${clampedPct * 100}%` }}></i>
-        </div>
-      </div>
 
       {user ? (
         <div className="side-user">

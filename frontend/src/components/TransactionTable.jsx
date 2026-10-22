@@ -45,7 +45,7 @@ export function TransactionTable({
             {renderTh('date', 'Date')}
             <th>Description</th>
             <th className="hide-s">Category</th>
-            <th className="hide-s">Account</th>
+            <th className="hide-s">Wallet</th>
             <th>Type</th>
             {renderTh('amt', 'Amount', true)}
             <th>
@@ -119,7 +119,11 @@ export function TransactionTable({
                     }}
                     title={accountDisplay}
                   >
-                    💳 {accountDisplay}
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
+                      <rect x="2" y="5" width="20" height="14" rx="2" />
+                      <line x1="2" y1="10" x2="22" y2="10" />
+                    </svg>
+                    <span>{accountDisplay}</span>
                   </span>
                 </td>
                 <td>
@@ -151,7 +155,7 @@ export function TransactionTable({
                   style={{
                     whiteSpace: 'nowrap',
                     fontWeight: 800,
-                    fontSize: '13px',
+                    fontSize: '12px',
                     fontVariantNumeric: 'tabular-nums',
                     fontFamily: "'JetBrains Mono', monospace",
                     color: isTransfer ? 'var(--pl-text-primary)' : undefined,
@@ -168,7 +172,10 @@ export function TransactionTable({
                     title="Edit transaction"
                     onClick={() => onEdit(tx)}
                   >
-                    ✎
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                    </svg>
                   </button>
                   <button
                     className="rowbtn del"
@@ -177,7 +184,10 @@ export function TransactionTable({
                     title="Delete transaction"
                     onClick={() => onDelete(tx.id, tx.type)}
                   >
-                    ✕
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
                   </button>
                 </td>
               </tr>

@@ -4,13 +4,15 @@ from datetime import datetime, date, timedelta
 import calendar
 from typing import Optional, List
 
-from app.models import User, Expense, Income, Budget
+from app.models import User, Expense, Income, Budget, Setting
 from app.models.wallet import Wallet
 from fastapi import HTTPException
 from app.schemas import (
     UserRegister,
     UserUpdate,
     UserResponse,
+    SettingsUpdate,
+    SettingsResponse,
     ExpenseCreate,
     ExpenseUpdate,
     ExpenseResponse,
@@ -54,11 +56,22 @@ def create_user(db: Session, user_in: UserRegister) -> User:
         email=email_clean,
         username=email_clean.split("@")[0],
         password=hash_password(user_in.password),
-        currency="INR"
+        currency="INR",
+        theme="dark",
     )
     db.add(user)
     db.commit()
     db.refresh(user)
+
+    # Automatically create user setting record
+    setting = Setting(
+        user_id=user.id,
+        theme="dark",
+        currency="INR",
+    )
+    db.add(setting)
+    db.commit()
+
     return user
 
 def authenticate_user(db: Session, email_or_username: str, password: str) -> Optional[User]:
@@ -84,9 +97,81 @@ def update_user(db: Session, user_id: int, user_in: UserUpdate) -> Optional[User
         user.full_name = user_in.full_name.strip()
     if user_in.currency is not None:
         user.currency = user_in.currency.strip().upper()
+    if user_in.theme is not None:
+        user.theme = user_in.theme.strip().lower()
+
+    # Sync with settings table
+    setting = db.query(Setting).filter(Setting.user_id == user_id).first()
+    if not setting:
+        setting = Setting(
+            user_id=user_id,
+            theme=user.theme or "dark",
+            currency=user.currency or "INR",
+        )
+        db.add(setting)
+    else:
+        if user_in.theme is not None:
+            setting.theme = user_in.theme.strip().lower()
+        if user_in.currency is not None:
+            setting.currency = user_in.currency.strip().upper()
+
     db.commit()
     db.refresh(user)
     return user
+
+def get_user_settings(db: Session, user_id: Optional[int]) -> Setting:
+    if user_id:
+        setting = db.query(Setting).filter(Setting.user_id == user_id).first()
+        if setting:
+            return setting
+        # If user exists but no settings row, create one
+        user = get_user_by_id(db, user_id)
+        if user:
+            setting = Setting(
+                user_id=user_id,
+                theme=user.theme or "dark",
+                currency=user.currency or "INR",
+            )
+            db.add(setting)
+            db.commit()
+            db.refresh(setting)
+            return setting
+
+    return Setting(id=0, user_id=None, theme="dark", currency="INR")
+
+def update_user_settings(db: Session, user_id: Optional[int], update_in: SettingsUpdate) -> Setting:
+    if user_id:
+        setting = db.query(Setting).filter(Setting.user_id == user_id).first()
+        user = get_user_by_id(db, user_id)
+        if not setting:
+            setting = Setting(
+                user_id=user_id,
+                theme=(update_in.theme or (user.theme if user else "dark") or "dark").strip().lower(),
+                currency=(update_in.currency or (user.currency if user else "INR") or "INR").strip().upper(),
+            )
+            db.add(setting)
+        else:
+            if update_in.theme is not None:
+                setting.theme = update_in.theme.strip().lower()
+            if update_in.currency is not None:
+                setting.currency = update_in.currency.strip().upper()
+
+        if user:
+            if update_in.theme is not None:
+                user.theme = update_in.theme.strip().lower()
+            if update_in.currency is not None:
+                user.currency = update_in.currency.strip().upper()
+
+        db.commit()
+        db.refresh(setting)
+        return setting
+
+    return Setting(
+        id=0,
+        user_id=None,
+        theme=(update_in.theme or "dark").strip().lower(),
+        currency=(update_in.currency or "INR").strip().upper(),
+    )
 
 def change_user_password(db: Session, user_id: int, current_pw: str, new_pw: str) -> bool:
     user = get_user_by_id(db, user_id)

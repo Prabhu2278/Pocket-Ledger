@@ -1,10 +1,11 @@
 from fastapi import APIRouter
-from app.routers import auth, transactions, wallets, expenses, income, insights
+from app.routers import auth, transactions, wallets, expenses, income, insights, settings
 from app.api.v1.endpoints import csv_tools, health, analytics
 
 api_router = APIRouter()
 
 api_router.include_router(auth.router, prefix="", tags=["Authentication"])
+api_router.include_router(settings.router, prefix="", tags=["Settings"])
 api_router.include_router(transactions.router, prefix="", tags=["Transactions"])
 api_router.include_router(wallets.router, prefix="", tags=["Wallets"])
 api_router.include_router(expenses.router, prefix="", tags=["Expenses"])

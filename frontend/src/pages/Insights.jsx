@@ -68,22 +68,22 @@ export function Insights({
     <section className="view on" id="v-insights" aria-label="Dashboard module">
       {/* Cash Flow Summary Cards */}
       <div className="kpis">
-        <div className="card kpi">
+        <div className="card kpi kpi-income">
           <span>Total Income</span>
           <b className="pos">+{money(totalIncome, currency)}</b>
         </div>
-        <div className="card kpi">
+        <div className="card kpi kpi-expense">
           <span>Total Expenses</span>
           <b className="neg">-{money(totalSpent, currency)}</b>
         </div>
-        <div className="card kpi">
+        <div className={`card kpi ${netCashFlow >= 0 ? 'kpi-pos' : 'kpi-neg'}`}>
           <span>Net Cash Flow</span>
           <b className={netCashFlow >= 0 ? 'pos' : 'neg'}>
             {netCashFlow >= 0 ? '+' : '-'}
             {money(Math.abs(netCashFlow), currency)}
           </b>
         </div>
-        <div className="card kpi">
+        <div className="card kpi kpi-primary">
           <span>Savings Rate</span>
           <b>
             {totalIncome > 0

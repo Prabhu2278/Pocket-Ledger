@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import { money } from '../utils/formatCurrency'
 import './Wallets.css'
 
@@ -21,6 +21,18 @@ export function Wallets({
   const [modalOpen, setModalOpen] = useState(false)
   const [editingWallet, setEditingWallet] = useState(null)
   const [deletingId, setDeletingId] = useState(null)
+
+  // Scroll Lock: disable background/outside scrolling when modal is open
+  useEffect(() => {
+    if (modalOpen || deletingId) {
+      document.body.classList.add('modal-open')
+      document.documentElement.classList.add('modal-open')
+    }
+    return () => {
+      document.body.classList.remove('modal-open')
+      document.documentElement.classList.remove('modal-open')
+    }
+  }, [modalOpen, deletingId])
 
   // Form states
   const [name, setName] = useState('')
@@ -137,29 +149,37 @@ export function Wallets({
         </button>
       </div>
 
-      {/* KPI Cards */}
+      {/* KPI Cards (Row 1) */}
       <div className="wallets-kpis">
-        <div className="card kpi">
-          <span>Total Balance</span>
-          <b className={totalBalance >= 0 ? 'pos' : 'neg'}>
+        <div className="wallets-kpi-card" style={{ '--kpi-accent': '#10b981' }}>
+          <span className="wallets-kpi-label">TOTAL BALANCE</span>
+          <b className={`wallets-kpi-value ${totalBalance >= 0 ? 'pos' : 'neg'}`}>
             {money(totalBalance, currency)}
           </b>
         </div>
-        <div className="card kpi">
-          <span>Bank Accounts</span>
-          <b>{money(bankTotal, currency)}</b>
+        <div className="wallets-kpi-card" style={{ '--kpi-accent': '#3b82f6' }}>
+          <span className="wallets-kpi-label">BANK ACCOUNTS</span>
+          <b className="wallets-kpi-value">{money(bankTotal, currency)}</b>
         </div>
-        <div className="card kpi">
-          <span>UPI & Digital</span>
-          <b>{money(digitalTotal, currency)}</b>
+        <div className="wallets-kpi-card" style={{ '--kpi-accent': '#8b5cf6' }}>
+          <span className="wallets-kpi-label">UPI & DIGITAL</span>
+          <b className="wallets-kpi-value">{money(digitalTotal, currency)}</b>
         </div>
-        <div className="card kpi">
-          <span>Cash</span>
-          <b>{money(cashTotal, currency)}</b>
+        <div className="wallets-kpi-card" style={{ '--kpi-accent': '#f59e0b' }}>
+          <span className="wallets-kpi-label">CASH</span>
+          <b className="wallets-kpi-value">{money(cashTotal, currency)}</b>
         </div>
       </div>
 
-      {/* Wallet Cards Grid */}
+      {/* Row Separation Divider & Section Header */}
+      <div className="wallets-section-divider">
+        <div className="wallets-section-title-wrap">
+          <h3 className="wallets-section-title">My Wallets & Accounts</h3>
+          <span className="wallets-section-badge">{wallets.length} active</span>
+        </div>
+      </div>
+
+      {/* Wallet Cards Grid (Row 2) */}
       {wallets.length === 0 ? (
         <div className="card empty">
           <b>No wallets found</b>
@@ -172,9 +192,17 @@ export function Wallets({
             const typeObj = WALLET_TYPES.find((t) => t.id === (w.wallet_type || 'BANK')) || {
               label: w.wallet_type || 'Account',
             }
+            const typeKey = (w.wallet_type || 'BANK').toLowerCase()
+            const badgeClass = typeKey.includes('bank')
+              ? 'bank'
+              : typeKey.includes('cash')
+              ? 'cash'
+              : typeKey.includes('credit')
+              ? 'credit'
+              : 'digital'
 
             return (
-              <div key={w.id} className="wallet-tile" style={{ borderTop: `4px solid ${w.color || '#10b981'}` }}>
+              <div key={w.id} className="wallet-tile" style={{ '--wallet-border-color': w.color || '#10b981' }}>
                 <div className="wallet-tile-header">
                   <div className="wallet-tile-name-group">
                     <span className="wallet-color-dot" style={{ background: w.color || '#10b981' }}></span>
@@ -182,7 +210,7 @@ export function Wallets({
                       {w.name}
                     </span>
                   </div>
-                  <span className="wallet-badge">{typeObj.label}</span>
+                  <span className={`wallet-badge ${badgeClass}`}>{typeObj.label}</span>
                 </div>
 
                 <div className="wallet-balance-box">
@@ -204,7 +232,11 @@ export function Wallets({
                     onClick={() => openEditModal(w)}
                     aria-label={`Edit ${w.name}`}
                   >
-                    ✏️ Edit
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ marginRight: '3px' }}>
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                    </svg>
+                    Edit
                   </button>
                   <button
                     type="button"
@@ -212,12 +244,28 @@ export function Wallets({
                     onClick={() => setDeletingId(w.id)}
                     aria-label={`Delete ${w.name}`}
                   >
-                    🗑️ Delete
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ marginRight: '3px' }}>
+                      <polyline points="3 6 5 6 21 6" />
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                    </svg>
+                    Delete
                   </button>
                 </div>
               </div>
             )
           })}
+
+          {/* Add Account Dashed Card inside grid */}
+          <button
+            type="button"
+            className="wallet-add-tile"
+            onClick={openAddModal}
+            aria-label="Add new account"
+          >
+            <div className="wallet-add-icon" aria-hidden="true">+</div>
+            <span className="wallet-add-title">Add New Account</span>
+            <span className="wallet-add-sub">Connect bank, cash, or digital</span>
+          </button>
         </div>
       )}
 

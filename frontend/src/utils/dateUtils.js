@@ -41,8 +41,26 @@ export function shiftMonth(monthKey, delta) {
   return formatMonthKey(d)
 }
 
+export function normalizeDateStr(raw) {
+  if (!raw) return ''
+  const str = String(raw).trim()
+  if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
+    return str.slice(0, 10)
+  }
+  if (/^\d{2}-\d{2}-\d{4}/.test(str)) {
+    const [dd, mm, yyyy] = str.slice(0, 10).split('-')
+    return `${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`
+  }
+  if (/^\d{2}\/\d{2}\/\d{4}/.test(str)) {
+    const [dd, mm, yyyy] = str.slice(0, 10).split('/')
+    return `${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`
+  }
+  return str.slice(0, 10)
+}
+
 export default {
   isoDate,
+  normalizeDateStr,
   formatDisplayDate,
   formatMonthDisplay,
   formatMonthKey,

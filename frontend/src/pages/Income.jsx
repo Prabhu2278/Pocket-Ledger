@@ -25,21 +25,21 @@ export function Income({
   return (
     <section className="view on" id="v-income" aria-label="Income module">
       <div className="kpis">
-        <div className="card kpi">
+        <div className="card kpi kpi-income">
           <span>Income this month</span>
           <b id="k-inc-1" className="pos">
             +{money(totalIncome, currency)}
           </b>
         </div>
-        <div className="card kpi">
+        <div className="card kpi kpi-primary">
           <span>Top source</span>
           <b id="k-inc-2">{topSource}</b>
         </div>
-        <div className="card kpi">
+        <div className="card kpi kpi-purple">
           <span>Transactions</span>
           <b id="k-inc-3">{count}</b>
         </div>
-        <div className="card kpi">
+        <div className="card kpi kpi-income">
           <span>Average income</span>
           <b id="k-inc-4">{money(avg, currency)}</b>
         </div>

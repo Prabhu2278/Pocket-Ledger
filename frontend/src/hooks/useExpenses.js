@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
-import { isoDate } from '../utils/dateUtils'
+import { isoDate, normalizeDateStr } from '../utils/dateUtils'
 import { transactionApi } from '../services/transactionApi'
 import { expenseApi } from '../services/expenseApi'
 import { authApi } from '../services/authApi'
 import { walletApi } from '../services/walletApi'
+import { settingsApi } from '../services/settingsApi'
 
 export function useExpenses() {
   const now = useMemo(() => new Date(), [])
@@ -19,7 +20,8 @@ export function useExpenses() {
       if (hash.includes('income')) return 'transactions'
       if (hash.includes('expenses')) return 'transactions'
       if (hash.includes('transactions')) return 'transactions'
-      if (hash.includes('dashboard') || hash.includes('insights')) return 'dashboard'
+      if (hash.includes('dashboard')) return 'dashboard'
+      if (hash.includes('insights')) return 'insights'
       if (hash.includes('wallets')) return 'wallets'
       if (hash.includes('settings')) return 'settings'
       if (hash.includes('register')) return 'register'
@@ -72,7 +74,6 @@ export function useExpenses() {
     if (maxAmount !== '') count++
     if (startDate !== '') count++
     if (endDate !== '') count++
-    if (paymentMethodFilter && paymentMethodFilter !== 'all') count++
     return count
   }, [
     typeFilter,
@@ -82,7 +83,6 @@ export function useExpenses() {
     maxAmount,
     startDate,
     endDate,
-    paymentMethodFilter,
   ])
 
   // Theme state
@@ -97,8 +97,11 @@ export function useExpenses() {
     setThemeState(newTheme)
     if (typeof document !== 'undefined') {
       document.documentElement.setAttribute('data-theme', newTheme)
+      document.body?.setAttribute('data-theme', newTheme)
       localStorage.setItem('pocket_ledger_theme', newTheme)
     }
+    // Persist to database
+    settingsApi.updateSettings({ theme: newTheme }).catch(() => {})
   }, [])
 
   const toggleTheme = useCallback(() => {
@@ -108,6 +111,7 @@ export function useExpenses() {
   useEffect(() => {
     if (typeof document !== 'undefined') {
       document.documentElement.setAttribute('data-theme', theme)
+      document.body?.setAttribute('data-theme', theme)
     }
   }, [theme])
 
@@ -129,7 +133,42 @@ export function useExpenses() {
     if (typeof window !== 'undefined') {
       localStorage.setItem('pocket_ledger_currency', curr)
     }
+    // Persist to database
+    settingsApi.updateSettings({ currency: curr }).catch(() => {})
+    if (authApi.getUser()) {
+      authApi.updateProfile({ currency: curr }).catch(() => {})
+    }
   }, [])
+
+  // Synchronize settings with database on startup or auth changes
+  useEffect(() => {
+    let isMounted = true
+    async function syncRemoteSettings() {
+      try {
+        const remote = await settingsApi.getSettings()
+        if (remote && isMounted) {
+          if (remote.theme) {
+            setThemeState(remote.theme)
+            if (typeof document !== 'undefined') {
+              document.documentElement.setAttribute('data-theme', remote.theme)
+              document.body?.setAttribute('data-theme', remote.theme)
+              localStorage.setItem('pocket_ledger_theme', remote.theme)
+            }
+          }
+          if (remote.currency) {
+            setCurrencyState(remote.currency)
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('pocket_ledger_currency', remote.currency)
+            }
+          }
+        }
+      } catch {
+        // silent fallback to localStorage
+      }
+    }
+    syncRemoteSettings()
+    return () => { isMounted = false }
+  }, [user])
 
   // Unified Data state
   const [transactions, setTransactions] = useState([])
@@ -174,8 +213,10 @@ export function useExpenses() {
       } else if (hash.includes('transactions')) {
         setPage('transactions')
         setTypeFilter('all')
-      } else if (hash.includes('dashboard') || hash.includes('insights')) {
+      } else if (hash.includes('dashboard')) {
         setPage('dashboard')
+      } else if (hash.includes('insights')) {
+        setPage('insights')
       } else if (hash.includes('wallets')) {
         setPage('wallets')
       } else if (hash.includes('settings')) {
@@ -213,12 +254,12 @@ export function useExpenses() {
       .catch(() => { })
   }, [])
 
-  // Load from FastAPI backend (Unified Transactions, Budget, Insights, Wallets)
+  // Load from FastAPI backend (Unified Transactions across all months, Budget, Insights, Wallets)
   const loadData = useCallback(async () => {
     setLoading(true)
     try {
       const [txsResp, budgetResp, insightsResp, walletsResp] = await Promise.allSettled([
-        transactionApi.getTransactions({ month_key: monthKey }),
+        transactionApi.getTransactions({ limit: 5000 }),
         expenseApi.getBudget(monthKey),
         expenseApi.getInsights(monthKey),
         walletApi.getWallets(),
@@ -262,12 +303,81 @@ export function useExpenses() {
   // Month-scoped transactions
   const monthTransactions = useMemo(() => {
     return transactions.filter((t) => {
-      const d = t.date || t.spent_on || t.received_on
+      const d = normalizeDateStr(t.date || t.spent_on || t.received_on)
       if (!d) return false
       const [y, m] = d.split('-').map(Number)
       return y === month.year && m === month.month + 1
     })
   }, [transactions, month])
+
+  // Live count of transactions matching active filter criteria (for the Filter Drawer Apply button)
+  const totalFilteredCount = useMemo(() => {
+    // If custom date range is set, query across all transactions; otherwise query monthTransactions
+    let rows = (startDate || endDate) ? transactions : monthTransactions
+    const normStart = normalizeDateStr(startDate)
+    const normEnd = normalizeDateStr(endDate)
+
+    // 1. Type filter
+    if (typeFilter && typeFilter !== 'all') {
+      const tf = typeFilter.toLowerCase()
+      rows = rows.filter((t) => (t.type || '').toLowerCase() === tf)
+    }
+
+    // 2. Category filter
+    if (categoryFilter && categoryFilter !== 'All') {
+      rows = rows.filter((t) => (t.category || t.cat) === categoryFilter)
+    }
+
+    // 3. Search query
+    if (search && search.trim()) {
+      const q = search.trim().toLowerCase()
+      rows = rows.filter((t) => {
+        const text = `${t.note || t.title || ''} ${t.category || t.cat || ''} ${t.type || ''}`.toLowerCase()
+        return text.includes(q)
+      })
+    }
+
+    // 4. Wallet filter
+    if (walletFilter && walletFilter !== 'all') {
+      const wId = String(walletFilter)
+      rows = rows.filter((t) => String(t.wallet_id) === wId || String(t.to_wallet_id) === wId)
+    }
+
+    // 5. Date range (can span previous months or next months)
+    if (normStart) {
+      rows = rows.filter((t) => {
+        const d = normalizeDateStr(t.date || t.spent_on || t.received_on)
+        return d >= normStart
+      })
+    }
+    if (normEnd) {
+      rows = rows.filter((t) => {
+        const d = normalizeDateStr(t.date || t.spent_on || t.received_on)
+        return d <= normEnd
+      })
+    }
+
+    // 6. Min / Max Amount
+    if (minAmount !== '' && !isNaN(Number(minAmount))) {
+      rows = rows.filter((t) => Number(t.amount || t.amt || 0) >= Number(minAmount))
+    }
+    if (maxAmount !== '' && !isNaN(Number(maxAmount))) {
+      rows = rows.filter((t) => Number(t.amount || t.amt || 0) <= Number(maxAmount))
+    }
+
+    return rows.length
+  }, [
+    transactions,
+    monthTransactions,
+    startDate,
+    endDate,
+    typeFilter,
+    categoryFilter,
+    search,
+    walletFilter,
+    minAmount,
+    maxAmount,
+  ])
 
   // Total Income
   const totalIncome = useMemo(() => {
@@ -414,7 +524,7 @@ export function useExpenses() {
         setEditingId(null)
         setTxnType(defaultType)
         setAmount('')
-        setCategory(defaultType === 'income' ? 'Salary' : defaultType === 'transfer' ? 'Transfer' : 'Food')
+        setCategory(defaultType === 'transfer' ? 'Transfer' : '')
         setNote('')
         setDate(isoDate(new Date()))
         if (wallets.length > 0) {
@@ -437,6 +547,10 @@ export function useExpenses() {
       const numericAmount = parseFloat(amount)
       if (isNaN(numericAmount) || numericAmount <= 0) {
         setFormError('Enter an amount greater than 0.')
+        return
+      }
+      if (txnType !== 'transfer' && (!category || !category.trim())) {
+        setFormError('Please select or enter a category.')
         return
       }
       if (!date) {
@@ -709,6 +823,7 @@ export function useExpenses() {
     loading,
     totalIncome,
     totalSpent,
+    totalTransfers,
     netCashFlow,
     budget,
     budgetLeft,
@@ -740,6 +855,7 @@ export function useExpenses() {
     setPaymentMethodFilter,
     resetFilters,
     activeFilterCount,
+    totalFilteredCount,
     // Unified Dialog
     dialogOpen,
     setDialogOpen,
