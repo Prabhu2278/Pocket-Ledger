@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { parseCsvText } from '../utils/csvParser'
 import { money } from '../utils/formatCurrency'
 
@@ -7,12 +7,25 @@ export function CsvImportModal({
   onClose,
   onImportConfirm,
   currency = 'INR',
+  wallets = [],
+  categories = [],
 }) {
   const [file, setFile] = useState(null)
+  const [rawText, setRawText] = useState('')
   const [parsedRows, setParsedRows] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [isDragging, setIsDragging] = useState(false)
+
+  // Target wallet state (Mandatory)
+  const [selectedWalletId, setSelectedWalletId] = useState('')
+
+  // Set initial default wallet
+  useEffect(() => {
+    if (wallets && wallets.length > 0 && !selectedWalletId) {
+      setSelectedWalletId(wallets[0].id)
+    }
+  }, [wallets, selectedWalletId])
 
   // Scroll Lock: disable background/outside scrolling when modal is open
   useEffect(() => {
@@ -25,6 +38,14 @@ export function CsvImportModal({
       document.documentElement.classList.remove('modal-open')
     }
   }, [isOpen])
+
+  // Re-parse or re-evaluate rows when selectedWalletId changes
+  useEffect(() => {
+    if (!rawText) return
+    const defaultWallet = wallets.find((w) => String(w.id) === String(selectedWalletId)) || wallets[0] || null
+    const rows = parseCsvText(rawText, defaultWallet, wallets)
+    setParsedRows(rows)
+  }, [selectedWalletId, rawText, wallets])
 
   if (!isOpen) return null
 
@@ -43,7 +64,9 @@ export function CsvImportModal({
     reader.onload = (event) => {
       try {
         const text = event.target?.result
-        const rows = parseCsvText(text)
+        setRawText(text)
+        const defaultWallet = wallets.find((w) => String(w.id) === String(selectedWalletId)) || wallets[0] || null
+        const rows = parseCsvText(text, defaultWallet, wallets)
         if (rows.length === 0) {
           setError('No valid transactions found in the CSV. Please check column headers.')
           setParsedRows([])
@@ -90,13 +113,51 @@ export function CsvImportModal({
     }
   }
 
+  // Update a single row's field inline
+  const updateRowField = (idx, field, value) => {
+    setParsedRows((prev) => {
+      const copy = [...prev]
+      const row = { ...copy[idx], [field]: value }
+
+      // If updating wallet, also update wallet_name
+      if (field === 'wallet_id') {
+        const w = wallets.find((item) => String(item.id) === String(value))
+        row.wallet_name = w ? w.name : ''
+      }
+
+      // Re-validate row
+      const missing = []
+      if (!row.date || !row.date.trim()) missing.push('Date')
+      if (!row.type || !row.type.trim()) missing.push('Type')
+      if (!row.category || !row.category.trim()) missing.push('Category')
+      if (!row.wallet_id) missing.push('Wallet')
+      if (!row.note || !row.note.trim()) missing.push('Note')
+      if (!row.amount || Number(row.amount) <= 0) missing.push('Amount')
+
+      row.isValid = missing.length === 0
+      row.missingFields = missing
+
+      copy[idx] = row
+      return copy
+    })
+  }
+
+  // Validate entire dataset
+  const invalidRows = parsedRows.filter((r) => !r.isValid)
+  const isAllValid = parsedRows.length > 0 && invalidRows.length === 0
+
   const handleImport = async () => {
-    if (parsedRows.length === 0) return
+    if (!isAllValid) {
+      setError('All data fields (Date, Type, Category, Wallet, Note, Amount) are mandatory. Please fill missing values.')
+      return
+    }
+
     setLoading(true)
     setError('')
     try {
       await onImportConfirm(parsedRows)
       setFile(null)
+      setRawText('')
       setParsedRows([])
       onClose()
     } catch (err) {
@@ -119,12 +180,27 @@ export function CsvImportModal({
         if (e.target === e.currentTarget && !loading) onClose()
       }}
     >
-      <div className="dialog-content" style={{ maxWidth: '640px', width: '92%' }}>
-        <div className="f">
-          <h2 id="csv-modal-title">Import Transactions CSV</h2>
-          <p style={{ margin: '0 0 16px', fontSize: '13px', color: 'var(--mute)' }}>
-            Upload a bank statement or CSV file containing dates, categories, notes, and amounts.
-          </p>
+      <div
+        className="dialog-content"
+        style={{
+          maxWidth: '840px',
+          width: '94%',
+          maxHeight: '90vh',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+        }}
+      >
+        <div className="f" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+          {/* Header */}
+          <div style={{ flexShrink: 0 }}>
+            <h2 id="csv-modal-title" style={{ margin: '0 0 4px', fontSize: '18px' }}>
+              Import Transactions CSV
+            </h2>
+            <p style={{ margin: '0 0 14px', fontSize: '13px', color: 'var(--mute)' }}>
+              All transaction fields (Date, Type, Category, Wallet, Note, Amount) are mandatory.
+            </p>
+          </div>
 
           {/* Hidden accessible native file input */}
           <input
@@ -136,7 +212,7 @@ export function CsvImportModal({
             style={{ display: 'none' }}
           />
 
-          {/* Custom Styled Choose File Zone */}
+          {/* Upload Zone or Selected File Bar */}
           {!file ? (
             <label
               htmlFor="csv-file-input"
@@ -147,6 +223,7 @@ export function CsvImportModal({
                 alignItems: 'center',
                 justifyContent: 'center',
                 textAlign: 'center',
+                flexShrink: 0,
               }}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
@@ -175,7 +252,7 @@ export function CsvImportModal({
               </div>
             </label>
           ) : (
-            <div className="csv-selected-file-card">
+            <div className="csv-selected-file-card" style={{ flexShrink: 0 }}>
               <div className="csv-selected-file-info">
                 <div className="csv-file-badge-icon">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
@@ -191,7 +268,7 @@ export function CsvImportModal({
                     {file.name}
                   </div>
                   <span className="csv-selected-file-size">
-                    {formatFileSize(file.size)} • Ready to import
+                    {formatFileSize(file.size)} &bull; {parsedRows.length} transactions loaded
                   </span>
                 </div>
               </div>
@@ -206,95 +283,372 @@ export function CsvImportModal({
             </div>
           )}
 
+          {/* Mandatory Target Wallet Selector */}
+          {wallets && wallets.length > 0 && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '10px',
+                padding: '10px 14px',
+                background: 'var(--pl-bg-surface-hover, #1b2334)',
+                border: '1.5px solid var(--pl-border-default, #1e293e)',
+                borderRadius: 'var(--pl-radius-md, 10px)',
+                marginBottom: '12px',
+                flexShrink: 0,
+              }}
+            >
+              <div>
+                <label
+                  htmlFor="csv-target-wallet"
+                  style={{
+                    fontSize: '12.5px',
+                    fontWeight: 700,
+                    color: 'var(--pl-text-primary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                  }}
+                >
+                  Target Wallet <span style={{ color: 'var(--pl-color-danger, #ef4444)' }}>*</span>
+                </label>
+                <span style={{ fontSize: '11px', color: 'var(--pl-text-muted)' }}>
+                  Mandatory destination account for imported records
+                </span>
+              </div>
+
+              <select
+                id="csv-target-wallet"
+                value={selectedWalletId}
+                onChange={(e) => setSelectedWalletId(e.target.value)}
+                style={{
+                  minWidth: '220px',
+                  maxWidth: '300px',
+                  height: '36px',
+                  padding: '6px 10px',
+                  fontSize: '12.5px',
+                  fontWeight: 600,
+                  borderRadius: '8px',
+                  border: '1.5px solid var(--pl-color-primary)',
+                  background: 'var(--pl-bg-surface)',
+                  color: 'var(--pl-text-primary)',
+                  cursor: 'pointer',
+                }}
+                required
+              >
+                {wallets.map((w) => (
+                  <option key={w.id} value={w.id}>
+                    {w.name} ({money(w.balance || 0, currency)})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {error && (
-            <p className="err" role="alert" style={{ margin: '4px 0 12px' }}>
+            <div
+              className="err"
+              role="alert"
+              style={{
+                padding: '8px 12px',
+                borderRadius: '8px',
+                background: 'rgba(239, 68, 68, 0.12)',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                color: 'var(--pl-color-danger, #ef4444)',
+                fontSize: '12px',
+                marginBottom: '10px',
+                flexShrink: 0,
+              }}
+            >
               {error}
-            </p>
+            </div>
+          )}
+
+          {/* Validation Notice when mandatory fields are missing */}
+          {invalidRows.length > 0 && (
+            <div
+              style={{
+                padding: '8px 12px',
+                borderRadius: '8px',
+                background: 'rgba(245, 158, 11, 0.12)',
+                border: '1px solid rgba(245, 158, 11, 0.35)',
+                color: 'var(--pl-color-warning, #f59e0b)',
+                fontSize: '12px',
+                marginBottom: '10px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                flexShrink: 0,
+              }}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="12" />
+                <line x1="12" y1="16" x2="12.01" y2="16" />
+              </svg>
+              <span>
+                <b>{invalidRows.length} row(s) have missing mandatory data.</b> All fields (Date, Type, Category, Wallet, Note, Amount) must be filled to confirm import.
+              </span>
+            </div>
           )}
 
           {parsedRows.length > 0 && (
-            <div style={{ marginTop: '8px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+              {/* Row Stats */}
               <div
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  marginBottom: '10px',
-                  fontSize: '13px',
+                  marginBottom: '8px',
+                  fontSize: '12.5px',
+                  flexShrink: 0,
                 }}
               >
-                <b>Detected {parsedRows.length} transactions</b>
+                <span>
+                  <b>Showing all {parsedRows.length} transactions</b>{' '}
+                  <span style={{ fontSize: '11px', color: 'var(--mute)' }}>
+                    (scroll inside table to inspect all rows)
+                  </span>
+                </span>
                 <span style={{ color: 'var(--mute)' }}>
-                  {incomeCount} income · {expenseCount} expenses
+                  {incomeCount} income &bull; {expenseCount} expense
                 </span>
               </div>
 
-              {/* Preview Table */}
+              {/* Fixed Header & Exactly 5 Rows Visible Initially with Contained Scrolling */}
               <div
-                className="tw"
+                className="csv-table-scroll-container"
                 style={{
-                  maxHeight: '220px',
+                  height: '245px',
+                  maxHeight: '245px',
                   overflowY: 'auto',
-                  border: '1px solid var(--pl-border-default)',
-                  borderRadius: 'var(--pl-radius-md)',
-                  marginBottom: '16px',
+                  overflowX: 'auto',
+                  overscrollBehavior: 'contain',
+                  border: '1.5px solid var(--pl-border-default)',
+                  borderRadius: 'var(--pl-radius-md, 10px)',
+                  marginBottom: '14px',
+                  position: 'relative',
+                  background: 'var(--pl-bg-surface)',
+                  flexShrink: 0,
                 }}
               >
-                <table>
+                <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, textAlign: 'left' }}>
                   <thead>
                     <tr>
-                      <th>Date</th>
-                      <th>Type</th>
-                      <th>Category</th>
-                      <th>Note</th>
-                      <th className="r">Amount</th>
+                      <th style={fixedHeaderStyle}>#</th>
+                      <th style={fixedHeaderStyle}>Date *</th>
+                      <th style={fixedHeaderStyle}>Type *</th>
+                      <th style={fixedHeaderStyle}>Category *</th>
+                      <th style={fixedHeaderStyle}>Wallet *</th>
+                      <th style={fixedHeaderStyle}>Note *</th>
+                      <th style={{ ...fixedHeaderStyle, textAlign: 'right' }}>Amount *</th>
+                      <th style={{ ...fixedHeaderStyle, textAlign: 'center' }}>Status</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {parsedRows.slice(0, 6).map((row, idx) => (
-                      <tr key={idx}>
-                        <td style={{ whiteSpace: 'nowrap' }}>{row.date}</td>
-                        <td>
-                          <span
-                            style={{
-                              padding: '2px 8px',
-                              borderRadius: 'var(--pl-radius-sm)',
-                              fontSize: '11px',
-                              fontWeight: 700,
-                              background: row.type === 'income' ? 'var(--pl-color-success-soft)' : 'var(--pl-color-primary-soft)',
-                              color: row.type === 'income' ? 'var(--pl-color-success)' : 'var(--pl-color-primary)',
-                            }}
-                          >
-                            {row.type.toUpperCase()}
-                          </span>
-                        </td>
-                        <td>{row.category}</td>
-                        <td style={{ maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {row.note}
-                        </td>
-                        <td
-                          className={`r ${row.type === 'income' ? 'pos' : 'neg'}`}
-                          style={{ whiteSpace: 'nowrap', fontFamily: "'JetBrains Mono', monospace", fontWeight: 700 }}
+                    {parsedRows.map((row, idx) => {
+                      const isRowValid = row.isValid
+                      return (
+                        <tr
+                          key={idx}
+                          style={{
+                            height: '42px',
+                            background: isRowValid ? 'transparent' : 'rgba(239, 68, 68, 0.05)',
+                            borderBottom: '1px solid var(--pl-border-default)',
+                          }}
                         >
-                          {row.type === 'income' ? '+' : '-'}
-                          {money(row.amount, currency)}
-                        </td>
-                      </tr>
-                    ))}
-                    {parsedRows.length > 6 && (
-                      <tr>
-                        <td colSpan={5} style={{ textAlign: 'center', color: 'var(--pl-text-muted)', fontSize: '12px' }}>
-                          + {parsedRows.length - 6} more transactions
-                        </td>
-                      </tr>
-                    )}
+                          <td style={{ ...tdStyle, color: 'var(--mute)', fontSize: '11px', width: '32px' }}>
+                            {idx + 1}
+                          </td>
+
+                          {/* Date (Mandatory) */}
+                          <td style={tdStyle}>
+                            <input
+                              type="date"
+                              value={row.date || ''}
+                              onChange={(e) => updateRowField(idx, 'date', e.target.value)}
+                              style={{
+                                padding: '3px 6px',
+                                fontSize: '11.5px',
+                                height: '28px',
+                                minHeight: '28px',
+                                width: '125px',
+                                borderRadius: '6px',
+                                border: row.date ? '1px solid var(--pl-border-default)' : '1.5px solid var(--pl-color-danger, #ef4444)',
+                                background: 'var(--pl-bg-surface)',
+                                color: 'var(--pl-text-primary)',
+                              }}
+                              required
+                            />
+                          </td>
+
+                          {/* Type (Mandatory) */}
+                          <td style={tdStyle}>
+                            <select
+                              value={row.type || 'expense'}
+                              onChange={(e) => updateRowField(idx, 'type', e.target.value)}
+                              style={{
+                                padding: '2px 6px',
+                                fontSize: '11px',
+                                fontWeight: 700,
+                                height: '28px',
+                                minHeight: '28px',
+                                borderRadius: '6px',
+                                border: '1px solid var(--pl-border-default)',
+                                background: row.type === 'income' ? 'var(--pl-color-success-soft)' : 'var(--pl-color-primary-soft)',
+                                color: row.type === 'income' ? 'var(--pl-color-success)' : 'var(--pl-color-primary)',
+                                textTransform: 'uppercase',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              <option value="expense">EXPENSE</option>
+                              <option value="income">INCOME</option>
+                            </select>
+                          </td>
+
+                          {/* Category (Mandatory) */}
+                          <td style={tdStyle}>
+                            <input
+                              type="text"
+                              value={row.category || ''}
+                              placeholder="Required category"
+                              onChange={(e) => updateRowField(idx, 'category', e.target.value)}
+                              style={{
+                                padding: '3px 8px',
+                                fontSize: '11.5px',
+                                height: '28px',
+                                minHeight: '28px',
+                                width: '110px',
+                                borderRadius: '6px',
+                                border: row.category ? '1px solid var(--pl-border-default)' : '1.5px solid var(--pl-color-danger, #ef4444)',
+                                background: 'var(--pl-bg-surface)',
+                                color: 'var(--pl-text-primary)',
+                              }}
+                              required
+                            />
+                          </td>
+
+                          {/* Wallet (Mandatory) */}
+                          <td style={tdStyle}>
+                            <select
+                              value={row.wallet_id || selectedWalletId}
+                              onChange={(e) => updateRowField(idx, 'wallet_id', Number(e.target.value))}
+                              style={{
+                                padding: '3px 6px',
+                                fontSize: '11.5px',
+                                height: '28px',
+                                minHeight: '28px',
+                                minWidth: '130px',
+                                borderRadius: '6px',
+                                border: row.wallet_id || selectedWalletId ? '1px solid var(--pl-border-default)' : '1.5px solid var(--pl-color-danger, #ef4444)',
+                                background: 'var(--pl-bg-surface)',
+                                color: 'var(--pl-text-primary)',
+                                cursor: 'pointer',
+                              }}
+                              required
+                            >
+                              {wallets.map((w) => (
+                                <option key={w.id} value={w.id}>
+                                  {w.name}
+                                </option>
+                              ))}
+                            </select>
+                          </td>
+
+                          {/* Note (Mandatory) */}
+                          <td style={tdStyle}>
+                            <input
+                              type="text"
+                              value={row.note || ''}
+                              placeholder="Required note"
+                              onChange={(e) => updateRowField(idx, 'note', e.target.value)}
+                              style={{
+                                padding: '3px 8px',
+                                fontSize: '11.5px',
+                                height: '28px',
+                                minHeight: '28px',
+                                width: '150px',
+                                borderRadius: '6px',
+                                border: row.note ? '1px solid var(--pl-border-default)' : '1.5px solid var(--pl-color-danger, #ef4444)',
+                                background: 'var(--pl-bg-surface)',
+                                color: 'var(--pl-text-primary)',
+                              }}
+                              required
+                            />
+                          </td>
+
+                          {/* Amount (Mandatory) */}
+                          <td style={{ ...tdStyle, textAlign: 'right' }}>
+                            <input
+                              type="number"
+                              step="any"
+                              value={row.amount || ''}
+                              placeholder="0.00"
+                              onChange={(e) => updateRowField(idx, 'amount', parseFloat(e.target.value) || 0)}
+                              style={{
+                                padding: '3px 8px',
+                                fontSize: '11.5px',
+                                fontWeight: 700,
+                                height: '28px',
+                                minHeight: '28px',
+                                width: '85px',
+                                textAlign: 'right',
+                                borderRadius: '6px',
+                                border: row.amount > 0 ? '1px solid var(--pl-border-default)' : '1.5px solid var(--pl-color-danger, #ef4444)',
+                                background: 'var(--pl-bg-surface)',
+                                color: row.type === 'income' ? 'var(--pl-color-success)' : 'var(--pl-color-danger)',
+                                fontFamily: "'JetBrains Mono', monospace",
+                              }}
+                              required
+                            />
+                          </td>
+
+                          {/* Mandatory Status Indicator */}
+                          <td style={{ ...tdStyle, textAlign: 'center', whiteSpace: 'nowrap' }}>
+                            {isRowValid ? (
+                              <span
+                                style={{
+                                  fontSize: '10.5px',
+                                  fontWeight: 700,
+                                  padding: '2px 7px',
+                                  borderRadius: 'var(--pl-radius-pill, 9999px)',
+                                  background: 'var(--pl-color-success-soft)',
+                                  color: 'var(--pl-color-success)',
+                                }}
+                              >
+                                Ready
+                              </span>
+                            ) : (
+                              <span
+                                title={`Missing mandatory: ${row.missingFields?.join(', ')}`}
+                                style={{
+                                  fontSize: '10px',
+                                  fontWeight: 700,
+                                  padding: '2px 6px',
+                                  borderRadius: 'var(--pl-radius-pill, 9999px)',
+                                  background: 'rgba(239, 68, 68, 0.15)',
+                                  color: 'var(--pl-color-danger, #ef4444)',
+                                  cursor: 'help',
+                                }}
+                              >
+                                Missing {row.missingFields?.[0] || 'Field'}
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>
             </div>
           )}
 
-          <div className="btns">
+          {/* Action Buttons */}
+          <div className="btns" style={{ marginTop: 'auto', paddingTop: '10px', flexShrink: 0 }}>
             <button
               type="button"
               className="ghost"
@@ -307,15 +661,49 @@ export function CsvImportModal({
               type="button"
               className="primary"
               onClick={handleImport}
-              disabled={loading || parsedRows.length === 0}
+              disabled={loading || parsedRows.length === 0 || !isAllValid}
+              style={{
+                opacity: loading || parsedRows.length === 0 || !isAllValid ? 0.6 : 1,
+                cursor: loading || parsedRows.length === 0 || !isAllValid ? 'not-allowed' : 'pointer',
+              }}
             >
-              {loading ? 'Importing...' : `Confirm Import (${parsedRows.length})`}
+              {loading
+                ? 'Importing...'
+                : !isAllValid && parsedRows.length > 0
+                ? `Resolve Missing Data (${invalidRows.length} incomplete)`
+                : `Confirm Import (${parsedRows.length})`}
             </button>
           </div>
         </div>
       </div>
     </div>
   )
+}
+
+// Sticky header style
+const fixedHeaderStyle = {
+  position: 'sticky',
+  top: 0,
+  zIndex: 10,
+  background: 'var(--pl-bg-surface, #131926)',
+  color: 'var(--pl-text-muted, #94a3b8)',
+  fontSize: '11px',
+  fontWeight: 700,
+  textTransform: 'uppercase',
+  letterSpacing: '0.04em',
+  padding: '10px 10px',
+  borderBottom: '1.5px solid var(--pl-border-default, #1e293e)',
+  boxShadow: '0 1px 0 var(--pl-border-default, #1e293e)',
+  whiteSpace: 'nowrap',
+  userSelect: 'none',
+}
+
+// Table cell style
+const tdStyle = {
+  padding: '6px 10px',
+  verticalAlign: 'middle',
+  borderBottom: '1px solid var(--pl-border-default, #1e293e)',
+  whiteSpace: 'nowrap',
 }
 
 export default CsvImportModal

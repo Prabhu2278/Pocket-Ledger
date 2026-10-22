@@ -1,8 +1,16 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { authApi } from '../services/authApi'
 import { settingsApi } from '../services/settingsApi'
 import { ConfirmModal } from '../components/ConfirmDialog'
 import { CategoriesTab } from '../components/categories/CategoriesTab'
+import { AddCurrencyModal } from '../components/AddCurrencyModal'
+import {
+  DEFAULT_CURRENCIES,
+  POPULAR_CURRENCIES,
+  getCustomCurrencies,
+  saveCustomCurrency,
+  removeCustomCurrency,
+} from '../utils/formatCurrency'
 
 const DARK_THEMES = [
   {
@@ -226,9 +234,44 @@ export function Settings({
   const [fullName, setFullName] = useState(user?.full_name || '')
   const [profileSaving, setProfileSaving] = useState(false)
 
+  const activeCurrency = currency || 'INR'
+
   // Currency saving state
   const [currencySaving, setCurrencySaving] = useState(false)
   const [targetCurrency, setTargetCurrency] = useState(null)
+  const [customCurrencies, setCustomCurrencies] = useState(() => getCustomCurrencies())
+  const [showAddCurrencyModal, setShowAddCurrencyModal] = useState(false)
+
+  // Compute displayed currencies (default 4 + custom + active)
+  const displayedCurrencies = useMemo(() => {
+    const list = [...DEFAULT_CURRENCIES]
+    const defaultCodes = new Set(DEFAULT_CURRENCIES.map((c) => c.code))
+
+    // Add saved custom currencies
+    customCurrencies.forEach((curr) => {
+      if (!defaultCodes.has(curr.code)) {
+        list.push(curr)
+        defaultCodes.add(curr.code)
+      }
+    })
+
+    // If activeCurrency is set and not in list, find it in popular currencies or add it
+    if (activeCurrency && !defaultCodes.has(activeCurrency)) {
+      const match = POPULAR_CURRENCIES.find((c) => c.code === activeCurrency)
+      if (match) {
+        list.push(match)
+      } else {
+        list.push({
+          code: activeCurrency,
+          name: activeCurrency,
+          symbol: activeCurrency,
+          label: `${activeCurrency} (${activeCurrency})`,
+        })
+      }
+    }
+
+    return list
+  }, [customCurrencies, activeCurrency])
 
   // Password state
   const [currentPw, setCurrentPw] = useState('')
@@ -259,7 +302,7 @@ export function Settings({
   }
 
   const handleCurrencyChange = async (newCurr) => {
-    if (newCurr === currency) return
+    if (newCurr === activeCurrency) return
     setCurrencySaving(true)
     setTargetCurrency(newCurr)
     try {
@@ -275,6 +318,27 @@ export function Settings({
       setCurrencySaving(false)
       setTargetCurrency(null)
     }
+  }
+
+  const handleSelectNewCurrency = async (newCurr) => {
+    const code = (newCurr.code || '').toUpperCase()
+    if (!code) return
+    const isDefault = DEFAULT_CURRENCIES.some((d) => d.code === code)
+    if (!isDefault) {
+      saveCustomCurrency(newCurr)
+      setCustomCurrencies(getCustomCurrencies())
+    }
+    await handleCurrencyChange(code)
+  }
+
+  const handleRemoveCustomCurrency = (e, codeToRemove) => {
+    e.stopPropagation()
+    const updated = removeCustomCurrency(codeToRemove)
+    setCustomCurrencies(updated)
+    if (activeCurrency === codeToRemove) {
+      handleCurrencyChange('INR')
+    }
+    showToast(`Removed ${codeToRemove} from currency options`)
   }
 
   const [showPwConfirm, setShowPwConfirm] = useState(false)
@@ -347,7 +411,7 @@ export function Settings({
           </div>
           {isSelected && (
             <span className="theme-card-status">
-              ✓ Active
+              Active
             </span>
           )}
         </div>
@@ -487,14 +551,14 @@ export function Settings({
                   className={`theme-category-pill ${themeModeFilter === 'dark' ? 'active' : ''}`}
                   onClick={() => setThemeModeFilter('dark')}
                 >
-                  🌙 Dark Themes (5)
+                  Dark Themes (5)
                 </button>
                 <button
                   type="button"
                   className={`theme-category-pill ${themeModeFilter === 'light' ? 'active' : ''}`}
                   onClick={() => setThemeModeFilter('light')}
                 >
-                  ☀️ Light Themes (5)
+                  Light Themes (5)
                 </button>
               </div>
 
@@ -503,7 +567,7 @@ export function Settings({
                 <div style={{ marginBottom: '28px' }}>
                   <div className="theme-group-header">
                     <span className="theme-group-title">
-                      🌙 Dark Themes (5 Options)
+                      Dark Themes (5 Options)
                     </span>
                     <span style={{ fontSize: '11px', color: 'var(--pl-text-muted)' }}>High-contrast dark modes</span>
                   </div>
@@ -518,7 +582,7 @@ export function Settings({
                 <div>
                   <div className="theme-group-header">
                     <span className="theme-group-title">
-                      ☀️ Light Themes (5 Options)
+                      Light Themes (5 Options)
                     </span>
                     <span style={{ fontSize: '11px', color: 'var(--pl-text-muted)' }}>Clean, daylight-optimized palettes</span>
                   </div>
@@ -532,19 +596,23 @@ export function Settings({
 
           {activeTab === 'currency' && (
             <div className="card" id="panel-currency" role="tabpanel" aria-labelledby="tab-currency">
-              <h2>Currency formatting</h2>
-              <p style={{ margin: '0 0 14px', fontSize: '13px', color: 'var(--mute)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '6px' }}>
+                <h2 style={{ margin: 0 }}>Currency formatting</h2>
+                <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: 'var(--pl-radius-pill)', background: 'var(--pl-color-primary-soft)', color: 'var(--pl-color-primary)' }}>
+                  Default: Indian Rupee (INR)
+                </span>
+              </div>
+              <p style={{ margin: '0 0 16px', fontSize: '13px', color: 'var(--mute)' }}>
                 Select your preferred currency for display across transactions, cards, and reports.
               </p>
-              <div className="chips" role="radiogroup" aria-label="Select currency">
-                {[
-                  ['INR', '₹ Indian Rupee (INR)'],
-                  ['USD', '$ US Dollar (USD)'],
-                  ['EUR', '€ Euro (EUR)'],
-                  ['GBP', '£ British Pound (GBP)'],
-                ].map(([code, label]) => {
-                  const isSelected = currency === code
+              <div className="chips" role="radiogroup" aria-label="Select currency" style={{ alignItems: 'center', gap: '8px' }}>
+                {displayedCurrencies.map((c) => {
+                  const code = c.code
+                  const label = c.label || `${c.symbol} ${c.name} (${code})`
+                  const isSelected = activeCurrency === code
                   const isSavingThis = currencySaving && targetCurrency === code
+                  const isCustom = !DEFAULT_CURRENCIES.some((d) => d.code === code)
+
                   return (
                     <button
                       key={code}
@@ -557,17 +625,87 @@ export function Settings({
                         position: 'relative',
                         opacity: currencySaving && !isSavingThis ? 0.7 : 1,
                         cursor: currencySaving ? 'wait' : 'pointer',
+                        paddingRight: isCustom ? '8px' : '14px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
                       }}
                     >
-                      {label}
+                      <span>{label}</span>
                       {isSavingThis && (
-                        <span style={{ fontSize: '11px', marginLeft: '6px', opacity: 0.85 }}>
+                        <span style={{ fontSize: '11px', opacity: 0.85 }}>
                           (Saving...)
+                        </span>
+                      )}
+                      {isCustom && (
+                        <span
+                          role="button"
+                          tabIndex={0}
+                          title={`Remove ${code}`}
+                          onClick={(e) => handleRemoveCustomCurrency(e, code)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              handleRemoveCustomCurrency(e, code)
+                            }
+                          }}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            marginLeft: '4px',
+                            padding: '1px 4px',
+                            borderRadius: '50%',
+                            fontSize: '13px',
+                            lineHeight: 1,
+                            opacity: 0.7,
+                            cursor: 'pointer',
+                          }}
+                          onMouseEnter={(e) => { e.currentTarget.style.opacity = '1' }}
+                          onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.7' }}
+                        >
+                          &times;
                         </span>
                       )}
                     </button>
                   )
                 })}
+
+                {/* + Add Currency Button */}
+                <button
+                  type="button"
+                  id="btn-add-currency"
+                  className="chip add-currency-btn"
+                  onClick={() => setShowAddCurrencyModal(true)}
+                  disabled={currencySaving}
+                  title="Add new currency"
+                  style={{
+                    borderStyle: 'dashed',
+                    borderColor: 'var(--pl-color-primary, #818cf8)',
+                    color: 'var(--pl-color-primary, #818cf8)',
+                    background: 'var(--pl-color-primary-soft, rgba(129, 140, 248, 0.08))',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                  }}
+                >
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
+                  <span>Add Currency</span>
+                </button>
               </div>
             </div>
           )}
@@ -666,6 +804,15 @@ export function Settings({
         isLoading={pwSaving}
         onConfirm={handleConfirmChangePassword}
         onCancel={() => setShowPwConfirm(false)}
+      />
+
+      {/* Add Currency Modal */}
+      <AddCurrencyModal
+        isOpen={showAddCurrencyModal}
+        onClose={() => setShowAddCurrencyModal(false)}
+        onSelectCurrency={handleSelectNewCurrency}
+        existingCodes={displayedCurrencies.map((c) => c.code)}
+        activeCurrency={activeCurrency}
       />
     </section>
   )

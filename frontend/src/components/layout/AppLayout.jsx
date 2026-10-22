@@ -147,6 +147,8 @@ export function AppLayout({
         onClose={closeCsvModal}
         onImportConfirm={handleCsvImport}
         currency={currency}
+        wallets={wallets}
+        categories={categories}
       />
 
       {/* Filter Drawer (Right Side Slide-Over) */}

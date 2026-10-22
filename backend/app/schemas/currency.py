@@ -2,7 +2,14 @@ from pydantic import BaseModel, Field, field_validator
 from typing import Optional
 import datetime as dt
 
-SUPPORTED_CURRENCIES = ["INR", "USD", "EUR", "GBP"]
+SUPPORTED_CURRENCIES = [
+    "INR", "USD", "EUR", "GBP", "JPY", "CAD", "AUD", "SGD",
+    "AED", "CHF", "CNY", "SAR", "NZD", "BRL", "ZAR", "KRW",
+    "MYR", "THB", "IDR", "PHP", "KWD", "QAR", "SEK", "NOK",
+    "DKK", "RUB", "TRY", "MXN", "HKD", "TWD", "PLN", "CZK",
+    "HUF", "ILS", "CLP", "COP", "RON", "BHD", "OMR", "PKR",
+    "BDT", "LKR", "NPR", "NGN", "EGP", "VND", "ARS", "KES",
+]
 
 class CurrencySettingBase(BaseModel):
     currency_code: str = Field(default="INR")
@@ -10,8 +17,10 @@ class CurrencySettingBase(BaseModel):
     @field_validator("currency_code")
     def validate_code(cls, v: str) -> str:
         code = (v or "").strip().upper()
+        if not code:
+            return "INR"
         if code not in SUPPORTED_CURRENCIES:
-            raise ValueError(f"Unsupported currency: {v}. Supported currencies are {', '.join(SUPPORTED_CURRENCIES)}")
+            raise ValueError(f"Unsupported currency: {v}. Please choose a valid currency code.")
         return code
 
 class CurrencySettingUpdate(BaseModel):
@@ -24,7 +33,7 @@ class CurrencySettingUpdate(BaseModel):
             return None
         code = v.strip().upper()
         if code not in SUPPORTED_CURRENCIES:
-            raise ValueError(f"Unsupported currency: {v}. Supported currencies are {', '.join(SUPPORTED_CURRENCIES)}")
+            raise ValueError(f"Unsupported currency: {v}. Please choose a valid currency code.")
         return code
 
     def get_currency_code(self) -> Optional[str]:

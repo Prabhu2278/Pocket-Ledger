@@ -205,7 +205,7 @@ export function CategoriesTab({
                         {cat.type}
                       </span>
                       <span className={`badge-source ${isCustom ? 'custom' : 'default'}`}>
-                        {isCustom ? '★ Custom' : '🔒 Default'}
+                        {isCustom ? 'Custom' : 'Default'}
                       </span>
                     </div>
                   </div>

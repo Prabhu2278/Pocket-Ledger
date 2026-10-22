@@ -461,7 +461,7 @@ export function TransactionForm({
                     ))}
                   </optgroup>
                 )}
-                <option value="__custom__">✨ + Customize Category...</option>
+                <option value="__custom__">+ Customize Category...</option>
               </select>
 
               {/* Show input box when user chooses "Customize Category" */}
