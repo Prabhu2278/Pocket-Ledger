@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react'
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '../constants/categories'
-import { money } from '../utils/formatCurrency'
+import { money, CURRENCY_CONFIGS } from '../utils/formatCurrency'
 
 export function FilterDrawer({
   isOpen,
@@ -24,7 +24,11 @@ export function FilterDrawer({
   totalFilteredCount = 0,
   activeFilterCount = 0,
   onResetFilters,
+  categories = [],
 }) {
+  const currCode = (currency || 'INR').toUpperCase()
+  const currSymbol = CURRENCY_CONFIGS[currCode]?.symbol || '₹'
+
   // Close on Escape key press
   useEffect(() => {
     function handleKeyDown(e) {
@@ -51,19 +55,25 @@ export function FilterDrawer({
   if (!isOpen) return null
 
   // Combined categories based on active type
+  const dbExpense = categories.filter((c) => c.type === 'expense' && c.is_active).map((c) => c.name)
+  const dbIncome = categories.filter((c) => c.type === 'income' && c.is_active).map((c) => c.name)
+
+  const expList = Array.from(new Set([...EXPENSE_CATEGORIES.map((c) => c[0]), ...dbExpense]))
+  const incList = Array.from(new Set([...INCOME_CATEGORIES.map((c) => c[0]), ...dbIncome]))
+
   const availableCategories =
     typeFilter === 'income'
-      ? ['All', ...INCOME_CATEGORIES.map((c) => c[0])]
+      ? ['All', ...incList]
       : typeFilter === 'expense'
-      ? ['All', ...EXPENSE_CATEGORIES.map((c) => c[0])]
+      ? ['All', ...expList]
       : typeFilter === 'transfer'
       ? ['All', 'Transfer']
       : [
           'All',
           ...Array.from(
             new Set([
-              ...EXPENSE_CATEGORIES.map((c) => c[0]),
-              ...INCOME_CATEGORIES.map((c) => c[0]),
+              ...expList,
+              ...incList,
               'Transfer',
             ])
           ),
@@ -353,7 +363,7 @@ export function FilterDrawer({
                 <input
                   id="drawer-amount-min"
                   type="number"
-                  placeholder="Min ₹"
+                  placeholder={`Min ${currSymbol}`}
                   min="0"
                   step="1"
                   value={minAmount}
@@ -376,7 +386,7 @@ export function FilterDrawer({
                 <input
                   id="drawer-amount-max"
                   type="number"
-                  placeholder="Max ₹"
+                  placeholder={`Max ${currSymbol}`}
                   min="0"
                   step="1"
                   value={maxAmount}

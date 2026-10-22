@@ -1,5 +1,6 @@
 import React from 'react'
 import { CATEGORIES } from '../constants/categories'
+import { CURRENCY_CONFIGS } from '../utils/formatCurrency'
 
 export function ExpenseForm({
   dialogOpen,
@@ -15,10 +16,22 @@ export function ExpenseForm({
   setDate,
   formError,
   saveExpense,
+  currency = 'INR',
+  expenseCategories = [],
+  categories = [],
 }) {
   if (!dialogOpen) return null
 
   const isEditing = editingId !== null
+  const currCode = (currency || 'INR').toUpperCase()
+  const currSymbol = CURRENCY_CONFIGS[currCode]?.symbol || '₹'
+
+  // Derive categories: use props if available, otherwise fallback
+  const availableCats = (expenseCategories.length > 0
+    ? expenseCategories.map((c) => c.name)
+    : categories.filter((c) => c.type === 'expense').map((c) => c.name)) || []
+  
+  const displayCats = availableCats.length > 0 ? availableCats : CATEGORIES.map((c) => c[0])
 
   return (
     <div
@@ -43,7 +56,7 @@ export function ExpenseForm({
               inputMode="decimal"
               min="0"
               step="0.01"
-              placeholder="₹0"
+              placeholder={`${currSymbol}0`}
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               autoFocus
@@ -51,7 +64,7 @@ export function ExpenseForm({
           </label>
 
           <div className="chips" role="group" aria-label="Category">
-            {CATEGORIES.map(([catName]) => (
+            {displayCats.map((catName) => (
               <button
                 key={catName}
                 type="button"

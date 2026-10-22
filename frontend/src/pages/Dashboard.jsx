@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react'
-import { money } from '../utils/formatCurrency'
+import { money, CURRENCY_CONFIGS } from '../utils/formatCurrency'
 import { getCategoryColor } from '../constants/categories'
 import { CashFlowOverview } from '../components/CashFlowOverview'
 import './Dashboard.css'
@@ -14,10 +14,12 @@ function getWalletTypeLabel(type) {
   return 'Personal Account'
 }
 
-// Compact currency formatter for chart axis (e.g., ₹20K, ₹1.5M)
+// Compact currency formatter for chart axis (e.g., ₹20K, $1.5M, €500)
 function formatCompactCurrency(val, currency = 'INR') {
-  if (val === 0) return currency === 'INR' ? '₹0' : '$0'
-  const prefix = currency === 'INR' ? '₹' : '$'
+  const code = (currency || 'INR').toUpperCase()
+  const conf = CURRENCY_CONFIGS[code] || CURRENCY_CONFIGS.INR
+  const prefix = conf.symbol || '$'
+  if (val === 0) return `${prefix}0`
   if (val >= 1000000) {
     return `${prefix}${(val / 1000000).toFixed(val % 1000000 === 0 ? 0 : 1)}M`
   }

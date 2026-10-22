@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react'
+import { CURRENCY_CONFIGS } from '../../../../utils/formatCurrency'
 
-export function CreateWalletModal({ isOpen, onClose, onSave }) {
+export function CreateWalletModal({ isOpen, onClose, onSave, currency = 'INR' }) {
   const [name, setName] = useState('')
   const [walletType, setWalletType] = useState('BANK')
   const [initialBalance, setInitialBalance] = useState('')
   const [color, setColor] = useState('#10b981')
+
+  const currCode = (currency || 'INR').toUpperCase()
+  const currSymbol = CURRENCY_CONFIGS[currCode]?.symbol || '₹'
 
   // Scroll Lock: disable background/outside scrolling when modal is open
   useEffect(() => {
@@ -67,7 +71,7 @@ export function CreateWalletModal({ isOpen, onClose, onSave }) {
             </select>
           </div>
           <div className="pocket-form-field">
-            <label className="pocket-field-label">Initial Balance (₹)</label>
+            <label className="pocket-field-label">Initial Balance ({currSymbol})</label>
             <input
               type="number"
               className="pocket-ledger-input"

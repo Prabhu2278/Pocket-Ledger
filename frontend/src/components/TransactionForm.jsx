@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '../constants/categories'
-import { money } from '../utils/formatCurrency'
+import { money, CURRENCY_CONFIGS } from '../utils/formatCurrency'
+import { categoryApi } from '../services/categoryApi'
 
 export function TransactionForm({
   dialogOpen,
@@ -24,6 +25,10 @@ export function TransactionForm({
   currency = 'INR',
   formError,
   saveTransaction,
+  categories = [],
+  expenseCategories = [],
+  incomeCategories = [],
+  refreshCategories,
 }) {
   const [customCategories, setCustomCategories] = useState(() => {
     try {
@@ -50,14 +55,26 @@ export function TransactionForm({
 
   const isEditing = editingId !== null
   const isTransfer = type === 'transfer'
-  const activeCategories = type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES
+
+  // Database-backed categories integration
+  const dbCategories = (type === 'income' ? incomeCategories : expenseCategories) || []
+  const standardList = dbCategories.length > 0
+    ? dbCategories.filter((c) => c.is_default).map((c) => c.name)
+    : (type === 'income' ? INCOME_CATEGORIES.map((c) => c[0]) : EXPENSE_CATEGORIES.map((c) => c[0]))
+
+  const dbCustomList = dbCategories.filter((c) => !c.is_default).map((c) => c.name)
+  const combinedCustom = Array.from(new Set([...customCategories, ...dbCustomList]))
+
+  // Currency symbol
+  const currCode = (currency || 'INR').toUpperCase()
+  const currSymbol = CURRENCY_CONFIGS[currCode]?.symbol || '₹'
 
   // Sync category mode when editing or opening
   useEffect(() => {
     if (dialogOpen) {
       if (category && category !== 'Transfer') {
-        const isStandard = activeCategories.some(
-          ([c]) => c.toLowerCase() === category.toLowerCase()
+        const isStandard = standardList.some(
+          (c) => c.toLowerCase() === category.toLowerCase()
         )
         if (!isStandard) {
           setIsCustomMode(true)
@@ -71,7 +88,7 @@ export function TransactionForm({
         setCustomCategoryInput('')
       }
     }
-  }, [dialogOpen, category, activeCategories])
+  }, [dialogOpen, category, standardList])
 
   if (!dialogOpen) return null
 
@@ -94,7 +111,7 @@ export function TransactionForm({
   const isSameWallet = isTransfer && selectedWallet && selectedToWallet && String(selectedWallet.id) === String(selectedToWallet.id)
   const isBlocked = isInsufficient || isSameWallet || (isTransfer && wallets.length < 2)
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     if (e && e.preventDefault) e.preventDefault()
     if (isCustomMode && customCategoryInput.trim()) {
       const trimmed = customCategoryInput.trim()
@@ -110,6 +127,14 @@ export function TransactionForm({
         }
         return prev
       })
+      // Persist custom category to backend database
+      categoryApi.createCategory({
+        name: trimmed,
+        type: type === 'income' ? 'income' : 'expense',
+      }).then(() => {
+        if (refreshCategories) refreshCategories()
+      }).catch(() => {})
+
       setCategory(trimmed)
     }
     saveTransaction(e)
@@ -350,7 +375,7 @@ export function TransactionForm({
               inputMode="decimal"
               min="0"
               step="0.01"
-              placeholder="₹0"
+              placeholder={`${currSymbol}0`}
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               autoFocus
@@ -421,15 +446,15 @@ export function TransactionForm({
               >
                 <option value="">-- Select Category --</option>
                 <optgroup label="Standard Categories">
-                  {activeCategories.map(([catName]) => (
+                  {standardList.map((catName) => (
                     <option key={catName} value={catName}>
                       {catName}
                     </option>
                   ))}
                 </optgroup>
-                {customCategories.length > 0 && (
+                {combinedCustom.length > 0 && (
                   <optgroup label="Custom Categories">
-                    {customCategories.map((c) => (
+                    {combinedCustom.map((c) => (
                       <option key={`custom-${c}`} value={c}>
                         {c}
                       </option>

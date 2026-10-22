@@ -1,10 +1,13 @@
 import React, { useState } from 'react'
-import { money } from '../../utils/formatCurrency'
+import { money, CURRENCY_CONFIGS } from '../../utils/formatCurrency'
 
-export function BudgetConfirmModal({ isOpen, currentBudget, onClose, onSave }) {
+export function BudgetConfirmModal({ isOpen, currentBudget, onClose, onSave, currency = 'INR' }) {
   const [target, setTarget] = useState(String(currentBudget || ''))
 
   if (!isOpen) return null
+
+  const currCode = (currency || 'INR').toUpperCase()
+  const currSymbol = CURRENCY_CONFIGS[currCode]?.symbol || '₹'
 
   const handleSave = (e) => {
     e.preventDefault()
@@ -24,7 +27,7 @@ export function BudgetConfirmModal({ isOpen, currentBudget, onClose, onSave }) {
         </div>
         <form onSubmit={handleSave} className="pocket-ledger-form">
           <div className="pocket-form-field">
-            <label className="pocket-field-label">Target Amount (₹)</label>
+            <label className="pocket-field-label">Target Amount ({currSymbol})</label>
             <input
               type="number"
               className="pocket-ledger-input"
@@ -34,9 +37,12 @@ export function BudgetConfirmModal({ isOpen, currentBudget, onClose, onSave }) {
               required
             />
           </div>
+          <p className="pocket-ledger-desc" style={{ fontSize: '13px', margin: '4px 0 16px' }}>
+            Current target is {money(currentBudget, currency)}
+          </p>
           <div className="pocket-ledger-dialog-actions">
             <button type="button" className="pocket-ledger-btn-cancel" onClick={onClose}>Cancel</button>
-            <button type="submit" className="pocket-ledger-btn-primary">Save Target</button>
+            <button type="submit" className="pocket-ledger-btn-primary">Save Budget</button>
           </div>
         </form>
       </div>

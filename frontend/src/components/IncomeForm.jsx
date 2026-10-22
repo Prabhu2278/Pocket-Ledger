@@ -1,5 +1,6 @@
 import React from 'react'
 import { INCOME_CATEGORIES } from '../constants/categories'
+import { CURRENCY_CONFIGS } from '../utils/formatCurrency'
 
 export function IncomeForm({
   dialogOpen,
@@ -15,10 +16,22 @@ export function IncomeForm({
   setDate,
   formError,
   saveIncome,
+  currency = 'INR',
+  incomeCategories = [],
+  categories = [],
 }) {
   if (!dialogOpen) return null
 
   const isEditing = editingId !== null
+  const currCode = (currency || 'INR').toUpperCase()
+  const currSymbol = CURRENCY_CONFIGS[currCode]?.symbol || '₹'
+
+  // Derive income categories
+  const availableCats = (incomeCategories.length > 0
+    ? incomeCategories.map((c) => c.name)
+    : categories.filter((c) => c.type === 'income').map((c) => c.name)) || []
+  
+  const displayCats = availableCats.length > 0 ? availableCats : INCOME_CATEGORIES.map((c) => c[0])
 
   return (
     <div
@@ -43,7 +56,7 @@ export function IncomeForm({
               inputMode="decimal"
               min="0"
               step="0.01"
-              placeholder="₹0"
+              placeholder={`${currSymbol}0`}
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               autoFocus
@@ -51,7 +64,7 @@ export function IncomeForm({
           </label>
 
           <div className="chips" role="group" aria-label="Income Category">
-            {INCOME_CATEGORIES.map(([catName]) => (
+            {displayCats.map((catName) => (
               <button
                 key={catName}
                 type="button"

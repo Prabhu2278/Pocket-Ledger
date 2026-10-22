@@ -5,6 +5,9 @@ import { expenseApi } from '../services/expenseApi'
 import { authApi } from '../services/authApi'
 import { walletApi } from '../services/walletApi'
 import { settingsApi } from '../services/settingsApi'
+import { categoryApi } from '../services/categoryApi'
+import { registerCategoryColors } from '../constants/categories'
+import { money } from '../utils/formatCurrency'
 
 export function useExpenses() {
   const now = useMemo(() => new Date(), [])
@@ -128,23 +131,56 @@ export function useExpenses() {
     return 'INR'
   })
 
+  // Categories state
+  const [categories, setCategories] = useState([])
+
+  const loadCategories = useCallback(async () => {
+    try {
+      const list = await categoryApi.getCategories()
+      if (list && Array.isArray(list) && list.length > 0) {
+        setCategories(list)
+        registerCategoryColors(list)
+      }
+    } catch (err) {
+      console.warn('[useExpenses] Could not load categories:', err)
+    }
+  }, [])
+
+  const expenseCategories = useMemo(() => {
+    return categories.filter((c) => c.type === 'expense' && c.is_active)
+  }, [categories])
+
+  const incomeCategories = useMemo(() => {
+    return categories.filter((c) => c.type === 'income' && c.is_active)
+  }, [categories])
+
   const setCurrency = useCallback((curr) => {
     setCurrencyState(curr)
     if (typeof window !== 'undefined') {
       localStorage.setItem('pocket_ledger_currency', curr)
     }
-    // Persist to database
+    // Persist to dedicated currency_settings table and settings
+    settingsApi.updateCurrency(curr).catch(() => {})
     settingsApi.updateSettings({ currency: curr }).catch(() => {})
     if (authApi.getUser()) {
       authApi.updateProfile({ currency: curr }).catch(() => {})
     }
   }, [])
 
-  // Synchronize settings with database on startup or auth changes
+  // Synchronize settings & categories with database on startup or auth changes
   useEffect(() => {
     let isMounted = true
     async function syncRemoteSettings() {
       try {
+        // Fetch currency from dedicated currency_settings table
+        const currData = await settingsApi.getCurrency()
+        if (currData && currData.currency_code && isMounted) {
+          setCurrencyState(currData.currency_code)
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('pocket_ledger_currency', currData.currency_code)
+          }
+        }
+
         const remote = await settingsApi.getSettings()
         if (remote && isMounted) {
           if (remote.theme) {
@@ -155,7 +191,7 @@ export function useExpenses() {
               localStorage.setItem('pocket_ledger_theme', remote.theme)
             }
           }
-          if (remote.currency) {
+          if (remote.currency && !currData?.currency_code) {
             setCurrencyState(remote.currency)
             if (typeof window !== 'undefined') {
               localStorage.setItem('pocket_ledger_currency', remote.currency)
@@ -167,8 +203,9 @@ export function useExpenses() {
       }
     }
     syncRemoteSettings()
+    loadCategories()
     return () => { isMounted = false }
-  }, [user])
+  }, [user, loadCategories])
 
   // Unified Data state
   const [transactions, setTransactions] = useState([])
@@ -577,7 +614,7 @@ export function useExpenses() {
           const avail = Number(srcWallet.current_balance ?? srcWallet.balance ?? srcWallet.initial_balance ?? 0)
           if (numericAmount > avail) {
             setFormError(
-              `Insufficient funds in wallet '${srcWallet.name}'. Available balance is ₹${avail.toLocaleString(undefined, { minimumFractionDigits: 2 })}, cannot transfer ₹${numericAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}.`
+              `Insufficient funds in wallet '${srcWallet.name}'. Available balance is ${money(avail, currency)}, cannot transfer ${money(numericAmount, currency)}.`
             )
             return
           }
@@ -590,7 +627,7 @@ export function useExpenses() {
         const avail = Number(targetWallet.current_balance ?? targetWallet.balance ?? targetWallet.initial_balance ?? 0)
         if (numericAmount > avail) {
           setFormError(
-            `Insufficient funds in wallet '${targetWallet.name}'. Available balance is ₹${avail.toLocaleString(undefined, { minimumFractionDigits: 2 })}, cannot spend ₹${numericAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}.`
+            `Insufficient funds in wallet '${targetWallet.name}'. Available balance is ${money(avail, currency)}, cannot spend ${money(numericAmount, currency)}.`
           )
           return
         }
@@ -895,6 +932,11 @@ export function useExpenses() {
     // Toast
     toast,
     showToast,
+    // Database-backed Categories
+    categories,
+    expenseCategories,
+    incomeCategories,
+    refreshCategories: loadCategories,
     // Backward compatibility aliases
     openExpenseDialog: () => openTransactionDialog(null, 'expense'),
     openIncomeDialog: () => openTransactionDialog(null, 'income'),

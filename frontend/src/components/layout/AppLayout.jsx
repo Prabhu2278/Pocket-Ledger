@@ -73,6 +73,11 @@ export function AppLayout({
   // Toast props
   toast,
   undoDelete,
+  // Categories props
+  categories = [],
+  expenseCategories = [],
+  incomeCategories = [],
+  refreshCategories,
 }) {
   return (
     <div className="shell">
@@ -130,6 +135,10 @@ export function AppLayout({
         currency={currency}
         formError={formError}
         saveTransaction={saveTransaction}
+        categories={categories}
+        expenseCategories={expenseCategories}
+        incomeCategories={incomeCategories}
+        refreshCategories={refreshCategories}
       />
 
       {/* CSV Import Modal */}

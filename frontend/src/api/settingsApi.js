@@ -44,6 +44,32 @@ export const settingsApi = {
       return null
     }
   },
+
+  async getCurrency() {
+    try {
+      const res = await fetch(`${API_BASE}/api/settings/currency`, {
+        headers: this.getAuthHeaders(),
+      })
+      if (!res.ok) return null
+      return await res.json()
+    } catch (err) {
+      console.warn('[SettingsApi] Could not fetch currency from server:', err)
+      return null
+    }
+  },
+
+  async updateCurrency(currencyCode) {
+    const res = await fetch(`${API_BASE}/api/settings/currency`, {
+      method: 'PUT',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify({ currency_code: currencyCode }),
+    })
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}))
+      throw new Error(errorData.detail || 'Failed to update currency preference')
+    }
+    return await res.json()
+  },
 }
 
 export default settingsApi

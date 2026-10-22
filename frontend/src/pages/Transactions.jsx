@@ -98,26 +98,7 @@ export function Transactions({
     setCurrentPage(1)
   }
 
-  // Compute KPIs for active scope
-  const totalIncome = useMemo(() => {
-    return scopedTransactions
-      .filter((t) => (t.type || '').toLowerCase() === 'income')
-      .reduce((sum, t) => sum + Number(t.amount || t.amt || 0), 0)
-  }, [scopedTransactions])
-
-  const totalExpense = useMemo(() => {
-    return scopedTransactions
-      .filter((t) => (t.type || '').toLowerCase() === 'expense')
-      .reduce((sum, t) => sum + Number(t.amount || t.amt || 0), 0)
-  }, [scopedTransactions])
-
-  const _totalTransfers = useMemo(() => {
-    return scopedTransactions
-      .filter((t) => (t.type || '').toLowerCase() === 'transfer')
-      .reduce((sum, t) => sum + Number(t.amount || t.amt || 0), 0)
-  }, [scopedTransactions])
-
-  const netCashFlow = totalIncome - totalExpense
+  // Transaction counts for tabs
   const incomeCount = scopedTransactions.filter((t) => (t.type || '').toLowerCase() === 'income').length
   const expenseCount = scopedTransactions.filter((t) => (t.type || '').toLowerCase() === 'expense').length
   const transferCount = scopedTransactions.filter((t) => (t.type || '').toLowerCase() === 'transfer').length
@@ -294,34 +275,6 @@ export function Transactions({
 
   return (
     <section className="view on" id="v-transactions" aria-label="Transactions ledger">
-      {/* KPI Cards */}
-      <div className="kpis">
-        <div className={`card kpi ${netCashFlow >= 0 ? 'kpi-pos' : 'kpi-neg'}`}>
-          <span>Net Cash Flow</span>
-          <b className={netCashFlow >= 0 ? 'pos' : 'neg'}>
-            {netCashFlow >= 0 ? '+' : '-'}
-            {money(Math.abs(netCashFlow), currency)}
-          </b>
-        </div>
-        <div className="card kpi kpi-income">
-          <span>Total Income</span>
-          <b className="pos">+{money(totalIncome, currency)}</b>
-        </div>
-        <div className="card kpi kpi-expense">
-          <span>Total Expenses</span>
-          <b className="neg">-{money(totalExpense, currency)}</b>
-        </div>
-        <div className="card kpi kpi-primary">
-          <span>{hasCustomDateRange ? 'Filtered Transactions' : 'Total Transactions'}</span>
-          <b>
-            {scopedTransactions.length}{' '}
-            <small style={{ fontSize: '11px', fontWeight: 'normal', color: 'var(--mute)' }}>
-              ({incomeCount} inc · {expenseCount} exp)
-            </small>
-          </b>
-        </div>
-      </div>
-
       <div className="card">
         {/* Custom Date Range Active Indicator */}
         {hasCustomDateRange && (

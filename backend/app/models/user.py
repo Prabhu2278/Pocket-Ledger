@@ -19,6 +19,8 @@ class User(Base):
     try:
         wallets = relationship("Wallet", back_populates="user", cascade="all, delete-orphan")
         settings = relationship("Setting", back_populates="user", uselist=False, cascade="all, delete-orphan")
+        currency_setting = relationship("CurrencySetting", back_populates="user", uselist=False, cascade="all, delete-orphan")
+        categories = relationship("Category", back_populates="user", cascade="all, delete-orphan")
     except Exception:
         pass
 

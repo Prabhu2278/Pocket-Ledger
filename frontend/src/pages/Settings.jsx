@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { authApi } from '../services/authApi'
+import { settingsApi } from '../services/settingsApi'
 import { ConfirmModal } from '../components/ConfirmDialog'
+import { CategoriesTab } from '../components/categories/CategoriesTab'
 
 const DARK_THEMES = [
   {
@@ -184,6 +186,16 @@ const SETTINGS_TABS = [
     ),
   },
   {
+    id: 'categories',
+    label: 'Categories',
+    icon: (
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+        <line x1="7" y1="7" x2="7.01" y2="7" />
+      </svg>
+    ),
+  },
+  {
     id: 'security',
     label: 'Security & Account',
     icon: (
@@ -204,6 +216,8 @@ export function Settings({
   currency,
   setCurrency,
   showToast,
+  categories = [],
+  onCategoriesChange,
 }) {
   const [activeTab, setActiveTab] = useState('profile')
   const [themeModeFilter, setThemeModeFilter] = useState('all') // 'all' | 'dark' | 'light'
@@ -211,6 +225,10 @@ export function Settings({
   // Profile state
   const [fullName, setFullName] = useState(user?.full_name || '')
   const [profileSaving, setProfileSaving] = useState(false)
+
+  // Currency saving state
+  const [currencySaving, setCurrencySaving] = useState(false)
+  const [targetCurrency, setTargetCurrency] = useState(null)
 
   // Password state
   const [currentPw, setCurrentPw] = useState('')
@@ -240,12 +258,23 @@ export function Settings({
     }
   }
 
-  const handleCurrencyChange = (newCurr) => {
-    setCurrency(newCurr)
-    if (user) {
-      authApi.updateProfile({ currency: newCurr }).catch(() => { })
+  const handleCurrencyChange = async (newCurr) => {
+    if (newCurr === currency) return
+    setCurrencySaving(true)
+    setTargetCurrency(newCurr)
+    try {
+      await settingsApi.updateCurrency(newCurr)
+      setCurrency(newCurr)
+      if (user && onUserUpdate) {
+        onUserUpdate({ ...user, currency: newCurr })
+      }
+      showToast(`Currency changed to ${newCurr}`)
+    } catch (err) {
+      showToast(err.message || 'Failed to update currency')
+    } finally {
+      setCurrencySaving(false)
+      setTargetCurrency(null)
     }
-    showToast(`Currency changed to ${newCurr}`)
   }
 
   const [showPwConfirm, setShowPwConfirm] = useState(false)
@@ -513,19 +542,43 @@ export function Settings({
                   ['USD', '$ US Dollar (USD)'],
                   ['EUR', '€ Euro (EUR)'],
                   ['GBP', '£ British Pound (GBP)'],
-                ].map(([code, label]) => (
-                  <button
-                    key={code}
-                    type="button"
-                    className="chip"
-                    aria-pressed={currency === code}
-                    onClick={() => handleCurrencyChange(code)}
-                  >
-                    {label}
-                  </button>
-                ))}
+                ].map(([code, label]) => {
+                  const isSelected = currency === code
+                  const isSavingThis = currencySaving && targetCurrency === code
+                  return (
+                    <button
+                      key={code}
+                      type="button"
+                      className="chip"
+                      aria-pressed={isSelected}
+                      disabled={currencySaving}
+                      onClick={() => handleCurrencyChange(code)}
+                      style={{
+                        position: 'relative',
+                        opacity: currencySaving && !isSavingThis ? 0.7 : 1,
+                        cursor: currencySaving ? 'wait' : 'pointer',
+                      }}
+                    >
+                      {label}
+                      {isSavingThis && (
+                        <span style={{ fontSize: '11px', marginLeft: '6px', opacity: 0.85 }}>
+                          (Saving...)
+                        </span>
+                      )}
+                    </button>
+                  )
+                })}
               </div>
             </div>
+          )}
+
+          {activeTab === 'categories' && (
+            <CategoriesTab
+              categories={categories}
+              onCategoriesChange={onCategoriesChange}
+              showToast={showToast}
+              user={user}
+            />
           )}
 
           {activeTab === 'security' && (

@@ -111,6 +111,11 @@ export function App() {
     // Toast
     toast,
     showToast,
+    // Categories
+    categories,
+    expenseCategories,
+    incomeCategories,
+    refreshCategories,
   } = useExpenses()
 
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
@@ -225,6 +230,11 @@ export function App() {
       // Toast props
       toast={toast}
       undoDelete={undoDelete}
+      // Categories
+      categories={categories}
+      expenseCategories={expenseCategories}
+      incomeCategories={incomeCategories}
+      refreshCategories={refreshCategories}
     >
       {page === 'dashboard' ? (
         <Dashboard
@@ -279,6 +289,8 @@ export function App() {
           budget={budget}
           onUpdateBudget={updateBudget}
           showToast={showToast}
+          categories={categories}
+          onCategoriesChange={refreshCategories}
         />
       ) : (
         <Transactions

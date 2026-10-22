@@ -259,3 +259,17 @@ try:
     from app.schemas.wallet import WalletCreate, WalletUpdate, WalletResponse
 except Exception:
     pass
+
+from app.schemas.currency import (
+    SUPPORTED_CURRENCIES,
+    CurrencySettingBase,
+    CurrencySettingUpdate,
+    CurrencySettingResponse,
+)
+from app.schemas.category import (
+    CategoryBase,
+    CategoryCreate,
+    CategoryUpdate,
+    CategoryResponse,
+    CategoryDeleteResponse,
+)

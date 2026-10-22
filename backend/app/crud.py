@@ -4,7 +4,7 @@ from datetime import datetime, date, timedelta
 import calendar
 from typing import Optional, List
 
-from app.models import User, Expense, Income, Budget, Setting
+from app.models import User, Expense, Income, Budget, Setting, CurrencySetting, Category
 from app.models.wallet import Wallet
 from fastapi import HTTPException
 from app.schemas import (
@@ -13,6 +13,14 @@ from app.schemas import (
     UserResponse,
     SettingsUpdate,
     SettingsResponse,
+    CurrencySettingBase,
+    CurrencySettingUpdate,
+    CurrencySettingResponse,
+    SUPPORTED_CURRENCIES,
+    CategoryCreate,
+    CategoryUpdate,
+    CategoryResponse,
+    CategoryDeleteResponse,
     ExpenseCreate,
     ExpenseUpdate,
     ExpenseResponse,
@@ -70,6 +78,13 @@ def create_user(db: Session, user_in: UserRegister) -> User:
         currency="INR",
     )
     db.add(setting)
+
+    # Automatically create user currency_settings record
+    currency_setting = CurrencySetting(
+        user_id=user.id,
+        currency_code="INR",
+    )
+    db.add(currency_setting)
     db.commit()
 
     return user
@@ -119,10 +134,75 @@ def update_user(db: Session, user_id: int, user_in: UserUpdate) -> Optional[User
     db.refresh(user)
     return user
 
+def get_user_currency_setting(db: Session, user_id: Optional[int]) -> CurrencySetting:
+    """
+    Retrieve authenticated user's currency preference from currency_settings table.
+    Defaults to INR for new users or when preference doesn't exist.
+    """
+    if user_id:
+        cs = db.query(CurrencySetting).filter(CurrencySetting.user_id == user_id).first()
+        if cs:
+            return cs
+        # Fall back to legacy user or setting preference if present
+        user = get_user_by_id(db, user_id)
+        preferred_code = "INR"
+        if user and user.currency and user.currency.upper() in SUPPORTED_CURRENCIES:
+            preferred_code = user.currency.upper()
+        else:
+            legacy = db.query(Setting).filter(Setting.user_id == user_id).first()
+            if legacy and legacy.currency and legacy.currency.upper() in SUPPORTED_CURRENCIES:
+                preferred_code = legacy.currency.upper()
+
+        cs = CurrencySetting(user_id=user_id, currency_code=preferred_code)
+        db.add(cs)
+        try:
+            db.commit()
+            db.refresh(cs)
+            return cs
+        except Exception:
+            db.rollback()
+            return db.query(CurrencySetting).filter(CurrencySetting.user_id == user_id).first() or CurrencySetting(id=0, user_id=user_id, currency_code="INR")
+
+    return CurrencySetting(id=0, user_id=None, currency_code="INR")
+
+def update_user_currency_setting(db: Session, user_id: Optional[int], currency_code: str) -> CurrencySetting:
+    """
+    Update authenticated user's currency preference in currency_settings table.
+    Validates against SUPPORTED_CURRENCIES ('INR', 'USD', 'EUR', 'GBP').
+    """
+    cleaned_code = (currency_code or "").strip().upper()
+    if cleaned_code not in SUPPORTED_CURRENCIES:
+        raise ValueError(f"Invalid currency code '{currency_code}'. Supported currencies are: {', '.join(SUPPORTED_CURRENCIES)}")
+
+    if user_id:
+        cs = db.query(CurrencySetting).filter(CurrencySetting.user_id == user_id).first()
+        if not cs:
+            cs = CurrencySetting(user_id=user_id, currency_code=cleaned_code)
+            db.add(cs)
+        else:
+            cs.currency_code = cleaned_code
+
+        # Sync user record and legacy setting
+        user = get_user_by_id(db, user_id)
+        if user:
+            user.currency = cleaned_code
+        legacy = db.query(Setting).filter(Setting.user_id == user_id).first()
+        if legacy:
+            legacy.currency = cleaned_code
+
+        db.commit()
+        db.refresh(cs)
+        return cs
+
+    return CurrencySetting(id=0, user_id=None, currency_code=cleaned_code)
+
 def get_user_settings(db: Session, user_id: Optional[int]) -> Setting:
     if user_id:
         setting = db.query(Setting).filter(Setting.user_id == user_id).first()
+        cs = get_user_currency_setting(db, user_id)
         if setting:
+            # Sync currency from canonical currency_settings
+            setting.currency = cs.currency_code
             return setting
         # If user exists but no settings row, create one
         user = get_user_by_id(db, user_id)
@@ -130,7 +210,7 @@ def get_user_settings(db: Session, user_id: Optional[int]) -> Setting:
             setting = Setting(
                 user_id=user_id,
                 theme=user.theme or "dark",
-                currency=user.currency or "INR",
+                currency=cs.currency_code or "INR",
             )
             db.add(setting)
             db.commit()
@@ -143,24 +223,31 @@ def update_user_settings(db: Session, user_id: Optional[int], update_in: Setting
     if user_id:
         setting = db.query(Setting).filter(Setting.user_id == user_id).first()
         user = get_user_by_id(db, user_id)
+        
+        # If currency is provided, update currency_settings as the canonical store
+        curr_code = None
+        if update_in.currency is not None:
+            cs = update_user_currency_setting(db, user_id, update_in.currency)
+            curr_code = cs.currency_code
+
         if not setting:
             setting = Setting(
                 user_id=user_id,
                 theme=(update_in.theme or (user.theme if user else "dark") or "dark").strip().lower(),
-                currency=(update_in.currency or (user.currency if user else "INR") or "INR").strip().upper(),
+                currency=curr_code or (user.currency if user else "INR") or "INR",
             )
             db.add(setting)
         else:
             if update_in.theme is not None:
                 setting.theme = update_in.theme.strip().lower()
-            if update_in.currency is not None:
-                setting.currency = update_in.currency.strip().upper()
+            if curr_code is not None:
+                setting.currency = curr_code
 
         if user:
             if update_in.theme is not None:
                 user.theme = update_in.theme.strip().lower()
-            if update_in.currency is not None:
-                user.currency = update_in.currency.strip().upper()
+            if curr_code is not None:
+                user.currency = curr_code
 
         db.commit()
         db.refresh(setting)
@@ -172,6 +259,233 @@ def update_user_settings(db: Session, user_id: Optional[int], update_in: Setting
         theme=(update_in.theme or "dark").strip().lower(),
         currency=(update_in.currency or "INR").strip().upper(),
     )
+
+# ==================== CATEGORY CRUD ====================
+
+DEFAULT_EXPENSE_CATEGORIES = [
+    {"name": "Food", "type": "expense", "icon": "utensils", "color": "#b42c45"},
+    {"name": "Transport", "type": "expense", "icon": "car", "color": "#2563eb"},
+    {"name": "Shopping", "type": "expense", "icon": "shopping-bag", "color": "#b45309"},
+    {"name": "Bills", "type": "expense", "icon": "receipt", "color": "#0284c7"},
+    {"name": "Home", "type": "expense", "icon": "home", "color": "#0d7a6f"},
+    {"name": "Health", "type": "expense", "icon": "activity", "color": "#15803d"},
+    {"name": "Education", "type": "expense", "icon": "graduation-cap", "color": "#6366f1"},
+    {"name": "Entertainment", "type": "expense", "icon": "film", "color": "#9333ea"},
+    {"name": "Fun", "type": "expense", "icon": "smile", "color": "#9333ea"},
+    {"name": "Travel", "type": "expense", "icon": "compass", "color": "#0ea5e9"},
+    {"name": "Other", "type": "expense", "icon": "more-horizontal", "color": "#64748b"},
+]
+
+DEFAULT_INCOME_CATEGORIES = [
+    {"name": "Salary", "type": "income", "icon": "briefcase", "color": "#15803d"},
+    {"name": "Freelance", "type": "income", "icon": "laptop", "color": "#2563eb"},
+    {"name": "Business", "type": "income", "icon": "trending-up", "color": "#b45309"},
+    {"name": "Investments", "type": "income", "icon": "pie-chart", "color": "#9333ea"},
+    {"name": "Gifts", "type": "income", "icon": "gift", "color": "#ec4899"},
+    {"name": "Other", "type": "income", "icon": "dollar-sign", "color": "#64748b"},
+]
+
+def seed_default_categories_if_needed(db: Session) -> None:
+    """Ensure system default categories are present in database without creating duplicates."""
+    existing = db.query(Category.name, Category.type).filter(Category.user_id == None).all()
+    existing_keys = {(r[0].lower(), r[1].lower()) for r in existing}
+    
+    all_defs = DEFAULT_EXPENSE_CATEGORIES + DEFAULT_INCOME_CATEGORIES
+    added = False
+    for d in all_defs:
+        key = (d["name"].lower(), d["type"].lower())
+        if key not in existing_keys:
+            cat = Category(
+                user_id=None,
+                name=d["name"],
+                type=d["type"],
+                icon=d["icon"],
+                color=d["color"],
+                is_default=True,
+                is_active=True
+            )
+            db.add(cat)
+            existing_keys.add(key)
+            added = True
+    if added:
+        db.commit()
+
+def get_categories(
+    db: Session,
+    user_id: Optional[int] = None,
+    cat_type: Optional[str] = None,
+    include_inactive: bool = False
+) -> List[Category]:
+    """
+    Retrieve categories available to the user:
+    System defaults (user_id IS NULL) + user's custom categories.
+    Can be filtered by type ('expense' or 'income').
+    """
+    # Check if defaults exist, seed if empty
+    has_defaults = db.query(Category.id).filter(Category.user_id == None).first()
+    if not has_defaults:
+        seed_default_categories_if_needed(db)
+
+    query = db.query(Category)
+    
+    if user_id:
+        query = query.filter(or_(Category.user_id == None, Category.user_id == user_id))
+    else:
+        query = query.filter(Category.user_id == None)
+        
+    if cat_type:
+        query = query.filter(Category.type == cat_type.strip().lower())
+        
+    if not include_inactive:
+        query = query.filter(Category.is_active == True)
+        
+    return query.order_by(Category.is_default.desc(), Category.name.asc()).all()
+
+def create_category(db: Session, user_id: int, cat_in: CategoryCreate) -> Category:
+    """
+    Create a custom category for the authenticated user.
+    Prevents duplicates against defaults and user's existing categories.
+    """
+    name_clean = cat_in.name.strip()
+    type_clean = cat_in.type.strip().lower()
+    
+    # 1. Check conflict with system default categories of the same type
+    default_dup = db.query(Category).filter(
+        Category.user_id == None,
+        Category.type == type_clean,
+        func.lower(Category.name) == name_clean.lower()
+    ).first()
+    if default_dup:
+        raise ValueError(f"Category '{name_clean}' already exists as a default {type_clean} category.")
+        
+    # 2. Check conflict with user's own custom categories of the same type
+    user_dup = db.query(Category).filter(
+        Category.user_id == user_id,
+        Category.type == type_clean,
+        func.lower(Category.name) == name_clean.lower()
+    ).first()
+    
+    if user_dup:
+        if user_dup.is_active:
+            raise ValueError(f"You already have a {type_clean} category named '{name_clean}'.")
+        else:
+            # Reactivate previously deactivated category
+            user_dup.is_active = True
+            if cat_in.icon:
+                user_dup.icon = cat_in.icon
+            if cat_in.color:
+                user_dup.color = cat_in.color
+            db.commit()
+            db.refresh(user_dup)
+            return user_dup
+            
+    cat = Category(
+        user_id=user_id,
+        name=name_clean,
+        type=type_clean,
+        icon=cat_in.icon or "tag",
+        color=cat_in.color or "#64748b",
+        is_default=False,
+        is_active=True
+    )
+    db.add(cat)
+    db.commit()
+    db.refresh(cat)
+    return cat
+
+def update_category(db: Session, user_id: int, category_id: int, cat_in: CategoryUpdate) -> Category:
+    """
+    Update a custom category owned by the authenticated user.
+    System defaults cannot be edited.
+    """
+    cat = db.query(Category).filter(Category.id == category_id).first()
+    if not cat:
+        raise HTTPException(status_code=404, detail="Category not found.")
+        
+    if cat.is_default or cat.user_id is None:
+        raise HTTPException(status_code=403, detail="Default system categories cannot be modified.")
+        
+    if cat.user_id != user_id:
+        raise HTTPException(status_code=403, detail="You do not have permission to modify this category.")
+        
+    if cat_in.name is not None:
+        new_name = cat_in.name.strip()
+        if new_name.lower() != cat.name.lower():
+            # Check duplicate against default
+            if db.query(Category).filter(
+                Category.user_id == None,
+                Category.type == cat.type,
+                func.lower(Category.name) == new_name.lower()
+            ).first():
+                raise ValueError(f"Category '{new_name}' already exists as a default {cat.type} category.")
+            # Check duplicate against user's categories
+            if db.query(Category).filter(
+                Category.user_id == user_id,
+                Category.type == cat.type,
+                Category.id != cat.id,
+                func.lower(Category.name) == new_name.lower()
+            ).first():
+                raise ValueError(f"You already have a {cat.type} category named '{new_name}'.")
+        cat.name = new_name
+        
+    if cat_in.icon is not None:
+        cat.icon = cat_in.icon
+    if cat_in.color is not None:
+        cat.color = cat_in.color
+    if cat_in.is_active is not None:
+        cat.is_active = cat_in.is_active
+        
+    db.commit()
+    db.refresh(cat)
+    return cat
+
+def delete_category(db: Session, user_id: int, category_id: int) -> dict:
+    """
+    Safely delete or deactivate a custom category owned by the authenticated user.
+    If referenced by transactions/incomes, deactivates instead of deleting to preserve history.
+    """
+    cat = db.query(Category).filter(Category.id == category_id).first()
+    if not cat:
+        raise HTTPException(status_code=404, detail="Category not found.")
+        
+    if cat.is_default or cat.user_id is None:
+        raise HTTPException(status_code=403, detail="Default system categories cannot be deleted.")
+        
+    if cat.user_id != user_id:
+        raise HTTPException(status_code=403, detail="You do not have permission to delete this category.")
+        
+    ref_count = 0
+    if cat.type == "expense":
+        ref_count += db.query(Expense).filter(
+            Expense.user_id == user_id,
+            func.lower(Expense.category) == cat.name.lower()
+        ).count()
+    elif cat.type == "income":
+        ref_count += db.query(Income).filter(
+            Income.user_id == user_id,
+            func.lower(Income.category) == cat.name.lower()
+        ).count()
+        
+    if ref_count > 0:
+        cat.is_active = False
+        db.commit()
+        return {
+            "status": "deactivated",
+            "message": f"Category '{cat.name}' is referenced by {ref_count} record(s). It has been deactivated to preserve transaction history.",
+            "category_id": cat.id,
+            "is_active": False,
+        }
+    else:
+        cat_id = cat.id
+        cat_name = cat.name
+        db.delete(cat)
+        db.commit()
+        return {
+            "status": "deleted",
+            "message": f"Category '{cat_name}' was successfully deleted.",
+            "category_id": cat_id,
+            "is_active": False,
+        }
 
 def change_user_password(db: Session, user_id: int, current_pw: str, new_pw: str) -> bool:
     user = get_user_by_id(db, user_id)

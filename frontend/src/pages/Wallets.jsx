@@ -253,18 +253,6 @@ export function Wallets({
               </div>
             )
           })}
-
-          {/* Add Account Dashed Card inside grid */}
-          <button
-            type="button"
-            className="pl-wallets-add-card"
-            onClick={openAddModal}
-            aria-label="Add new account"
-          >
-            <div className="pl-wallets-add-icon" aria-hidden="true">+</div>
-            <span className="pl-wallets-add-title">Add New Account</span>
-            <span className="pl-wallets-add-sub">Connect bank, cash, or digital</span>
-          </button>
         </div>
       )}
 

@@ -15,12 +15,18 @@ export function Income({
   onSort,
   openIncomeDialog,
   onDeleteIncome,
+  incomeCategories = [],
+  categories = [],
 }) {
   const topSource = rankedIncomeCategories[0] || 'None yet'
   const count = monthIncomes.length
   const avg = count > 0 ? totalIncome / count : 0
 
-  const filterOptions = ['All', ...INCOME_CATEGORIES.map((c) => c[0])]
+  const dbList = (incomeCategories.length > 0
+    ? incomeCategories.map((c) => c.name)
+    : categories.filter((c) => c.type === 'income').map((c) => c.name)) || []
+
+  const filterOptions = ['All', ...Array.from(new Set([...INCOME_CATEGORIES.map((c) => c[0]), ...dbList]))]
 
   return (
     <section className="view on" id="v-income" aria-label="Income module">

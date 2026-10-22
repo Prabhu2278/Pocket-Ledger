@@ -16,6 +16,8 @@ export function Expenses({
   onSort,
   openExpenseDialog,
   onDeleteExpense,
+  categories = [],
+  expenseCategories = [],
 }) {
   const biggestCategory = rankedCategories[0] || 'None yet'
 
@@ -44,7 +46,12 @@ export function Expenses({
       </div>
 
       <div className="card">
-        <ExpenseFilters filter={filter} setFilter={setFilter} />
+        <ExpenseFilters
+          filter={filter}
+          setFilter={setFilter}
+          categories={categories}
+          expenseCategories={expenseCategories}
+        />
         <ExpenseList
           visibleTransactions={visibleTransactions}
           monthTransactions={monthTransactions}
