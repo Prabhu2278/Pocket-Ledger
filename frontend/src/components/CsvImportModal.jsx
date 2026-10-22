@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { parseCsvText } from '../utils/csvParser'
 import { money } from '../utils/formatCurrency'
+import { categoryApi } from '../api/categoryApi'
 
 export function CsvImportModal({
   isOpen,
@@ -9,6 +10,8 @@ export function CsvImportModal({
   currency = 'INR',
   wallets = [],
   categories = [],
+  refreshCategories,
+  showToast,
 }) {
   const [file, setFile] = useState(null)
   const [rawText, setRawText] = useState('')
@@ -17,8 +20,18 @@ export function CsvImportModal({
   const [error, setError] = useState('')
   const [isDragging, setIsDragging] = useState(false)
 
+  // Local copy of categories
+  const [localCategories, setLocalCategories] = useState(categories)
+
   // Target wallet state (Mandatory)
   const [selectedWalletId, setSelectedWalletId] = useState('')
+
+  // Synchronize localCategories with categories prop
+  useEffect(() => {
+    if (categories && categories.length > 0) {
+      setLocalCategories(categories)
+    }
+  }, [categories])
 
   // Set initial default wallet
   useEffect(() => {
@@ -39,13 +52,31 @@ export function CsvImportModal({
     }
   }, [isOpen])
 
-  // Re-parse or re-evaluate rows when selectedWalletId changes
+  // Re-parse rows when selectedWalletId, rawText, wallets, or localCategories change
   useEffect(() => {
     if (!rawText) return
     const defaultWallet = wallets.find((w) => String(w.id) === String(selectedWalletId)) || wallets[0] || null
-    const rows = parseCsvText(rawText, defaultWallet, wallets)
+    const rows = parseCsvText(rawText, defaultWallet, wallets, localCategories)
     setParsedRows(rows)
-  }, [selectedWalletId, rawText, wallets])
+  }, [selectedWalletId, rawText, wallets, localCategories])
+
+  // Detect unlisted categories from the CSV that do not yet exist in the DB / Settings
+  const newCategoriesFromCsv = useMemo(() => {
+    const newMap = new Map()
+    const existingLower = new Set(localCategories.map((c) => c.name.toLowerCase()))
+
+    parsedRows.forEach((r) => {
+      const catName = (r.category || r.rawCategory || '').trim()
+      if (!catName) return
+      if (!existingLower.has(catName.toLowerCase()) && !newMap.has(catName.toLowerCase())) {
+        newMap.set(catName.toLowerCase(), {
+          name: catName,
+          type: r.type || 'expense',
+        })
+      }
+    })
+    return Array.from(newMap.values())
+  }, [parsedRows, localCategories])
 
   if (!isOpen) return null
 
@@ -66,7 +97,7 @@ export function CsvImportModal({
         const text = event.target?.result
         setRawText(text)
         const defaultWallet = wallets.find((w) => String(w.id) === String(selectedWalletId)) || wallets[0] || null
-        const rows = parseCsvText(text, defaultWallet, wallets)
+        const rows = parseCsvText(text, defaultWallet, wallets, localCategories)
         if (rows.length === 0) {
           setError('No valid transactions found in the CSV. Please check column headers.')
           setParsedRows([])
@@ -113,7 +144,7 @@ export function CsvImportModal({
     }
   }
 
-  // Update a single row's field inline
+  // Update an editable row field inline (Date, Type, Wallet, Note, Amount)
   const updateRowField = (idx, field, value) => {
     setParsedRows((prev) => {
       const copy = [...prev]
@@ -146,6 +177,7 @@ export function CsvImportModal({
   const invalidRows = parsedRows.filter((r) => !r.isValid)
   const isAllValid = parsedRows.length > 0 && invalidRows.length === 0
 
+  // Save and Import handler: auto-creates new categories in DB and Settings, then imports
   const handleImport = async () => {
     if (!isAllValid) {
       setError('All data fields (Date, Type, Category, Wallet, Note, Amount) are mandatory. Please fill missing values.')
@@ -155,7 +187,38 @@ export function CsvImportModal({
     setLoading(true)
     setError('')
     try {
+      // 1. If any imported rows contain categories not in the DB, create them in the DB & Settings
+      if (newCategoriesFromCsv.length > 0) {
+        for (const nc of newCategoriesFromCsv) {
+          try {
+            await categoryApi.createCategory({
+              name: nc.name,
+              type: nc.type,
+              color: '#2563eb',
+              icon: 'tag',
+            })
+          } catch {
+            // If already created or handled by backend, continue safely
+          }
+        }
+      }
+
+      // 2. Perform transaction bulk import
       await onImportConfirm(parsedRows)
+
+      // 3. Refresh categories so Settings and the rest of the application reflect the new categories
+      if (refreshCategories) {
+        await refreshCategories()
+      }
+
+      if (showToast) {
+        if (newCategoriesFromCsv.length > 0) {
+          showToast(`Imported ${parsedRows.length} transactions and saved ${newCategoriesFromCsv.length} new category/categories to Settings & DB!`)
+        } else {
+          showToast(`Imported ${parsedRows.length} transactions successfully.`)
+        }
+      }
+
       setFile(null)
       setRawText('')
       setParsedRows([])
@@ -183,22 +246,23 @@ export function CsvImportModal({
       <div
         className="dialog-content"
         style={{
-          maxWidth: '840px',
+          maxWidth: '860px',
           width: '94%',
-          maxHeight: '90vh',
+          maxHeight: '92vh',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
+          padding: '18px 22px 14px',
         }}
       >
         <div className="f" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-          {/* Header */}
+          {/* Header - Compact */}
           <div style={{ flexShrink: 0 }}>
-            <h2 id="csv-modal-title" style={{ margin: '0 0 4px', fontSize: '18px' }}>
+            <h2 id="csv-modal-title" style={{ margin: '0 0 2px', fontSize: '17px' }}>
               Import Transactions CSV
             </h2>
-            <p style={{ margin: '0 0 14px', fontSize: '13px', color: 'var(--mute)' }}>
-              All transaction fields (Date, Type, Category, Wallet, Note, Amount) are mandatory.
+            <p style={{ margin: '0 0 8px', fontSize: '12px', color: 'var(--mute)' }}>
+              Categories are identified directly from your CSV. New categories are saved to Settings & DB upon Save & Import.
             </p>
           </div>
 
@@ -212,7 +276,7 @@ export function CsvImportModal({
             style={{ display: 'none' }}
           />
 
-          {/* Upload Zone or Selected File Bar */}
+          {/* Upload Zone (when no file selected yet) */}
           {!file ? (
             <label
               htmlFor="csv-file-input"
@@ -223,6 +287,7 @@ export function CsvImportModal({
                 alignItems: 'center',
                 justifyContent: 'center',
                 textAlign: 'center',
+                padding: '28px 16px',
                 flexShrink: 0,
               }}
               onDragOver={handleDragOver}
@@ -252,39 +317,7 @@ export function CsvImportModal({
               </div>
             </label>
           ) : (
-            <div className="csv-selected-file-card" style={{ flexShrink: 0 }}>
-              <div className="csv-selected-file-info">
-                <div className="csv-file-badge-icon">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                    <polyline points="14 2 14 8 20 8" />
-                    <line x1="16" y1="13" x2="8" y2="13" />
-                    <line x1="16" y1="17" x2="8" y2="17" />
-                    <polyline points="10 9 9 9 8 9" />
-                  </svg>
-                </div>
-                <div>
-                  <div className="csv-selected-file-name" title={file.name}>
-                    {file.name}
-                  </div>
-                  <span className="csv-selected-file-size">
-                    {formatFileSize(file.size)} &bull; {parsedRows.length} transactions loaded
-                  </span>
-                </div>
-              </div>
-
-              <label htmlFor="csv-file-input" className="csv-change-file-btn">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                </svg>
-                Change File
-              </label>
-            </div>
-          )}
-
-          {/* Mandatory Target Wallet Selector */}
-          {wallets && wallets.length > 0 && (
+            /* Compact Unified File & Target Wallet Controls Bar */
             <div
               style={{
                 display: 'flex',
@@ -292,58 +325,120 @@ export function CsvImportModal({
                 justifyContent: 'space-between',
                 flexWrap: 'wrap',
                 gap: '10px',
-                padding: '10px 14px',
+                padding: '7px 12px',
                 background: 'var(--pl-bg-surface-hover, #1b2334)',
-                border: '1.5px solid var(--pl-border-default, #1e293e)',
-                borderRadius: 'var(--pl-radius-md, 10px)',
-                marginBottom: '12px',
+                border: '1px solid var(--pl-border-default, #1e293e)',
+                borderRadius: '8px',
+                marginBottom: '8px',
                 flexShrink: 0,
               }}
             >
-              <div>
-                <label
-                  htmlFor="csv-target-wallet"
+              {/* Left: File details + Change button */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--pl-color-success, #10b981)', flexShrink: 0 }}>
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                </svg>
+                <span
                   style={{
                     fontSize: '12.5px',
-                    fontWeight: 700,
+                    fontWeight: 600,
                     color: 'var(--pl-text-primary)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    maxWidth: '300px',
+                  }}
+                  title={file.name}
+                >
+                  {file.name}
+                </span>
+                <span style={{ fontSize: '11px', color: 'var(--mute)', whiteSpace: 'nowrap' }}>
+                  ({formatFileSize(file.size)} &bull; {parsedRows.length} rows)
+                </span>
+                <label
+                  htmlFor="csv-file-input"
+                  style={{
+                    fontSize: '11px',
+                    color: 'var(--pl-color-primary, #818cf8)',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    marginLeft: '4px',
+                    whiteSpace: 'nowrap',
                   }}
                 >
-                  Target Wallet <span style={{ color: 'var(--pl-color-danger, #ef4444)' }}>*</span>
+                  Change
                 </label>
-                <span style={{ fontSize: '11px', color: 'var(--pl-text-muted)' }}>
-                  Mandatory destination account for imported records
-                </span>
               </div>
 
-              <select
-                id="csv-target-wallet"
-                value={selectedWalletId}
-                onChange={(e) => setSelectedWalletId(e.target.value)}
-                style={{
-                  minWidth: '220px',
-                  maxWidth: '300px',
-                  height: '36px',
-                  padding: '6px 10px',
-                  fontSize: '12.5px',
-                  fontWeight: 600,
-                  borderRadius: '8px',
-                  border: '1.5px solid var(--pl-color-primary)',
-                  background: 'var(--pl-bg-surface)',
-                  color: 'var(--pl-text-primary)',
-                  cursor: 'pointer',
-                }}
-                required
-              >
-                {wallets.map((w) => (
-                  <option key={w.id} value={w.id}>
-                    {w.name} ({money(w.balance || 0, currency)})
-                  </option>
-                ))}
-              </select>
+              {/* Right: Target Wallet Selector */}
+              {wallets && wallets.length > 0 && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                  <label
+                    htmlFor="csv-target-wallet"
+                    style={{
+                      fontSize: '11.5px',
+                      fontWeight: 700,
+                      color: 'var(--pl-text-primary)',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    Target Wallet <span style={{ color: 'var(--pl-color-danger, #ef4444)' }}>*</span>:
+                  </label>
+                  <select
+                    id="csv-target-wallet"
+                    value={selectedWalletId}
+                    onChange={(e) => setSelectedWalletId(e.target.value)}
+                    style={{
+                      height: '28px',
+                      padding: '2px 8px',
+                      fontSize: '11.5px',
+                      fontWeight: 600,
+                      borderRadius: '6px',
+                      border: '1.5px solid var(--pl-color-primary)',
+                      background: 'var(--pl-bg-surface)',
+                      color: 'var(--pl-text-primary)',
+                      cursor: 'pointer',
+                      maxWidth: '220px',
+                    }}
+                    required
+                  >
+                    {wallets.map((w) => (
+                      <option key={w.id} value={w.id}>
+                        {w.name} ({money(w.balance || 0, currency)})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Slim New Categories Notice */}
+          {newCategoriesFromCsv.length > 0 && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '5px 10px',
+                background: 'rgba(59, 130, 246, 0.08)',
+                border: '1px solid rgba(59, 130, 246, 0.25)',
+                borderRadius: '6px',
+                marginBottom: '6px',
+                fontSize: '11px',
+                color: 'var(--pl-text-primary)',
+                flexShrink: 0,
+              }}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--pl-color-primary)', flexShrink: 0 }}>
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="16" x2="12" y2="12" />
+                <line x1="12" y1="8" x2="12.01" y2="8" />
+              </svg>
+              <span>
+                <b>{newCategoriesFromCsv.length} new category/categories detected:</b> {newCategoriesFromCsv.map((u) => `"${u.name}"`).join(', ')}. Saved automatically on Save & Import.
+              </span>
             </div>
           )}
 
@@ -352,13 +447,13 @@ export function CsvImportModal({
               className="err"
               role="alert"
               style={{
-                padding: '8px 12px',
-                borderRadius: '8px',
+                padding: '6px 10px',
+                borderRadius: '6px',
                 background: 'rgba(239, 68, 68, 0.12)',
                 border: '1px solid rgba(239, 68, 68, 0.3)',
                 color: 'var(--pl-color-danger, #ef4444)',
-                fontSize: '12px',
-                marginBottom: '10px',
+                fontSize: '11.5px',
+                marginBottom: '6px',
                 flexShrink: 0,
               }}
             >
@@ -366,51 +461,51 @@ export function CsvImportModal({
             </div>
           )}
 
-          {/* Validation Notice when mandatory fields are missing */}
+          {/* Slim Validation Notice when mandatory fields are missing */}
           {invalidRows.length > 0 && (
             <div
               style={{
-                padding: '8px 12px',
-                borderRadius: '8px',
+                padding: '5px 10px',
+                borderRadius: '6px',
                 background: 'rgba(245, 158, 11, 0.12)',
                 border: '1px solid rgba(245, 158, 11, 0.35)',
                 color: 'var(--pl-color-warning, #f59e0b)',
-                fontSize: '12px',
-                marginBottom: '10px',
+                fontSize: '11px',
+                marginBottom: '6px',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '8px',
+                gap: '6px',
                 flexShrink: 0,
               }}
             >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
                 <circle cx="12" cy="12" r="10" />
                 <line x1="12" y1="8" x2="12" y2="12" />
                 <line x1="12" y1="16" x2="12.01" y2="16" />
               </svg>
               <span>
-                <b>{invalidRows.length} row(s) have missing mandatory data.</b> All fields (Date, Type, Category, Wallet, Note, Amount) must be filled to confirm import.
+                <b>{invalidRows.length} row(s) missing mandatory data.</b> Fill highlighted fields to confirm import.
               </span>
             </div>
           )}
 
           {parsedRows.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-              {/* Row Stats */}
+              {/* Row Stats - Compact */}
               <div
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  marginBottom: '8px',
-                  fontSize: '12.5px',
+                  marginBottom: '6px',
+                  fontSize: '11.5px',
                   flexShrink: 0,
                 }}
               >
                 <span>
-                  <b>Showing all {parsedRows.length} transactions</b>{' '}
-                  <span style={{ fontSize: '11px', color: 'var(--mute)' }}>
-                    (scroll inside table to inspect all rows)
+                  <b>All {parsedRows.length} transactions</b>{' '}
+                  <span style={{ fontSize: '10.5px', color: 'var(--mute)' }}>
+                    (scroll inside table to inspect rows)
                   </span>
                 </span>
                 <span style={{ color: 'var(--mute)' }}>
@@ -418,18 +513,18 @@ export function CsvImportModal({
                 </span>
               </div>
 
-              {/* Fixed Header & Exactly 5 Rows Visible Initially with Contained Scrolling */}
+              {/* Table Container - Moved up with generous height */}
               <div
                 className="csv-table-scroll-container"
                 style={{
-                  height: '245px',
-                  maxHeight: '245px',
+                  height: '270px',
+                  maxHeight: '330px',
                   overflowY: 'auto',
                   overflowX: 'auto',
                   overscrollBehavior: 'contain',
                   border: '1.5px solid var(--pl-border-default)',
-                  borderRadius: 'var(--pl-radius-md, 10px)',
-                  marginBottom: '14px',
+                  borderRadius: 'var(--pl-radius-md, 8px)',
+                  marginBottom: '8px',
                   position: 'relative',
                   background: 'var(--pl-bg-surface)',
                   flexShrink: 0,
@@ -441,7 +536,7 @@ export function CsvImportModal({
                       <th style={fixedHeaderStyle}>#</th>
                       <th style={fixedHeaderStyle}>Date *</th>
                       <th style={fixedHeaderStyle}>Type *</th>
-                      <th style={fixedHeaderStyle}>Category *</th>
+                      <th style={fixedHeaderStyle}>Category</th>
                       <th style={fixedHeaderStyle}>Wallet *</th>
                       <th style={fixedHeaderStyle}>Note *</th>
                       <th style={{ ...fixedHeaderStyle, textAlign: 'right' }}>Amount *</th>
@@ -451,11 +546,16 @@ export function CsvImportModal({
                   <tbody>
                     {parsedRows.map((row, idx) => {
                       const isRowValid = row.isValid
+
+                      const isRowCatInDb = localCategories.some(
+                        (c) => c.name.toLowerCase() === (row.category || '').toLowerCase()
+                      )
+
                       return (
                         <tr
                           key={idx}
                           style={{
-                            height: '42px',
+                            height: '38px',
                             background: isRowValid ? 'transparent' : 'rgba(239, 68, 68, 0.05)',
                             borderBottom: '1px solid var(--pl-border-default)',
                           }}
@@ -471,12 +571,12 @@ export function CsvImportModal({
                               value={row.date || ''}
                               onChange={(e) => updateRowField(idx, 'date', e.target.value)}
                               style={{
-                                padding: '3px 6px',
+                                padding: '2px 6px',
                                 fontSize: '11.5px',
-                                height: '28px',
-                                minHeight: '28px',
+                                height: '26px',
+                                minHeight: '26px',
                                 width: '125px',
-                                borderRadius: '6px',
+                                borderRadius: '5px',
                                 border: row.date ? '1px solid var(--pl-border-default)' : '1.5px solid var(--pl-color-danger, #ef4444)',
                                 background: 'var(--pl-bg-surface)',
                                 color: 'var(--pl-text-primary)',
@@ -491,12 +591,12 @@ export function CsvImportModal({
                               value={row.type || 'expense'}
                               onChange={(e) => updateRowField(idx, 'type', e.target.value)}
                               style={{
-                                padding: '2px 6px',
+                                padding: '1px 6px',
                                 fontSize: '11px',
                                 fontWeight: 700,
-                                height: '28px',
-                                minHeight: '28px',
-                                borderRadius: '6px',
+                                height: '26px',
+                                minHeight: '26px',
+                                borderRadius: '5px',
                                 border: '1px solid var(--pl-border-default)',
                                 background: row.type === 'income' ? 'var(--pl-color-success-soft)' : 'var(--pl-color-primary-soft)',
                                 color: row.type === 'income' ? 'var(--pl-color-success)' : 'var(--pl-color-primary)',
@@ -509,26 +609,45 @@ export function CsvImportModal({
                             </select>
                           </td>
 
-                          {/* Category (Mandatory) */}
+                          {/* Category (Unchangeable from CSV - Clear & Contrast Adaptive) */}
                           <td style={tdStyle}>
-                            <input
-                              type="text"
-                              value={row.category || ''}
-                              placeholder="Required category"
-                              onChange={(e) => updateRowField(idx, 'category', e.target.value)}
-                              style={{
-                                padding: '3px 8px',
-                                fontSize: '11.5px',
-                                height: '28px',
-                                minHeight: '28px',
-                                width: '110px',
-                                borderRadius: '6px',
-                                border: row.category ? '1px solid var(--pl-border-default)' : '1.5px solid var(--pl-color-danger, #ef4444)',
-                                background: 'var(--pl-bg-surface)',
-                                color: 'var(--pl-text-primary)',
-                              }}
-                              required
-                            />
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                              <span
+                                style={{
+                                  fontSize: '12px',
+                                  fontWeight: 600,
+                                  color: 'var(--pl-text-primary, currentColor)',
+                                  padding: '2px 8px',
+                                  borderRadius: '5px',
+                                  background: 'var(--pl-bg-surface-hover, rgba(0, 0, 0, 0.05))',
+                                  border: '1px solid var(--pl-border-default, rgba(0, 0, 0, 0.12))',
+                                  display: 'inline-block',
+                                  whiteSpace: 'nowrap',
+                                }}
+                              >
+                                {row.category || <span style={{ color: 'var(--pl-color-danger, #ef4444)' }}>Missing</span>}
+                              </span>
+
+                              {/* Indicator showing if this category is already in DB or newly identified */}
+                              {!isRowCatInDb && row.category && (
+                                <span
+                                  style={{
+                                    fontSize: '9px',
+                                    fontWeight: 700,
+                                    padding: '1px 5px',
+                                    borderRadius: '4px',
+                                    background: 'var(--pl-color-primary-soft, rgba(37, 99, 235, 0.14))',
+                                    color: 'var(--pl-color-primary, #2563eb)',
+                                    textTransform: 'uppercase',
+                                    border: '1px solid var(--pl-color-primary-soft, rgba(37, 99, 235, 0.25))',
+                                    whiteSpace: 'nowrap',
+                                  }}
+                                  title="New category from CSV. Will be automatically created in Settings & DB upon Save & Import."
+                                >
+                                  New
+                                </span>
+                              )}
+                            </div>
                           </td>
 
                           {/* Wallet (Mandatory) */}
@@ -537,12 +656,12 @@ export function CsvImportModal({
                               value={row.wallet_id || selectedWalletId}
                               onChange={(e) => updateRowField(idx, 'wallet_id', Number(e.target.value))}
                               style={{
-                                padding: '3px 6px',
+                                padding: '2px 6px',
                                 fontSize: '11.5px',
-                                height: '28px',
-                                minHeight: '28px',
-                                minWidth: '130px',
-                                borderRadius: '6px',
+                                height: '26px',
+                                minHeight: '26px',
+                                minWidth: '120px',
+                                borderRadius: '5px',
                                 border: row.wallet_id || selectedWalletId ? '1px solid var(--pl-border-default)' : '1.5px solid var(--pl-color-danger, #ef4444)',
                                 background: 'var(--pl-bg-surface)',
                                 color: 'var(--pl-text-primary)',
@@ -566,12 +685,12 @@ export function CsvImportModal({
                               placeholder="Required note"
                               onChange={(e) => updateRowField(idx, 'note', e.target.value)}
                               style={{
-                                padding: '3px 8px',
+                                padding: '2px 8px',
                                 fontSize: '11.5px',
-                                height: '28px',
-                                minHeight: '28px',
+                                height: '26px',
+                                minHeight: '26px',
                                 width: '150px',
-                                borderRadius: '6px',
+                                borderRadius: '5px',
                                 border: row.note ? '1px solid var(--pl-border-default)' : '1.5px solid var(--pl-color-danger, #ef4444)',
                                 background: 'var(--pl-bg-surface)',
                                 color: 'var(--pl-text-primary)',
@@ -589,14 +708,14 @@ export function CsvImportModal({
                               placeholder="0.00"
                               onChange={(e) => updateRowField(idx, 'amount', parseFloat(e.target.value) || 0)}
                               style={{
-                                padding: '3px 8px',
+                                padding: '2px 8px',
                                 fontSize: '11.5px',
                                 fontWeight: 700,
-                                height: '28px',
-                                minHeight: '28px',
+                                height: '26px',
+                                minHeight: '26px',
                                 width: '85px',
                                 textAlign: 'right',
-                                borderRadius: '6px',
+                                borderRadius: '5px',
                                 border: row.amount > 0 ? '1px solid var(--pl-border-default)' : '1.5px solid var(--pl-color-danger, #ef4444)',
                                 background: 'var(--pl-bg-surface)',
                                 color: row.type === 'income' ? 'var(--pl-color-success)' : 'var(--pl-color-danger)',
@@ -647,8 +766,8 @@ export function CsvImportModal({
             </div>
           )}
 
-          {/* Action Buttons */}
-          <div className="btns" style={{ marginTop: 'auto', paddingTop: '10px', flexShrink: 0 }}>
+          {/* Action Buttons: Save & Import */}
+          <div className="btns" style={{ marginTop: '4px', paddingTop: '6px', flexShrink: 0 }}>
             <button
               type="button"
               className="ghost"
@@ -668,10 +787,10 @@ export function CsvImportModal({
               }}
             >
               {loading
-                ? 'Importing...'
+                ? 'Saving & Importing...'
                 : !isAllValid && parsedRows.length > 0
                 ? `Resolve Missing Data (${invalidRows.length} incomplete)`
-                : `Confirm Import (${parsedRows.length})`}
+                : `Save & Import (${parsedRows.length})`}
             </button>
           </div>
         </div>
@@ -691,7 +810,7 @@ const fixedHeaderStyle = {
   fontWeight: 700,
   textTransform: 'uppercase',
   letterSpacing: '0.04em',
-  padding: '10px 10px',
+  padding: '8px 10px',
   borderBottom: '1.5px solid var(--pl-border-default, #1e293e)',
   boxShadow: '0 1px 0 var(--pl-border-default, #1e293e)',
   whiteSpace: 'nowrap',
@@ -700,7 +819,7 @@ const fixedHeaderStyle = {
 
 // Table cell style
 const tdStyle = {
-  padding: '6px 10px',
+  padding: '4px 10px',
   verticalAlign: 'middle',
   borderBottom: '1px solid var(--pl-border-default, #1e293e)',
   whiteSpace: 'nowrap',

@@ -25,7 +25,7 @@ function splitCsvLine(line) {
   return values
 }
 
-export function parseCsvText(csvText, defaultWallet = null, availableWallets = []) {
+export function parseCsvText(csvText, defaultWallet = null, availableWallets = [], availableCategories = []) {
   if (!csvText || typeof csvText !== 'string') return []
 
   const lines = csvText
@@ -129,13 +129,32 @@ export function parseCsvText(csvText, defaultWallet = null, availableWallets = [
     }
 
     // 3. Resolve Category (MANDATORY)
-    const category = (
+    const rawCategory = (
       row.category ||
       row.cat ||
       row.tag ||
       row.categoryname ||
       ''
     ).trim()
+
+    let matchedCategory = rawCategory
+    let isCategoryListed = false
+
+    if (rawCategory && Array.isArray(availableCategories) && availableCategories.length > 0) {
+      // 1. Try match by name and matching type
+      const matched = availableCategories.find(
+        (c) =>
+          c.name.trim().toLowerCase() === rawCategory.toLowerCase() &&
+          (!type || c.type.toLowerCase() === type.toLowerCase())
+      ) || availableCategories.find(
+        (c) => c.name.trim().toLowerCase() === rawCategory.toLowerCase()
+      )
+
+      if (matched) {
+        matchedCategory = matched.name
+        isCategoryListed = true
+      }
+    }
 
     // 4. Resolve Note (MANDATORY)
     const note = (
@@ -191,7 +210,7 @@ export function parseCsvText(csvText, defaultWallet = null, availableWallets = [
     const missing = []
     if (!dateStr) missing.push('Date')
     if (!type) missing.push('Type')
-    if (!category) missing.push('Category')
+    if (!matchedCategory) missing.push('Category')
     if (!wallet_id && !wallet_name) missing.push('Wallet')
     if (!note) missing.push('Note')
     if (!rawAmount || rawAmount <= 0) missing.push('Amount')
@@ -201,7 +220,9 @@ export function parseCsvText(csvText, defaultWallet = null, availableWallets = [
       date: dateStr,
       type: type || 'expense',
       amount: rawAmount,
-      category: category,
+      category: matchedCategory,
+      rawCategory: rawCategory,
+      isCategoryListed: isCategoryListed,
       note: note,
       wallet_id: wallet_id,
       wallet_name: wallet_name,

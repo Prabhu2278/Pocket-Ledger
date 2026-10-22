@@ -72,6 +72,7 @@ export function AppLayout({
   handleCsvImport,
   // Toast props
   toast,
+  showToast,
   undoDelete,
   // Categories props
   categories = [],
@@ -149,6 +150,8 @@ export function AppLayout({
         currency={currency}
         wallets={wallets}
         categories={categories}
+        refreshCategories={refreshCategories}
+        showToast={showToast}
       />
 
       {/* Filter Drawer (Right Side Slide-Over) */}

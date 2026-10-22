@@ -229,6 +229,7 @@ export function App() {
       handleCsvImport={handleCsvImport}
       // Toast props
       toast={toast}
+      showToast={showToast}
       undoDelete={undoDelete}
       // Categories
       categories={categories}

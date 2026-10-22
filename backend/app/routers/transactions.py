@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import PlainTextResponse
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
+from sqlalchemy import or_, func
 from typing import Optional, List
 import datetime as dt
 import calendar
@@ -10,7 +10,7 @@ import io
 from pydantic import BaseModel, Field
 
 from app.database import get_db
-from app.models import Expense, Income, User
+from app.models import Expense, Income, User, Category
 from app.models.wallet import Wallet
 from app.deps import get_optional_current_user
 from app.services.wallet_service import WalletService
@@ -366,6 +366,28 @@ def bulk_import_transactions(
                 first_w = db.query(Wallet).filter(Wallet.user_id == user_id).first() if user_id else db.query(Wallet).first()
                 if first_w:
                     wallet_id = first_w.id
+
+            # Ensure category exists in categories table so it is saved in settings and db
+            clean_cat = cat.strip() if cat else ""
+            cat_type = "income" if t_type in ("income", "deposit", "credit") else "expense"
+            if clean_cat:
+                existing_cat = db.query(Category).filter(
+                    or_(Category.user_id == user_id, Category.user_id == None),
+                    Category.type == cat_type,
+                    func.lower(Category.name) == clean_cat.lower()
+                ).first()
+                if not existing_cat:
+                    new_category = Category(
+                        user_id=user_id,
+                        name=clean_cat,
+                        type=cat_type,
+                        icon="tag",
+                        color="#2563eb",
+                        is_default=False,
+                        is_active=True
+                    )
+                    db.add(new_category)
+                    db.flush()
 
             if t_type in ("income", "deposit", "credit"):
                 item = Income(
