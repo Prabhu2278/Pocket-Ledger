@@ -156,13 +156,12 @@ export function CsvImportModal({
         row.wallet_name = w ? w.name : ''
       }
 
-      // Re-validate row
+      // Re-validate row (Note is optional)
       const missing = []
       if (!row.date || !row.date.trim()) missing.push('Date')
       if (!row.type || !row.type.trim()) missing.push('Type')
       if (!row.category || !row.category.trim()) missing.push('Category')
       if (!row.wallet_id) missing.push('Wallet')
-      if (!row.note || !row.note.trim()) missing.push('Note')
       if (!row.amount || Number(row.amount) <= 0) missing.push('Amount')
 
       row.isValid = missing.length === 0
@@ -180,7 +179,7 @@ export function CsvImportModal({
   // Save and Import handler: auto-creates new categories in DB and Settings, then imports
   const handleImport = async () => {
     if (!isAllValid) {
-      setError('All data fields (Date, Type, Category, Wallet, Note, Amount) are mandatory. Please fill missing values.')
+      setError('All required data fields (Date, Type, Category, Wallet, Amount) are mandatory. Please fill missing values.')
       return
     }
 
@@ -548,7 +547,7 @@ export function CsvImportModal({
                       <th style={fixedHeaderStyle}>Type *</th>
                       <th style={fixedHeaderStyle}>Category</th>
                       <th style={fixedHeaderStyle}>Wallet *</th>
-                      <th style={fixedHeaderStyle}>Note *</th>
+                      <th style={fixedHeaderStyle}>Note</th>
                       <th style={{ ...fixedHeaderStyle, textAlign: 'right' }}>Amount *</th>
                       <th style={{ ...fixedHeaderStyle, textAlign: 'center' }}>Status</th>
                     </tr>
@@ -696,12 +695,12 @@ export function CsvImportModal({
                             </select>
                           </td>
 
-                          {/* Note (Mandatory) */}
+                          {/* Note (Optional) */}
                           <td style={tdStyle}>
                             <input
                               type="text"
                               value={row.note || ''}
-                              placeholder="Required note"
+                              placeholder="Optional note"
                               onChange={(e) => updateRowField(idx, 'note', e.target.value)}
                               style={{
                                 padding: '2px 6px',
@@ -711,11 +710,10 @@ export function CsvImportModal({
                                 width: '100%',
                                 boxSizing: 'border-box',
                                 borderRadius: '5px',
-                                border: row.note ? '1px solid var(--pl-border-default)' : '1.5px solid var(--pl-color-danger, #ef4444)',
+                                border: '1px solid var(--pl-border-default)',
                                 background: 'var(--pl-bg-surface)',
                                 color: 'var(--pl-text-primary)',
                               }}
-                              required
                             />
                           </td>
 

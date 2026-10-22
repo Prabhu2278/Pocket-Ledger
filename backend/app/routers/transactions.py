@@ -23,6 +23,7 @@ class TransactionItemCreate(BaseModel):
     amt: Optional[float] = None
     category: Optional[str] = None
     cat: Optional[str] = None
+    category_color: Optional[str] = None
     note: Optional[str] = None
     title: Optional[str] = None
     date: Optional[dt.date] = None
@@ -62,6 +63,7 @@ class TransactionItemUpdate(BaseModel):
     amt: Optional[float] = None
     category: Optional[str] = None
     cat: Optional[str] = None
+    category_color: Optional[str] = None
     note: Optional[str] = None
     title: Optional[str] = None
     date: Optional[dt.date] = None
@@ -259,6 +261,35 @@ def create_transaction(
         first_w = db.query(Wallet).filter(Wallet.user_id == user_id).first() if user_id else db.query(Wallet).first()
         if first_w:
             wallet_id = first_w.id
+
+    # Ensure category exists in categories table so it is saved in settings and db
+    clean_cat = cat.strip() if cat else ""
+    if clean_cat and t_type != "transfer":
+        cat_type = "income" if t_type in ("income", "deposit", "credit") else "expense"
+        existing_cat = db.query(Category).filter(
+            or_(Category.user_id == user_id, Category.user_id == None),
+            Category.type == cat_type,
+            func.lower(Category.name) == clean_cat.lower()
+        ).first()
+        if not existing_cat:
+            import random
+            fallback_colors = [
+                '#b42c45', '#2563eb', '#15803d', '#b45309', '#0d7a6f',
+                '#9333ea', '#ec4899', '#0284c7', '#6366f1', '#d97706',
+                '#059669', '#e11d48', '#7c3aed', '#0891b2'
+            ]
+            cat_color = getattr(tx_in, "category_color", None) or random.choice(fallback_colors)
+            new_category = Category(
+                user_id=user_id,
+                name=clean_cat,
+                type=cat_type,
+                icon="tag",
+                color=cat_color,
+                is_default=False,
+                is_active=True
+            )
+            db.add(new_category)
+            db.flush()
 
     # 1. TRANSFER
     if t_type == "transfer":

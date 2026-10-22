@@ -32,15 +32,16 @@ def list_categories(
 @router.post("", response_model=CategoryResponse, status_code=status.HTTP_201_CREATED)
 def create_category(
     category_in: CategoryCreate,
-    current_user: User = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_optional_current_user),
     db: Session = Depends(get_db)
 ):
     """
-    Create a new custom category for the authenticated user.
+    Create a new custom category for the authenticated user (or guest).
     Category names are validated and must be unique per user and type.
     """
+    user_id = current_user.id if current_user else None
     try:
-        cat = crud.create_category(db, user_id=current_user.id, cat_in=category_in)
+        cat = crud.create_category(db, user_id=user_id, cat_in=category_in)
         return CategoryResponse.model_validate(cat)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))

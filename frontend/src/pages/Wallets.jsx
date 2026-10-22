@@ -41,13 +41,6 @@ export function Wallets({
   const [color, setColor] = useState('#10b981')
   const [error, setError] = useState('')
 
-  // Helper to reliably identify Cash / Cash in Hand accounts
-  const isCashWallet = (w) => {
-    const t = (w.wallet_type || '').toUpperCase()
-    const n = (w.name || '').toLowerCase()
-    return t === 'CASH' || n === 'cash' || n.includes('cash in hand') || n.includes('cash')
-  }
-
   // Compute overall KPI aggregates
   const totalBalance = useMemo(() => {
     return wallets.reduce((sum, w) => sum + Number(w.current_balance ?? w.balance ?? w.initial_balance ?? 0), 0)
@@ -55,14 +48,13 @@ export function Wallets({
 
   const bankTotal = useMemo(() => {
     return wallets
-      .filter((w) => !isCashWallet(w) && (w.wallet_type || 'BANK').toUpperCase() === 'BANK')
+      .filter((w) => (w.wallet_type || 'BANK').toUpperCase() === 'BANK')
       .reduce((sum, w) => sum + Number(w.current_balance ?? w.balance ?? w.initial_balance ?? 0), 0)
   }, [wallets])
 
   const digitalTotal = useMemo(() => {
     return wallets
       .filter((w) => {
-        if (isCashWallet(w)) return false
         const t = (w.wallet_type || '').toUpperCase()
         return t === 'WALLET' || t === 'UPI' || t === 'DIGITAL'
       })
@@ -71,7 +63,7 @@ export function Wallets({
 
   const cashTotal = useMemo(() => {
     return wallets
-      .filter((w) => isCashWallet(w))
+      .filter((w) => (w.wallet_type || '').toUpperCase() === 'CASH')
       .reduce((sum, w) => sum + Number(w.current_balance ?? w.balance ?? w.initial_balance ?? 0), 0)
   }, [wallets])
 
@@ -102,27 +94,21 @@ export function Wallets({
       return
     }
 
-    const trimmedName = name.trim()
-    let finalType = walletType
-    if (trimmedName.toLowerCase().includes('cash') && finalType === 'BANK') {
-      finalType = 'CASH'
-    }
-
     const initBal = parseFloat(initialBalance) || 0
     try {
       if (editingWallet) {
         await onUpdateWallet(editingWallet.id, {
-          name: trimmedName,
-          wallet_type: finalType,
+          name: name.trim(),
+          wallet_type: walletType,
           initial_balance: initBal,
           color,
         })
       } else {
         await onAddWallet({
-          name: trimmedName,
-          wallet_type: finalType,
+          name: name.trim(),
+          wallet_type: walletType,
           initial_balance: initBal,
-          color: finalType === 'CASH' && color === '#10b981' ? '#f59e0b' : color,
+          color,
         })
       }
       setModalOpen(false)
@@ -202,20 +188,17 @@ export function Wallets({
         <div className="pl-wallets-grid">
           {wallets.map((w) => {
             const bal = Number(w.current_balance ?? w.balance ?? w.initial_balance ?? 0)
-            const isCash = isCashWallet(w)
-            const typeObj = isCash
-              ? { id: 'CASH', label: 'Cash' }
-              : WALLET_TYPES.find((t) => t.id === (w.wallet_type || 'BANK')) || {
-                  label: w.wallet_type || 'Account',
-                }
-            const typeKey = isCash ? 'cash' : (w.wallet_type || 'BANK').toLowerCase()
-            const badgeClass = isCash
-              ? 'cash'
-              : typeKey.includes('bank')
+            const typeObj = WALLET_TYPES.find((t) => t.id === (w.wallet_type || 'BANK')) || {
+              label: w.wallet_type || 'Account',
+            }
+            const typeKey = (w.wallet_type || 'BANK').toLowerCase()
+            const badgeClass = typeKey.includes('bank')
               ? 'bank'
-              : typeKey.includes('credit')
-              ? 'credit'
-              : 'digital'
+              : typeKey.includes('cash')
+                ? 'cash'
+                : typeKey.includes('credit')
+                  ? 'credit'
+                  : 'digital'
 
             return (
               <div key={w.id} className="pl-wallets-card" style={{ '--wallet-border-color': w.color || '#10b981' }}>
@@ -295,14 +278,7 @@ export function Wallets({
                   required
                   placeholder="e.g. HDFC Bank, GPay, Cash in Hand"
                   value={name}
-                  onChange={(e) => {
-                    const val = e.target.value
-                    setName(val)
-                    if (!editingWallet && val.toLowerCase().includes('cash') && walletType === 'BANK') {
-                      setWalletType('CASH')
-                      setColor('#f59e0b')
-                    }
-                  }}
+                  onChange={(e) => setName(e.target.value)}
                   autoFocus
                 />
               </label>

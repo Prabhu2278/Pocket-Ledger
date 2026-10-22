@@ -1,12 +1,12 @@
 export const DEFAULT_CURRENCIES = [
   { code: 'INR', name: 'Indian Rupee', symbol: '₹', locale: 'en-IN', label: '₹ Indian Rupee (INR)' },
-  { code: 'USD', name: 'US Dollar', symbol: '$', locale: 'en-US', label: '$ US Dollar (USD)' },
-  { code: 'EUR', name: 'Euro', symbol: '€', locale: 'de-DE', label: '€ Euro (EUR)' },
-  { code: 'GBP', name: 'British Pound', symbol: '£', locale: 'en-GB', label: '£ British Pound (GBP)' },
 ]
 
 export const POPULAR_CURRENCIES = [
   ...DEFAULT_CURRENCIES,
+  { code: 'USD', name: 'US Dollar', symbol: '$', locale: 'en-US', label: '$ US Dollar (USD)' },
+  { code: 'EUR', name: 'Euro', symbol: '€', locale: 'de-DE', label: '€ Euro (EUR)' },
+  { code: 'GBP', name: 'British Pound', symbol: '£', locale: 'en-GB', label: '£ British Pound (GBP)' },
   { code: 'JPY', name: 'Japanese Yen', symbol: '¥', locale: 'ja-JP', label: '¥ Japanese Yen (JPY)' },
   { code: 'CAD', name: 'Canadian Dollar', symbol: 'CA$', locale: 'en-CA', label: 'CA$ Canadian Dollar (CAD)' },
   { code: 'AUD', name: 'Australian Dollar', symbol: 'A$', locale: 'en-AU', label: 'A$ Australian Dollar (AUD)' },

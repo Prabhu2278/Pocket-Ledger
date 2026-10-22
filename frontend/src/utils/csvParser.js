@@ -1,6 +1,6 @@
 /**
  * csvParser.js - Robust CSV Parser for Bank Statements & Transaction Ledgers
- * Enforces mandatory data fields: Date, Type, Category, Wallet, Note, Amount
+ * Enforces mandatory data fields: Date, Type, Category, Wallet, Amount (Note is optional)
  */
 
 // Splits a CSV line handling quoted values with commas
@@ -206,13 +206,12 @@ export function parseCsvText(csvText, defaultWallet = null, availableWallets = [
       wallet_name = rawWallet
     }
 
-    // Check mandatory fields
+    // Check mandatory fields (Date, Type, Category, Wallet, Amount; Note is optional)
     const missing = []
     if (!dateStr) missing.push('Date')
     if (!type) missing.push('Type')
     if (!matchedCategory) missing.push('Category')
     if (!wallet_id && !wallet_name) missing.push('Wallet')
-    if (!note) missing.push('Note')
     if (!rawAmount || rawAmount <= 0) missing.push('Amount')
 
     results.push({

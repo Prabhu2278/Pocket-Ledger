@@ -379,12 +379,21 @@ def create_category(db: Session, user_id: int, cat_in: CategoryCreate) -> Catego
             db.refresh(user_dup)
             return user_dup
             
+    category_color = cat_in.color
+    if not category_color:
+        import random
+        category_color = random.choice([
+            '#b42c45', '#2563eb', '#15803d', '#b45309', '#0d7a6f',
+            '#9333ea', '#ec4899', '#0284c7', '#6366f1', '#d97706',
+            '#059669', '#e11d48', '#7c3aed', '#0891b2'
+        ])
+
     cat = Category(
         user_id=user_id,
         name=name_clean,
         type=type_clean,
         icon=cat_in.icon or "tag",
-        color=cat_in.color or "#64748b",
+        color=category_color,
         is_default=False,
         is_active=True
     )

@@ -242,6 +242,12 @@ export function Settings({
   const [customCurrencies, setCustomCurrencies] = useState(() => getCustomCurrencies())
   const [showAddCurrencyModal, setShowAddCurrencyModal] = useState(false)
 
+  // Confirmation modals state for currency selection and deletion
+  const [currencyToSelect, setCurrencyToSelect] = useState(null)
+  const [showCurrencySelectConfirm, setShowCurrencySelectConfirm] = useState(false)
+  const [currencyToDelete, setCurrencyToDelete] = useState(null)
+  const [showCurrencyDeleteConfirm, setShowCurrencyDeleteConfirm] = useState(false)
+
   // Compute displayed currencies (default 4 + custom + active)
   const displayedCurrencies = useMemo(() => {
     const list = [...DEFAULT_CURRENCIES]
@@ -301,7 +307,7 @@ export function Settings({
     }
   }
 
-  const handleCurrencyChange = async (newCurr) => {
+  const executeCurrencyChange = async (newCurr) => {
     if (newCurr === activeCurrency) return
     setCurrencySaving(true)
     setTargetCurrency(newCurr)
@@ -320,7 +326,25 @@ export function Settings({
     }
   }
 
-  const handleSelectNewCurrency = async (newCurr) => {
+  // Request currency change (prompts for Yes / No confirmation)
+  const handleRequestCurrencyChange = (curr) => {
+    const code = typeof curr === 'string' ? curr : curr.code
+    if (code === activeCurrency) return
+    const found = displayedCurrencies.find((c) => c.code === code) || { code, name: code, symbol: code }
+    setCurrencyToSelect(found)
+    setShowCurrencySelectConfirm(true)
+  }
+
+  const handleConfirmCurrencyChange = async () => {
+    if (!currencyToSelect) return
+    const code = currencyToSelect.code
+    setShowCurrencySelectConfirm(false)
+    setCurrencyToSelect(null)
+    await executeCurrencyChange(code)
+  }
+
+  // Adding new currency adds it to options but does NOT auto-switch active currency
+  const handleSelectNewCurrency = (newCurr) => {
     const code = (newCurr.code || '').toUpperCase()
     if (!code) return
     const isDefault = DEFAULT_CURRENCIES.some((d) => d.code === code)
@@ -328,15 +352,28 @@ export function Settings({
       saveCustomCurrency(newCurr)
       setCustomCurrencies(getCustomCurrencies())
     }
-    await handleCurrencyChange(code)
+    showToast(`Added ${code} to currency options. Select it whenever you wish to switch.`)
   }
 
-  const handleRemoveCustomCurrency = (e, codeToRemove) => {
+  // Request removal of custom currency (prompts for Yes / No confirmation)
+  const handleRequestRemoveCustomCurrency = (e, curr) => {
     e.stopPropagation()
+    const code = typeof curr === 'string' ? curr : curr.code
+    const found = displayedCurrencies.find((c) => c.code === code) || { code, name: code }
+    setCurrencyToDelete(found)
+    setShowCurrencyDeleteConfirm(true)
+  }
+
+  const handleConfirmRemoveCustomCurrency = () => {
+    if (!currencyToDelete) return
+    const codeToRemove = currencyToDelete.code
+    setShowCurrencyDeleteConfirm(false)
+    setCurrencyToDelete(null)
+
     const updated = removeCustomCurrency(codeToRemove)
     setCustomCurrencies(updated)
     if (activeCurrency === codeToRemove) {
-      handleCurrencyChange('INR')
+      executeCurrencyChange('INR')
     }
     showToast(`Removed ${codeToRemove} from currency options`)
   }
@@ -620,7 +657,7 @@ export function Settings({
                       className="chip"
                       aria-pressed={isSelected}
                       disabled={currencySaving}
-                      onClick={() => handleCurrencyChange(code)}
+                      onClick={() => handleRequestCurrencyChange(c)}
                       style={{
                         position: 'relative',
                         opacity: currencySaving && !isSavingThis ? 0.7 : 1,
@@ -642,10 +679,11 @@ export function Settings({
                           role="button"
                           tabIndex={0}
                           title={`Remove ${code}`}
-                          onClick={(e) => handleRemoveCustomCurrency(e, code)}
+                          aria-label={`Delete ${code}`}
+                          onClick={(e) => handleRequestRemoveCustomCurrency(e, c)}
                           onKeyDown={(e) => {
                             if (e.key === 'Enter' || e.key === ' ') {
-                              handleRemoveCustomCurrency(e, code)
+                              handleRequestRemoveCustomCurrency(e, c)
                             }
                           }}
                           style={{
@@ -653,7 +691,7 @@ export function Settings({
                             alignItems: 'center',
                             justifyContent: 'center',
                             marginLeft: '4px',
-                            padding: '1px 4px',
+                            padding: '1px 5px',
                             borderRadius: '50%',
                             fontSize: '13px',
                             lineHeight: 1,
@@ -804,6 +842,37 @@ export function Settings({
         isLoading={pwSaving}
         onConfirm={handleConfirmChangePassword}
         onCancel={() => setShowPwConfirm(false)}
+      />
+
+      {/* Currency Selection Confirmation Modal (Yes / No) */}
+      <ConfirmModal
+        isOpen={showCurrencySelectConfirm}
+        title="Change Currency?"
+        message={`Are you sure you want to change your preferred currency to ${currencyToSelect?.name || currencyToSelect?.code} (${currencyToSelect?.symbol || currencyToSelect?.code})?`}
+        confirmText="Yes"
+        cancelText="No"
+        variant="primary"
+        isLoading={currencySaving}
+        onConfirm={handleConfirmCurrencyChange}
+        onCancel={() => {
+          setShowCurrencySelectConfirm(false)
+          setCurrencyToSelect(null)
+        }}
+      />
+
+      {/* Currency Deletion Confirmation Modal (Yes / No) */}
+      <ConfirmModal
+        isOpen={showCurrencyDeleteConfirm}
+        title="Delete Currency?"
+        message={`Are you sure you want to delete ${currencyToDelete?.name || currencyToDelete?.code} (${currencyToDelete?.code}) from your currency options?`}
+        confirmText="Yes"
+        cancelText="No"
+        variant="danger"
+        onConfirm={handleConfirmRemoveCustomCurrency}
+        onCancel={() => {
+          setShowCurrencyDeleteConfirm(false)
+          setCurrencyToDelete(null)
+        }}
       />
 
       {/* Add Currency Modal */}

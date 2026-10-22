@@ -104,7 +104,7 @@ export function useExpenses() {
       localStorage.setItem('pocket_ledger_theme', newTheme)
     }
     // Persist to database
-    settingsApi.updateSettings({ theme: newTheme }).catch(() => {})
+    settingsApi.updateSettings({ theme: newTheme }).catch(() => { })
   }, [])
 
   const toggleTheme = useCallback(() => {
@@ -160,10 +160,10 @@ export function useExpenses() {
       localStorage.setItem('pocket_ledger_currency', curr)
     }
     // Persist to dedicated currency_settings table and settings
-    settingsApi.updateCurrency(curr).catch(() => {})
-    settingsApi.updateSettings({ currency: curr }).catch(() => {})
+    settingsApi.updateCurrency(curr).catch(() => { })
+    settingsApi.updateSettings({ currency: curr }).catch(() => { })
     if (authApi.getUser()) {
-      authApi.updateProfile({ currency: curr }).catch(() => {})
+      authApi.updateProfile({ currency: curr }).catch(() => { })
     }
   }, [])
 

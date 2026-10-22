@@ -1,7 +1,30 @@
 import React, { useState, useEffect } from 'react'
-import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '../constants/categories'
+import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, registerCategoryColors } from '../constants/categories'
 import { money, CURRENCY_CONFIGS } from '../utils/formatCurrency'
 import { categoryApi } from '../services/categoryApi'
+
+const RANDOM_CATEGORY_COLORS = [
+  '#b42c45', // Crimson
+  '#2563eb', // Royal Blue
+  '#15803d', // Forest Emerald
+  '#b45309', // Amber Brown
+  '#0d7a6f', // Deep Teal
+  '#9333ea', // Purple
+  '#ec4899', // Pink
+  '#0284c7', // Sky Blue
+  '#6366f1', // Indigo
+  '#d97706', // Orange Amber
+  '#059669', // Emerald
+  '#e11d48', // Rose
+  '#7c3aed', // Violet
+  '#0891b2', // Cyan
+  '#ea580c', // Burnt Orange
+]
+
+function getRandomCategoryColor() {
+  const idx = Math.floor(Math.random() * RANDOM_CATEGORY_COLORS.length)
+  return RANDOM_CATEGORY_COLORS[idx]
+}
 
 export function TransactionForm({
   dialogOpen,
@@ -40,6 +63,7 @@ export function TransactionForm({
   })
   const [isCustomMode, setIsCustomMode] = useState(false)
   const [customCategoryInput, setCustomCategoryInput] = useState('')
+  const [randomCategoryColor, setRandomCategoryColor] = useState(() => getRandomCategoryColor())
 
   // Scroll Lock: disable background/outside scrolling when modal is open
   useEffect(() => {
@@ -70,26 +94,24 @@ export function TransactionForm({
   const currCode = (currency || 'INR').toUpperCase()
   const currSymbol = CURRENCY_CONFIGS[currCode]?.symbol || '₹'
 
-  // Sync category mode when editing or opening
+  // Sync category mode ONLY when opening dialog or editing
   useEffect(() => {
     if (dialogOpen) {
-      if (category && category !== 'Transfer') {
+      setRandomCategoryColor(getRandomCategoryColor())
+      if (isEditing && category && category !== 'Transfer') {
         const isKnown = allCategoryList.some(
           (c) => c.toLowerCase() === category.toLowerCase()
         )
         if (!isKnown) {
           setIsCustomMode(true)
           setCustomCategoryInput(category)
-        } else {
-          setIsCustomMode(false)
-          setCustomCategoryInput('')
+          return
         }
-      } else {
-        setIsCustomMode(false)
-        setCustomCategoryInput('')
       }
+      setIsCustomMode(false)
+      setCustomCategoryInput('')
     }
-  }, [dialogOpen, category, allCategoryList])
+  }, [dialogOpen, isEditing])
 
   if (!dialogOpen) return null
 
@@ -114,8 +136,19 @@ export function TransactionForm({
 
   const handleSubmit = async (e) => {
     if (e && e.preventDefault) e.preventDefault()
-    if (isCustomMode && customCategoryInput.trim()) {
+    let categoryToSave = category
+    let colorToSave = undefined
+
+    if (isCustomMode) {
       const trimmed = customCategoryInput.trim()
+      if (!trimmed) {
+        setCategory('')
+        saveTransaction(e)
+        return
+      }
+      categoryToSave = trimmed
+      colorToSave = randomCategoryColor || getRandomCategoryColor()
+
       setCustomCategories((prev) => {
         if (!prev.includes(trimmed)) {
           const updated = [...prev, trimmed]
@@ -128,17 +161,37 @@ export function TransactionForm({
         }
         return prev
       })
-      // Persist custom category to backend database
-      categoryApi.createCategory({
-        name: trimmed,
-        type: type === 'income' ? 'income' : 'expense',
-      }).then(() => {
-        if (refreshCategories) refreshCategories()
-      }).catch(() => {})
+
+      // Immediately register the random color in client registry
+      registerCategoryColors([{ name: trimmed, color: colorToSave }])
+
+      // Persist custom category to backend database and Settings with random color and tag icon
+      try {
+        await categoryApi.createCategory({
+          name: trimmed,
+          type: type === 'income' ? 'income' : 'expense',
+          color: colorToSave,
+          icon: 'tag',
+        })
+      } catch (err) {
+        console.warn('[TransactionForm] Category creation note:', err)
+      }
+
+      if (refreshCategories) {
+        try {
+          await refreshCategories()
+        } catch {
+          // ignore
+        }
+      }
 
       setCategory(trimmed)
     }
-    saveTransaction(e)
+
+    saveTransaction(e, {
+      category: categoryToSave,
+      category_color: colorToSave,
+    })
   }
 
   return (
@@ -157,8 +210,8 @@ export function TransactionForm({
             {isEditing
               ? `Edit ${isTransfer ? 'Transfer' : type}`
               : isTransfer
-              ? 'Transfer Money Between Wallets'
-              : 'Add Transaction'}
+                ? 'Transfer Money Between Wallets'
+                : 'Add Transaction'}
           </h2>
 
           {/* Type Selector Chips: Expense | Income | Transfer */}
@@ -425,6 +478,7 @@ export function TransactionForm({
                   if (val === '__custom__') {
                     setIsCustomMode(true)
                     setCategory(customCategoryInput.trim() || '')
+                    setRandomCategoryColor(getRandomCategoryColor())
                   } else {
                     setIsCustomMode(false)
                     setCategory(val)
@@ -458,34 +512,74 @@ export function TransactionForm({
 
               {/* Show input box when user chooses "Customize Category" */}
               {isCustomMode && (
-                <div style={{ marginTop: '6px' }}>
-                  <input
-                    id="txn-custom-category-input"
-                    type="text"
-                    placeholder="Enter custom category name (e.g. Gym, Subscriptions, Pet Care)"
-                    value={customCategoryInput}
-                    onChange={(e) => {
-                      const val = e.target.value
-                      setCustomCategoryInput(val)
-                      setCategory(val)
-                    }}
-                    autoFocus
-                    required
-                    style={{
-                      width: '100%',
-                      padding: '9px 12px',
-                      borderRadius: 'var(--pl-radius-md)',
-                      border: '1px solid var(--pl-color-primary)',
-                      background: 'var(--pl-bg-surface)',
-                      color: 'var(--pl-text-primary)',
-                      fontSize: '13px',
-                      minHeight: '38px',
-                      height: '38px',
-                    }}
-                  />
-                  <small style={{ color: 'var(--pl-text-muted)', fontSize: '11px', marginTop: '2px', display: 'block' }}>
-                    This category will be saved to your custom category list.
-                  </small>
+                <div style={{ marginTop: '6px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                    <input
+                      id="txn-custom-category-input"
+                      type="text"
+                      maxLength={50}
+                      placeholder="Enter new category name (e.g. Gym, Subscriptions, Pet Care)"
+                      value={customCategoryInput}
+                      onChange={(e) => {
+                        const val = e.target.value
+                        setCustomCategoryInput(val)
+                        setCategory(val)
+                      }}
+                      autoFocus
+                      required
+                      style={{
+                        width: '100%',
+                        padding: '9px 12px 9px 36px',
+                        borderRadius: 'var(--pl-radius-md)',
+                        border: '1.5px solid var(--pl-color-primary)',
+                        background: 'var(--pl-bg-surface)',
+                        color: 'var(--pl-text-primary)',
+                        fontSize: '13px',
+                        minHeight: '38px',
+                        height: '38px',
+                      }}
+                    />
+                    {/* Random Color Dot Indicator */}
+                    <span
+                      title={`Randomly assigned icon color: ${randomCategoryColor}`}
+                      style={{
+                        position: 'absolute',
+                        left: '12px',
+                        width: '14px',
+                        height: '14px',
+                        borderRadius: '50%',
+                        background: randomCategoryColor,
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                        pointerEvents: 'none',
+                      }}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 2px' }}>
+                    <small style={{ color: 'var(--pl-text-muted)', fontSize: '11px' }}>
+                      Will be saved in Settings / Category and database with this random color.
+                    </small>
+                    <span
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        color: randomCategoryColor,
+                      }}
+                    >
+                      <span
+                        style={{
+                          width: '7px',
+                          height: '7px',
+                          borderRadius: '50%',
+                          background: randomCategoryColor,
+                          display: 'inline-block',
+                        }}
+                      />
+                      Random color assigned
+                    </span>
+                  </div>
                 </div>
               )}
             </label>
@@ -501,8 +595,8 @@ export function TransactionForm({
                 isTransfer
                   ? `e.g. Transfer to ${selectedToWallet?.name || 'savings'}, ATM withdrawal`
                   : type === 'income'
-                  ? 'e.g. Monthly salary, Client retainer'
-                  : 'What was it for? (optional)'
+                    ? 'e.g. Monthly salary, Client retainer'
+                    : 'What was it for? (optional)'
               }
               value={note}
               onChange={(e) => setNote(e.target.value)}
@@ -545,15 +639,15 @@ export function TransactionForm({
                 isSameWallet
                   ? 'Source and Destination accounts must be different'
                   : isInsufficient
-                  ? 'Insufficient funds in source account'
-                  : undefined
+                    ? 'Insufficient funds in source account'
+                    : undefined
               }
             >
               {isEditing
                 ? 'Save changes'
                 : isTransfer
-                ? 'Confirm Transfer'
-                : `Save ${type}`}
+                  ? 'Confirm Transfer'
+                  : `Save ${type}`}
             </button>
           </div>
         </form>
