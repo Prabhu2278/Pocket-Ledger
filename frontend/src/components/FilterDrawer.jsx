@@ -1,6 +1,8 @@
 import React, { useEffect } from 'react'
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '../constants/categories'
 import { money, CURRENCY_CONFIGS } from '../utils/formatCurrency'
+import { CustomDropdown } from './ui/CustomDropdown/CustomDropdown'
+import { CustomDatePicker } from './ui/CustomDatePicker/CustomDatePicker'
 
 export function FilterDrawer({
   isOpen,
@@ -202,32 +204,22 @@ export function FilterDrawer({
             >
               Wallet
             </label>
-            <select
+            <CustomDropdown
               id="drawer-wallet-select"
               value={walletFilter}
-              onChange={(e) => setWalletFilter(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '8px 12px',
-                borderRadius: 'var(--pl-radius-md)',
-                border: '1px solid var(--pl-border-default)',
-                background: 'var(--pl-bg-surface)',
-                color: 'var(--pl-text-primary)',
-                fontSize: '13px',
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              <option value="all">All Wallets</option>
-              {wallets.map((w) => {
-                const bal = Number(w.current_balance ?? w.balance ?? w.initial_balance ?? 0)
-                return (
-                  <option key={w.id} value={String(w.id)}>
-                    {w.name} ({money(bal, currency)})
-                  </option>
-                )
-              })}
-            </select>
+              onChange={(val) => setWalletFilter(val)}
+              placeholder="All Wallets"
+              options={[
+                { value: 'all', label: 'All Wallets' },
+                ...wallets.map((w) => {
+                  const bal = Number(w.current_balance ?? w.balance ?? w.initial_balance ?? 0)
+                  return {
+                    value: String(w.id),
+                    label: `${w.name} (${money(bal, currency)})`,
+                  }
+                }),
+              ]}
+            />
           </div>
 
           {/* 3. Category Filter Chips */}
@@ -292,40 +284,22 @@ export function FilterDrawer({
                 <span style={{ fontSize: '11px', color: 'var(--pl-text-muted)', display: 'block', marginBottom: '3px' }}>
                   From
                 </span>
-                <input
+                <CustomDatePicker
                   id="drawer-date-from"
-                  type="date"
                   value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '8px 10px',
-                    borderRadius: 'var(--pl-radius-md)',
-                    border: '1px solid var(--pl-border-default)',
-                    background: 'var(--pl-bg-surface)',
-                    color: 'var(--pl-text-primary)',
-                    fontSize: '12.5px',
-                  }}
+                  onChange={(val) => setStartDate(val)}
+                  placeholder="From Date"
                 />
               </div>
               <div>
                 <span style={{ fontSize: '11px', color: 'var(--pl-text-muted)', display: 'block', marginBottom: '3px' }}>
                   To
                 </span>
-                <input
+                <CustomDatePicker
                   id="drawer-date-to"
-                  type="date"
                   value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '8px 10px',
-                    borderRadius: 'var(--pl-radius-md)',
-                    border: '1px solid var(--pl-border-default)',
-                    background: 'var(--pl-bg-surface)',
-                    color: 'var(--pl-text-primary)',
-                    fontSize: '12.5px',
-                  }}
+                  onChange={(val) => setEndDate(val)}
+                  placeholder="To Date"
                 />
               </div>
             </div>

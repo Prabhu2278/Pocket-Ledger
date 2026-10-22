@@ -1019,6 +1019,40 @@ select:focus {
   box-shadow: 0 0 0 3px var(--pl-color-primary-soft);
 }
 
+/* Global Dropdown Option Styling matching Image 1 */
+select option {
+  background-color: var(--pl-bg-surface, #1e293b);
+  color: var(--pl-text-primary, #f1f5f9);
+  padding: 10px 14px;
+  font-size: 13.5px;
+  font-family: inherit;
+  font-weight: 500;
+}
+
+select option:checked,
+select option:hover,
+select option:focus {
+  background-color: #5a6472 !important;
+  color: #ffffff !important;
+}
+
+/* Custom Dropdown & Datepicker animations & base */
+.custom-dropdown-container,
+.custom-datepicker-container {
+  font-family: inherit;
+}
+
+.custom-dropdown-menu::-webkit-scrollbar,
+.custom-calendar-popover::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-dropdown-menu::-webkit-scrollbar-thumb,
+.custom-calendar-popover::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.4);
+  border-radius: 9999px;
+}
+
 .actions input {
   width: 240px;
   height: 38px;
@@ -3031,6 +3065,8 @@ body:has(.auth-split-wrapper) #root {
     font-size: 12px;
     gap: 6px;
   }
+}
+
 /* CSV Import Table Container - Zero horizontal scroll, clean fixed layout */
 .csv-table-scroll-container {
   overflow-x: hidden !important;

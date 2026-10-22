@@ -4,6 +4,7 @@ import { TransactionTable } from '../components/TransactionTable'
 import { exportTransactionsToCsv } from '../utils/csvExporter'
 import { normalizeDateStr } from '../utils/dateUtils'
 import { ConfirmModal } from '../components/ConfirmDialog'
+import { CustomDropdown } from '../components/ui/CustomDropdown/CustomDropdown'
 
 export function Transactions({
   transactions = [],
@@ -404,33 +405,22 @@ export function Transactions({
               <label htmlFor="pages-select" style={{ fontSize: '12px', fontWeight: 600, color: 'var(--pl-text-muted)' }}>
                 Rows:
               </label>
-              <select
+              <CustomDropdown
                 id="pages-select"
                 value={pageSize}
-                onChange={(e) => {
-                  setPageSize(Number(e.target.value))
+                options={[
+                  { value: 10, label: '10' },
+                  { value: 20, label: '20' },
+                  { value: 30, label: '30' },
+                  { value: 50, label: '50' },
+                ]}
+                onChange={(val) => {
+                  setPageSize(Number(val))
                   setCurrentPage(1)
                 }}
-                style={{
-                  padding: '4px 8px',
-                  borderRadius: 'var(--pl-radius-md)',
-                  border: '1px solid var(--pl-border-default)',
-                  background: 'var(--pl-bg-surface)',
-                  color: 'var(--pl-text-primary)',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  minHeight: '34px',
-                  height: '34px',
-                  width: 'auto',
-                }}
-                title="Number of transactions to show per page"
-              >
-                <option value={10}>10</option>
-                <option value={20}>20</option>
-                <option value={30}>30</option>
-                <option value={50}>50</option>
-              </select>
+                style={{ width: '80px' }}
+                triggerStyle={{ minHeight: '34px', height: '34px', padding: '4px 8px', fontSize: '12px' }}
+              />
             </div>
 
             <button

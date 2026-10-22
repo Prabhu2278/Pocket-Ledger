@@ -1,4 +1,12 @@
 import React, { useState, useEffect } from 'react'
+import { CustomDropdown } from '../../ui/CustomDropdown/CustomDropdown'
+
+const WALLET_TYPE_OPTIONS = [
+  { value: 'BANK', label: 'Bank Account' },
+  { value: 'WALLET', label: 'UPI / Digital Wallet' },
+  { value: 'CASH', label: 'Cash' },
+  { value: 'CREDIT_CARD', label: 'Credit Card' },
+]
 
 export function EditWalletModal({ isOpen, wallet, onClose, onSave }) {
   const [name, setName] = useState('')
@@ -40,16 +48,12 @@ export function EditWalletModal({ isOpen, wallet, onClose, onSave }) {
           </div>
           <div className="pocket-form-field">
             <label className="pocket-field-label">Account Type</label>
-            <select
-              className="pocket-ledger-select"
+            <CustomDropdown
+              id="edit-wallet-type-select"
               value={walletType}
-              onChange={(e) => setWalletType(e.target.value)}
-            >
-              <option value="BANK">Bank Account</option>
-              <option value="WALLET">UPI / Digital Wallet</option>
-              <option value="CASH">Cash</option>
-              <option value="CREDIT_CARD">Credit Card</option>
-            </select>
+              onChange={(val) => setWalletType(val)}
+              options={WALLET_TYPE_OPTIONS}
+            />
           </div>
           <div className="pocket-ledger-dialog-actions">
             <button type="button" className="pocket-ledger-btn-cancel" onClick={onClose}>Cancel</button>

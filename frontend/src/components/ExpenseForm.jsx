@@ -1,6 +1,7 @@
 import React from 'react'
 import { CATEGORIES } from '../constants/categories'
 import { CURRENCY_CONFIGS } from '../utils/formatCurrency'
+import { CustomDatePicker } from './ui/CustomDatePicker/CustomDatePicker'
 
 export function ExpenseForm({
   dialogOpen,
@@ -91,11 +92,10 @@ export function ExpenseForm({
 
           <label>
             Date
-            <input
+            <CustomDatePicker
               id="date"
-              type="date"
               value={date}
-              onChange={(e) => setDate(e.target.value)}
+              onChange={(val) => setDate(val)}
             />
           </label>
 

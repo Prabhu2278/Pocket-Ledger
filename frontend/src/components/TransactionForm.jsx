@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react'
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, registerCategoryColors } from '../constants/categories'
 import { money, CURRENCY_CONFIGS } from '../utils/formatCurrency'
 import { categoryApi } from '../services/categoryApi'
+import { CustomDropdown } from './ui/CustomDropdown/CustomDropdown'
+import { CustomDatePicker } from './ui/CustomDatePicker/CustomDatePicker'
 
 const RANDOM_CATEGORY_COLORS = [
   '#b42c45', // Crimson
@@ -273,97 +275,58 @@ export function TransactionForm({
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', margin: '4px 0' }}>
               <label>
                 From Account (Source)
-                <select
+                <CustomDropdown
                   id="txn-from-wallet"
                   value={walletId || ''}
-                  onChange={(e) => setWalletId && setWalletId(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '9px 10px',
-                    borderRadius: 'var(--pl-radius-md)',
-                    border: '1px solid var(--pl-border-default)',
-                    background: 'var(--pl-bg-surface)',
-                    color: 'var(--pl-text-primary)',
-                    fontSize: '13px',
-                    fontWeight: 600,
-                    marginTop: '4px',
-                    cursor: 'pointer',
-                  }}
-                >
-                  <option value="">-- Select Source Account --</option>
-                  {wallets.map((w) => {
+                  onChange={(val) => setWalletId && setWalletId(val)}
+                  placeholder="-- Select Source Account --"
+                  options={wallets.map((w) => {
                     const bal = Number(w.current_balance ?? w.balance ?? w.initial_balance ?? 0)
-                    return (
-                      <option key={`from-${w.id}`} value={w.id}>
-                        {w.name} ({money(bal, currency)})
-                      </option>
-                    )
+                    return {
+                      value: String(w.id),
+                      label: `${w.name} (${money(bal, currency)})`,
+                    }
                   })}
-                </select>
+                  style={{ marginTop: '4px' }}
+                />
               </label>
 
               <label>
                 To Account (Destination)
-                <select
+                <CustomDropdown
                   id="txn-to-wallet"
                   value={toWalletId || ''}
-                  onChange={(e) => setToWalletId && setToWalletId(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '9px 10px',
-                    borderRadius: 'var(--pl-radius-md)',
-                    border: '1px solid var(--pl-border-default)',
-                    background: 'var(--pl-bg-surface)',
-                    color: 'var(--pl-text-primary)',
-                    fontSize: '13px',
-                    fontWeight: 600,
-                    marginTop: '4px',
-                    cursor: 'pointer',
-                  }}
-                >
-                  <option value="">-- Select Destination Account --</option>
-                  {wallets.map((w) => {
+                  onChange={(val) => setToWalletId && setToWalletId(val)}
+                  placeholder="-- Select Destination Account --"
+                  options={wallets.map((w) => {
                     const bal = Number(w.current_balance ?? w.balance ?? w.initial_balance ?? 0)
-                    return (
-                      <option key={`to-${w.id}`} value={w.id}>
-                        {w.name} ({money(bal, currency)})
-                      </option>
-                    )
+                    return {
+                      value: String(w.id),
+                      label: `${w.name} (${money(bal, currency)})`,
+                    }
                   })}
-                </select>
+                  style={{ marginTop: '4px' }}
+                />
               </label>
             </div>
           ) : (
             /* Single Account Selector for Expense or Income */
             <label>
               {type === 'income' ? 'Deposit Into Wallet / Account' : 'Pay From Wallet / Account'}
-              <select
+              <CustomDropdown
                 id="txn-wallet"
                 value={walletId || ''}
-                onChange={(e) => setWalletId && setWalletId(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '10px 12px',
-                  borderRadius: 'var(--pl-radius-md)',
-                  border: '1px solid var(--pl-border-default)',
-                  background: 'var(--pl-bg-surface)',
-                  color: 'var(--pl-text-primary)',
-                  fontSize: '13.5px',
-                  fontWeight: 600,
-                  marginTop: '4px',
-                  cursor: 'pointer',
-                }}
-              >
-                <option value="">-- Select Wallet / Account --</option>
-                {wallets.map((w) => {
+                onChange={(val) => setWalletId && setWalletId(val)}
+                placeholder="-- Select Wallet / Account --"
+                options={wallets.map((w) => {
                   const bal = Number(w.current_balance ?? w.balance ?? w.initial_balance ?? 0)
-                  return (
-                    <option key={w.id} value={w.id}>
-                      {w.name} ({money(bal, currency)} available)
-                    </option>
-                  )
+                  return {
+                    value: String(w.id),
+                    label: `${w.name} (${money(bal, currency)} available)`,
+                  }
                 })}
-              </select>
+                style={{ marginTop: '4px' }}
+              />
             </label>
           )}
 
@@ -468,13 +431,20 @@ export function TransactionForm({
 
           {/* Category Dropdown (Shown for Expense and Income) */}
           {!isTransfer && (
-            <label style={{ display: 'grid', gap: '5px' }}>
-              Category
-              <select
+            <div style={{ display: 'grid', gap: '5px' }}>
+              <label htmlFor="txn-category" style={{ fontSize: '12px', fontWeight: 600 }}>Category</label>
+              <CustomDropdown
                 id="txn-category"
                 value={isCustomMode ? '__custom__' : category || ''}
-                onChange={(e) => {
-                  const val = e.target.value
+                options={[
+                  ...allCategoryList.map((catName) => ({
+                    value: catName,
+                    label: catName,
+                  })),
+                  { value: '__custom__', label: '+ Customize Category...' },
+                ]}
+                placeholder="-- Select Category --"
+                onChange={(val) => {
                   if (val === '__custom__') {
                     setIsCustomMode(true)
                     setCategory(customCategoryInput.trim() || '')
@@ -484,31 +454,7 @@ export function TransactionForm({
                     setCategory(val)
                   }
                 }}
-                required
-                style={{
-                  width: '100%',
-                  padding: '9px 12px',
-                  borderRadius: 'var(--pl-radius-md)',
-                  border: '1px solid var(--pl-border-default)',
-                  background: 'var(--pl-bg-surface)',
-                  color: 'var(--pl-text-primary)',
-                  fontSize: '13px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  minHeight: '38px',
-                  height: '38px',
-                }}
-              >
-                <option value="">-- Select Category --</option>
-                <optgroup label="Categories">
-                  {allCategoryList.map((catName) => (
-                    <option key={catName} value={catName}>
-                      {catName}
-                    </option>
-                  ))}
-                </optgroup>
-                <option value="__custom__">+ Customize Category...</option>
-              </select>
+              />
 
               {/* Show input box when user chooses "Customize Category" */}
               {isCustomMode && (
@@ -582,7 +528,7 @@ export function TransactionForm({
                   </div>
                 </div>
               )}
-            </label>
+            </div>
           )}
 
           <label>
@@ -605,11 +551,11 @@ export function TransactionForm({
 
           <label>
             Date
-            <input
+            <CustomDatePicker
               id="txn-date"
-              type="date"
               value={date}
-              onChange={(e) => setDate(e.target.value)}
+              onChange={(val) => setDate(val)}
+              style={{ marginTop: '4px' }}
             />
           </label>
 

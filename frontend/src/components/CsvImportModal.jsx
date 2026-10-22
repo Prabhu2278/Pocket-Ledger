@@ -4,6 +4,8 @@ import { money } from '../utils/formatCurrency'
 import { categoryApi } from '../api/categoryApi'
 import { walletApi } from '../api/walletApi'
 import { transactionApi } from '../api/transactionApi'
+import { CustomDropdown } from './ui/CustomDropdown/CustomDropdown'
+import { CustomDatePicker } from './ui/CustomDatePicker/CustomDatePicker'
 
 export function CsvImportModal({
   isOpen,
@@ -1292,28 +1294,17 @@ export function CsvImportModal({
                 >
                   Income Category:
                 </label>
-                <select
+                <CustomDropdown
                   id="prompt-income-category"
                   value={addIncomePrompt.category}
-                  onChange={(e) => setAddIncomePrompt((prev) => ({ ...prev, category: e.target.value }))}
-                  style={{
-                    width: '100%',
-                    boxSizing: 'border-box',
-                    padding: '6px 10px',
-                    borderRadius: '6px',
-                    border: '1px solid var(--pl-border-default)',
-                    background: 'var(--pl-bg-surface)',
-                    color: 'var(--pl-text-primary)',
-                    fontSize: '13px',
-                    cursor: 'pointer',
-                  }}
-                >
-                  {incomeCategoryOptions.map((cat) => (
-                    <option key={cat.id || cat.name} value={cat.name}>
-                      {cat.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setAddIncomePrompt((prev) => ({ ...prev, category: val }))}
+                  options={incomeCategoryOptions.map((cat) => ({
+                    value: cat.name,
+                    label: cat.name,
+                  }))}
+                  placeholder="-- Select Category --"
+                  style={{ width: '100%' }}
+                />
               </div>
 
               <div>
@@ -1348,21 +1339,12 @@ export function CsvImportModal({
                 >
                   Date:
                 </label>
-                <input
+                <CustomDatePicker
                   id="prompt-income-date"
-                  type="date"
                   value={addIncomePrompt.date}
-                  onChange={(e) => setAddIncomePrompt((prev) => ({ ...prev, date: e.target.value }))}
-                  style={{
-                    width: '100%',
-                    boxSizing: 'border-box',
-                    padding: '6px 10px',
-                    borderRadius: '6px',
-                    border: '1px solid var(--pl-border-default)',
-                    background: 'var(--pl-bg-surface)',
-                    color: 'var(--pl-text-primary)',
-                    fontSize: '13px',
-                  }}
+                  onChange={(newDate) => setAddIncomePrompt((prev) => ({ ...prev, date: newDate }))}
+                  placeholder="Select Date"
+                  style={{ width: '100%' }}
                 />
               </div>
             </div>
