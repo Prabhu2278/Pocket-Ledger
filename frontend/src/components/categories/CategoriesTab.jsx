@@ -141,7 +141,7 @@ export function CategoriesTab({
             <line x1="12" y1="5" x2="12" y2="19" />
             <line x1="5" y1="12" x2="19" y2="12" />
           </svg>
-          + Add Category
+          Add Category
         </button>
       </div>
 
@@ -179,7 +179,7 @@ export function CategoriesTab({
       <div className="categories-grid" id="categories-list-grid">
         {filteredCategories.length === 0 ? (
           <div style={{ padding: '36px', textAlign: 'center', color: 'var(--pl-text-secondary)', gridColumn: '1 / -1' }}>
-            No categories found matching this filter. Click <b>+ Add Category</b> to create one.
+            No categories found matching this filter. Click <b>Add Category</b> to create one.
           </div>
         ) : (
           filteredCategories.map((cat) => {
