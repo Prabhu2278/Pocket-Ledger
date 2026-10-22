@@ -915,6 +915,7 @@ export function useExpenses() {
     addWallet,
     updateWallet,
     deleteWallet,
+    refreshWallets: loadData,
     formError,
     openTransactionDialog,
     saveTransaction,

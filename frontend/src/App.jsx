@@ -116,6 +116,7 @@ export function App() {
     expenseCategories,
     incomeCategories,
     refreshCategories,
+    refreshWallets,
   } = useExpenses()
 
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
@@ -227,6 +228,8 @@ export function App() {
       csvModalOpen={csvModalOpen}
       closeCsvModal={closeCsvModal}
       handleCsvImport={handleCsvImport}
+      addWallet={addWallet}
+      refreshWallets={refreshWallets}
       // Toast props
       toast={toast}
       showToast={showToast}

@@ -4,7 +4,7 @@
  */
 
 // Splits a CSV line handling quoted values with commas
-function splitCsvLine(line) {
+export function splitCsvLine(line) {
   const values = []
   let current = ''
   let inQuotes = false
@@ -25,6 +25,50 @@ function splitCsvLine(line) {
   return values
 }
 
+/**
+ * Validates that the CSV headers contain all mandatory columns matching the transaction table:
+ * Date, Type (or Debit/Credit), Category, Wallet (or Account), and Amount.
+ */
+export function validateCsvHeaders(headers) {
+  const missing = []
+  const normHeaders = headers.map((h) => h.toLowerCase().replace(/[^a-z0-9]/g, ''))
+
+  const hasDate = normHeaders.some((h) =>
+    ['date', 'txndate', 'transactiondate', 'spent_on', 'received_on', 'dateoftransaction'].includes(h)
+  )
+
+  const hasDebitCredit =
+    normHeaders.some((h) => ['debit', 'dr'].includes(h)) ||
+    normHeaders.some((h) => ['credit', 'cr'].includes(h))
+
+  const hasType =
+    normHeaders.some((h) => ['type', 'transactiontype', 'category_type'].includes(h)) ||
+    hasDebitCredit
+
+  const hasCategory = normHeaders.some((h) =>
+    ['category', 'cat', 'tag', 'categoryname'].includes(h)
+  )
+
+  const hasWallet = normHeaders.some((h) =>
+    ['wallet', 'walletname', 'account', 'accountname', 'targetwallet', 'wallet_id', 'walletid'].includes(h)
+  )
+
+  const hasAmount =
+    normHeaders.some((h) => ['amount', 'amt', 'total', 'value'].includes(h)) ||
+    hasDebitCredit
+
+  if (!hasDate) missing.push('Date')
+  if (!hasType) missing.push('Type')
+  if (!hasCategory) missing.push('Category')
+  if (!hasWallet) missing.push('Wallet')
+  if (!hasAmount) missing.push('Amount')
+
+  return {
+    isValid: missing.length === 0,
+    missingColumns: missing,
+  }
+}
+
 export function parseCsvText(csvText, defaultWallet = null, availableWallets = [], availableCategories = []) {
   if (!csvText || typeof csvText !== 'string') return []
 
@@ -33,11 +77,25 @@ export function parseCsvText(csvText, defaultWallet = null, availableWallets = [
     .map((l) => l.trim())
     .filter(Boolean)
 
-  if (lines.length < 2) return []
+  if (lines.length < 2) {
+    const emptyResult = []
+    emptyResult.error = 'CSV file is empty or does not contain data rows.'
+    emptyResult.headerValidation = { isValid: false, missingColumns: ['All'] }
+    return emptyResult
+  }
 
   const rawHeaders = splitCsvLine(lines[0])
-  const headers = rawHeaders.map((h) => h.toLowerCase().replace(/[^a-z0-9]/g, ''))
+  const headerValidation = validateCsvHeaders(rawHeaders)
 
+  // If mandatory columns are missing from the header, return with validation error
+  if (!headerValidation.isValid) {
+    const invalidResult = []
+    invalidResult.error = `Missing required column(s): ${headerValidation.missingColumns.join(', ')}. Your CSV must include Date, Type, Category, Wallet, and Amount columns to match the transaction table.`
+    invalidResult.headerValidation = headerValidation
+    return invalidResult
+  }
+
+  const headers = rawHeaders.map((h) => h.toLowerCase().replace(/[^a-z0-9]/g, ''))
   const results = []
 
   for (let i = 1; i < lines.length; i++) {
@@ -141,7 +199,6 @@ export function parseCsvText(csvText, defaultWallet = null, availableWallets = [
     let isCategoryListed = false
 
     if (rawCategory && Array.isArray(availableCategories) && availableCategories.length > 0) {
-      // 1. Try match by name and matching type
       const matched = availableCategories.find(
         (c) =>
           c.name.trim().toLowerCase() === rawCategory.toLowerCase() &&
@@ -156,7 +213,7 @@ export function parseCsvText(csvText, defaultWallet = null, availableWallets = [
       }
     }
 
-    // 4. Resolve Note (MANDATORY)
+    // 4. Resolve Note (OPTIONAL)
     const note = (
       row.note ||
       row.description ||
@@ -170,6 +227,7 @@ export function parseCsvText(csvText, defaultWallet = null, availableWallets = [
     ).trim()
 
     // 5. Resolve Wallet (MANDATORY)
+    // If the wallet specified in the CSV does not exist in availableWallets, it MUST NOT be silently replaced.
     const rawWallet = (
       row.wallet ||
       row.walletname ||
@@ -182,28 +240,39 @@ export function parseCsvText(csvText, defaultWallet = null, availableWallets = [
     ).trim()
 
     let wallet_id = null
-    let wallet_name = ''
+    let wallet_name = rawWallet
+    let isWalletMissing = false
+    let matchedWallet = null
 
     if (rawWallet && Array.isArray(availableWallets) && availableWallets.length > 0) {
-      const matched = availableWallets.find(
+      matchedWallet = availableWallets.find(
         (w) =>
           String(w.id) === rawWallet ||
-          w.name.toLowerCase() === rawWallet.toLowerCase() ||
-          rawWallet.toLowerCase().includes(w.name.toLowerCase())
+          w.name.trim().toLowerCase() === rawWallet.toLowerCase()
       )
-      if (matched) {
-        wallet_id = matched.id
-        wallet_name = matched.name
+
+      if (matchedWallet) {
+        wallet_id = matchedWallet.id
+        wallet_name = matchedWallet.name
+      } else {
+        isWalletMissing = true
       }
+    } else {
+      isWalletMissing = true
     }
 
-    if (!wallet_id && defaultWallet) {
-      wallet_id = defaultWallet.id
-      wallet_name = defaultWallet.name
-    }
-
-    if (!wallet_name && rawWallet) {
-      wallet_name = rawWallet
+    // Check expense balance requirement
+    let isInsufficientBalance = false
+    if (type === 'expense' && matchedWallet) {
+      const balance = Number(
+        matchedWallet.current_balance ??
+        matchedWallet.balance ??
+        matchedWallet.initial_balance ??
+        0
+      )
+      if (balance < rawAmount) {
+        isInsufficientBalance = true
+      }
     }
 
     // Check mandatory fields (Date, Type, Category, Wallet, Amount; Note is optional)
@@ -211,8 +280,11 @@ export function parseCsvText(csvText, defaultWallet = null, availableWallets = [
     if (!dateStr) missing.push('Date')
     if (!type) missing.push('Type')
     if (!matchedCategory) missing.push('Category')
-    if (!wallet_id && !wallet_name) missing.push('Wallet')
+    if (!wallet_id || isWalletMissing) missing.push('Wallet')
     if (!rawAmount || rawAmount <= 0) missing.push('Amount')
+    if (isInsufficientBalance) missing.push('Insufficient Wallet Funds')
+
+    const isRowValid = missing.length === 0
 
     results.push({
       id: i,
@@ -223,13 +295,18 @@ export function parseCsvText(csvText, defaultWallet = null, availableWallets = [
       rawCategory: rawCategory,
       isCategoryListed: isCategoryListed,
       note: note,
+      rawWallet: rawWallet,
       wallet_id: wallet_id,
       wallet_name: wallet_name,
-      isValid: missing.length === 0,
+      wallet_balance: matchedWallet ? Number(matchedWallet.current_balance ?? matchedWallet.balance ?? matchedWallet.initial_balance ?? 0) : 0,
+      isWalletMissing: isWalletMissing,
+      isInsufficientBalance: isInsufficientBalance,
+      isValid: isRowValid,
       missingFields: missing,
     })
   }
 
+  results.headerValidation = headerValidation
   return results
 }
 

@@ -2,6 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react'
 import { parseCsvText } from '../utils/csvParser'
 import { money } from '../utils/formatCurrency'
 import { categoryApi } from '../api/categoryApi'
+import { walletApi } from '../api/walletApi'
+import { transactionApi } from '../api/transactionApi'
 
 export function CsvImportModal({
   isOpen,
@@ -12,6 +14,8 @@ export function CsvImportModal({
   categories = [],
   refreshCategories,
   showToast,
+  addWallet,
+  refreshWallets,
 }) {
   const [file, setFile] = useState(null)
   const [rawText, setRawText] = useState('')
@@ -20,11 +24,40 @@ export function CsvImportModal({
   const [error, setError] = useState('')
   const [isDragging, setIsDragging] = useState(false)
 
-  // Local copy of categories
+  // Local state for wallets & categories
+  const [localWallets, setLocalWallets] = useState(wallets)
   const [localCategories, setLocalCategories] = useState(categories)
 
-  // Target wallet state (Mandatory)
-  const [selectedWalletId, setSelectedWalletId] = useState('')
+  // Sub-modal state for creating missing wallet with 0 initial balance
+  // { row: object, walletName: string, error: string }
+  const [walletPrompt, setWalletPrompt] = useState(null)
+  const [walletCreating, setWalletCreating] = useState(false)
+
+  // Sub-modal state for "Did you forget to add an income?"
+  // { row, walletId, walletName, walletBalance, amountNeeded, amount, category, note, date, error }
+  const [addIncomePrompt, setAddIncomePrompt] = useState(null)
+  const [incomeCreating, setIncomeCreating] = useState(false)
+
+  // Synchronize localWallets with wallets prop
+  useEffect(() => {
+    if (wallets && wallets.length > 0) {
+      setLocalWallets(wallets)
+    }
+  }, [wallets])
+
+  // Fetch freshest wallets directly from API when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      walletApi
+        .getWallets()
+        .then((wList) => {
+          if (Array.isArray(wList) && wList.length > 0) {
+            setLocalWallets(wList)
+          }
+        })
+        .catch(() => {})
+    }
+  }, [isOpen])
 
   // Synchronize localCategories with categories prop
   useEffect(() => {
@@ -33,14 +66,7 @@ export function CsvImportModal({
     }
   }, [categories])
 
-  // Set initial default wallet
-  useEffect(() => {
-    if (wallets && wallets.length > 0 && !selectedWalletId) {
-      setSelectedWalletId(wallets[0].id)
-    }
-  }, [wallets, selectedWalletId])
-
-  // Scroll Lock: disable background/outside scrolling when modal is open
+  // Scroll Lock
   useEffect(() => {
     if (isOpen) {
       document.body.classList.add('modal-open')
@@ -52,13 +78,22 @@ export function CsvImportModal({
     }
   }, [isOpen])
 
-  // Re-parse rows when selectedWalletId, rawText, wallets, or localCategories change
+  // Re-evaluate parsed rows whenever localWallets or localCategories change
   useEffect(() => {
     if (!rawText) return
-    const defaultWallet = wallets.find((w) => String(w.id) === String(selectedWalletId)) || wallets[0] || null
-    const rows = parseCsvText(rawText, defaultWallet, wallets, localCategories)
-    setParsedRows(rows)
-  }, [selectedWalletId, rawText, wallets, localCategories])
+    const rows = parseCsvText(rawText, null, localWallets, localCategories)
+    if (rows.headerValidation?.isValid && rows.length > 0) {
+      setParsedRows((prevRows) => {
+        if (prevRows.length > 0 && prevRows.length < rows.length) {
+          return prevRows.map((prev) => {
+            const fresh = rows.find((r) => r.id === prev.id) || prev
+            return fresh
+          })
+        }
+        return rows
+      })
+    }
+  }, [localWallets, localCategories, rawText])
 
   // Detect unlisted categories from the CSV that do not yet exist in the DB / Settings
   const newCategoriesFromCsv = useMemo(() => {
@@ -78,6 +113,15 @@ export function CsvImportModal({
     return Array.from(newMap.values())
   }, [parsedRows, localCategories])
 
+  // Available income categories for the Add Income dialog
+  const incomeCategoryOptions = useMemo(() => {
+    const list = localCategories.filter((c) => (c.type || '').toLowerCase() === 'income')
+    if (list.length === 0) {
+      return [{ id: 'salary', name: 'Salary' }, { id: 'freelance', name: 'Freelance' }, { id: 'other', name: 'Other' }]
+    }
+    return list
+  }, [localCategories])
+
   if (!isOpen) return null
 
   const formatFileSize = (bytes) => {
@@ -96,16 +140,26 @@ export function CsvImportModal({
       try {
         const text = event.target?.result
         setRawText(text)
-        const defaultWallet = wallets.find((w) => String(w.id) === String(selectedWalletId)) || wallets[0] || null
-        const rows = parseCsvText(text, defaultWallet, wallets, localCategories)
-        if (rows.length === 0) {
-          setError('No valid transactions found in the CSV. Please check column headers.')
+        const rows = parseCsvText(text, null, localWallets, localCategories)
+
+        // Strict validation: CSV must have all required columns matching the transaction table
+        if (rows.headerValidation && !rows.headerValidation.isValid) {
+          setError(
+            rows.error ||
+              `Invalid CSV header: Missing required column(s): ${rows.headerValidation.missingColumns.join(
+                ', '
+              )}. Your CSV must include Date, Type, Category, Wallet, and Amount columns to match the transaction table.`
+          )
+          setParsedRows([])
+        } else if (rows.length === 0) {
+          setError('No valid transaction records found in the CSV file.')
           setParsedRows([])
         } else {
+          setError('')
           setParsedRows(rows)
         }
       } catch {
-        setError('Error reading CSV file. Please make sure it is valid text.')
+        setError('Error reading CSV file. Please make sure it is a valid UTF-8 text file.')
         setParsedRows([])
       }
     }
@@ -144,42 +198,208 @@ export function CsvImportModal({
     }
   }
 
-  // Update an editable row field inline (Date, Type, Wallet, Note, Amount)
-  const updateRowField = (idx, field, value) => {
-    setParsedRows((prev) => {
-      const copy = [...prev]
-      const row = { ...copy[idx], [field]: value }
+  // Row filtering by validity
+  const validRows = parsedRows.filter((r) => r.isValid)
+  const invalidRows = parsedRows.filter((r) => !r.isValid)
+  const missingWalletRows = parsedRows.filter((r) => r.isWalletMissing)
+  const insufficientFundsRows = parsedRows.filter((r) => r.isInsufficientBalance)
 
-      // If updating wallet, also update wallet_name
-      if (field === 'wallet_id') {
-        const w = wallets.find((item) => String(item.id) === String(value))
-        row.wallet_name = w ? w.name : ''
-      }
-
-      // Re-validate row (Note is optional)
-      const missing = []
-      if (!row.date || !row.date.trim()) missing.push('Date')
-      if (!row.type || !row.type.trim()) missing.push('Type')
-      if (!row.category || !row.category.trim()) missing.push('Category')
-      if (!row.wallet_id) missing.push('Wallet')
-      if (!row.amount || Number(row.amount) <= 0) missing.push('Amount')
-
-      row.isValid = missing.length === 0
-      row.missingFields = missing
-
-      copy[idx] = row
-      return copy
+  // Wallet creation trigger: creates with 0 initial balance for both income & expense
+  const handleOpenCreateWalletModal = (row) => {
+    setWalletPrompt({
+      row,
+      walletName: row.wallet_name || row.rawWallet || 'New Wallet',
+      error: '',
     })
   }
 
-  // Validate entire dataset
-  const invalidRows = parsedRows.filter((r) => !r.isValid)
-  const isAllValid = parsedRows.length > 0 && invalidRows.length === 0
+  // Confirm creation of wallet with 0 initial amount
+  const handleConfirmCreateWallet = async () => {
+    if (!walletPrompt) return
 
-  // Save and Import handler: auto-creates new categories in DB and Settings, then imports
+    const cleanName = (walletPrompt.walletName || '').trim()
+
+    if (!cleanName) {
+      setWalletPrompt((prev) => ({ ...prev, error: 'Please enter a valid wallet name.' }))
+      return
+    }
+
+    setWalletCreating(true)
+    try {
+      let created = null
+      const walletPayload = {
+        name: cleanName,
+        wallet_type: 'BANK',
+        initial_balance: 0,
+        color: '#6366f1',
+      }
+
+      if (addWallet) {
+        created = await addWallet(walletPayload)
+      } else {
+        created = await walletApi.createWallet(walletPayload)
+      }
+
+      // Refresh wallets in app and local state
+      if (refreshWallets) {
+        await refreshWallets()
+      }
+      const updatedWallets = await walletApi.getWallets().catch(() => [])
+      if (updatedWallets.length > 0) {
+        setLocalWallets(updatedWallets)
+      }
+
+      const walletIdToAssign = created?.id || updatedWallets.find((w) => w.name.toLowerCase() === cleanName.toLowerCase())?.id
+
+      // Update all parsed rows referencing this wallet
+      setParsedRows((prev) =>
+        prev.map((r) => {
+          const rowWallet = (r.wallet_name || r.rawWallet || '').trim().toLowerCase()
+          if (rowWallet === cleanName.toLowerCase() || (!r.wallet_id && r.isWalletMissing && rowWallet === cleanName.toLowerCase())) {
+            const newBal = 0
+            const isInsuff = r.type === 'expense' && newBal < r.amount
+            const missing = []
+            if (!r.date) missing.push('Date')
+            if (!r.type) missing.push('Type')
+            if (!r.category) missing.push('Category')
+            if (!r.amount || r.amount <= 0) missing.push('Amount')
+            if (isInsuff) missing.push('Insufficient Wallet Funds')
+
+            return {
+              ...r,
+              wallet_id: walletIdToAssign,
+              wallet_name: cleanName,
+              wallet_balance: 0,
+              isWalletMissing: false,
+              isInsufficientBalance: isInsuff,
+              isValid: missing.length === 0,
+              missingFields: missing,
+            }
+          }
+          return r
+        })
+      )
+
+      if (showToast) {
+        showToast(`Wallet "${cleanName}" created with 0 initial amount.`)
+      }
+
+      setWalletPrompt(null)
+    } catch (err) {
+      setWalletPrompt((prev) => ({
+        ...prev,
+        error: err.message || 'Failed to create wallet. Please try again.',
+      }))
+    } finally {
+      setWalletCreating(false)
+    }
+  }
+
+  // Open "Did you forget to add an income?" modal for a Low Funds expense row
+  const handleOpenAddIncomeModal = (row) => {
+    const w = localWallets.find((item) => String(item.id) === String(row.wallet_id))
+    const currBal = Number(w?.current_balance ?? w?.balance ?? w?.initial_balance ?? row.wallet_balance ?? 0)
+    const needed = Math.max(0, row.amount - currBal)
+    const defaultCat = incomeCategoryOptions[0]?.name || 'Salary'
+
+    setAddIncomePrompt({
+      row,
+      walletId: row.wallet_id,
+      walletName: row.wallet_name,
+      walletBalance: currBal,
+      amountNeeded: needed,
+      amount: needed > 0 ? needed : row.amount,
+      category: defaultCat,
+      note: `Deposit for ${row.note || row.category || 'expenses'}`,
+      date: row.date || new Date().toISOString().split('T')[0],
+      error: '',
+    })
+  }
+
+  // Confirm creation of new income to cover expense
+  const handleConfirmAddIncome = async () => {
+    if (!addIncomePrompt) return
+
+    const amt = Number(addIncomePrompt.amount)
+    if (!amt || amt <= 0) {
+      setAddIncomePrompt((prev) => ({ ...prev, error: 'Please enter a valid income amount.' }))
+      return
+    }
+
+    if (amt < addIncomePrompt.amountNeeded) {
+      setAddIncomePrompt((prev) => ({
+        ...prev,
+        error: `Income must be at least ${money(addIncomePrompt.amountNeeded, currency)} to cover this expense transaction.`,
+      }))
+      return
+    }
+
+    setIncomeCreating(true)
+    try {
+      await transactionApi.createTransaction({
+        type: 'income',
+        amount: amt,
+        wallet_id: addIncomePrompt.walletId,
+        category: addIncomePrompt.category || 'Salary',
+        note: addIncomePrompt.note || 'Income deposit',
+        date: addIncomePrompt.date || new Date().toISOString().split('T')[0],
+        payment_method: 'Bank Transfer',
+      })
+
+      if (refreshWallets) {
+        await refreshWallets()
+      }
+
+      const freshWallets = await walletApi.getWallets().catch(() => [])
+      if (freshWallets.length > 0) {
+        setLocalWallets(freshWallets)
+      }
+
+      // Update parsed rows for this wallet with updated balance
+      setParsedRows((prev) =>
+        prev.map((r) => {
+          if (String(r.wallet_id) === String(addIncomePrompt.walletId)) {
+            const updatedBal = addIncomePrompt.walletBalance + amt
+            const isInsuff = r.type === 'expense' && updatedBal < r.amount
+            const missing = []
+            if (!r.date) missing.push('Date')
+            if (!r.type) missing.push('Type')
+            if (!r.category) missing.push('Category')
+            if (!r.wallet_id) missing.push('Wallet')
+            if (!r.amount || r.amount <= 0) missing.push('Amount')
+            if (isInsuff) missing.push('Insufficient Wallet Funds')
+
+            return {
+              ...r,
+              wallet_balance: updatedBal,
+              isInsufficientBalance: isInsuff,
+              isValid: missing.length === 0,
+              missingFields: missing,
+            }
+          }
+          return r
+        })
+      )
+
+      if (showToast) {
+        showToast(`Income of ${money(amt, currency)} added to "${addIncomePrompt.walletName}"! Expense is now ready to import.`)
+      }
+
+      setAddIncomePrompt(null)
+    } catch (err) {
+      setAddIncomePrompt((prev) => ({
+        ...prev,
+        error: err.message || 'Failed to record income. Please try again.',
+      }))
+    } finally {
+      setIncomeCreating(false)
+    }
+  }
+
+  // Save and Import handler: imports valid rows, leaves un-added rows in the import modal
   const handleImport = async () => {
-    if (!isAllValid) {
-      setError('All required data fields (Date, Type, Category, Wallet, Amount) are mandatory. Please fill missing values.')
+    if (validRows.length === 0) {
+      setError('No valid transactions to import. Please resolve missing wallet requirements first.')
       return
     }
 
@@ -197,31 +417,38 @@ export function CsvImportModal({
               icon: 'tag',
             })
           } catch {
-            // If already created or handled by backend, continue safely
+            // Already exists or handled
           }
         }
       }
 
-      // 2. Perform transaction bulk import
-      await onImportConfirm(parsedRows)
+      // 2. Import valid rows into transactions ledger
+      await onImportConfirm(validRows)
 
-      // 3. Refresh categories so Settings and the rest of the application reflect the new categories
-      if (refreshCategories) {
-        await refreshCategories()
-      }
+      // 3. Refresh categories & wallets across application
+      if (refreshCategories) await refreshCategories()
+      if (refreshWallets) await refreshWallets()
 
-      if (showToast) {
-        if (newCategoriesFromCsv.length > 0) {
-          showToast(`Imported ${parsedRows.length} transactions and saved ${newCategoriesFromCsv.length} new category/categories to Settings & DB!`)
-        } else {
-          showToast(`Imported ${parsedRows.length} transactions successfully.`)
+      const remaining = parsedRows.filter((r) => !r.isValid)
+
+      if (remaining.length > 0) {
+        // Keep the un-added rows in the import modal
+        setParsedRows(remaining)
+        if (showToast) {
+          showToast(
+            `Imported ${validRows.length} valid transaction(s). ${remaining.length} transaction(s) remain in import awaiting wallet creation or income.`
+          )
         }
+      } else {
+        // All rows were imported
+        if (showToast) {
+          showToast(`All ${validRows.length} transactions imported successfully.`)
+        }
+        setFile(null)
+        setRawText('')
+        setParsedRows([])
+        onClose()
       }
-
-      setFile(null)
-      setRawText('')
-      setParsedRows([])
-      onClose()
     } catch (err) {
       setError(err.message || 'Failed to import transactions.')
     } finally {
@@ -233,588 +460,939 @@ export function CsvImportModal({
   const expenseCount = parsedRows.filter((r) => r.type === 'expense').length
 
   return (
-    <div
-      className="modal-overlay"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="csv-modal-title"
-      onClick={(e) => {
-        if (e.target === e.currentTarget && !loading) onClose()
-      }}
-    >
+    <>
       <div
-        className="dialog-content"
-        style={{
-          maxWidth: '1060px',
-          width: '95%',
-          maxHeight: '92vh',
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-          padding: '18px 22px 14px',
+        className="modal-overlay"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="csv-modal-title"
+        onClick={(e) => {
+          if (e.target === e.currentTarget && !loading && !walletCreating && !incomeCreating) onClose()
         }}
       >
-        <div className="f" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-          {/* Header - Compact */}
-          <div style={{ flexShrink: 0 }}>
-            <h2 id="csv-modal-title" style={{ margin: '0 0 2px', fontSize: '17px' }}>
-              Import Transactions CSV
-            </h2>
-            <p style={{ margin: '0 0 8px', fontSize: '12px', color: 'var(--mute)' }}>
-              Categories are identified directly from your CSV. New categories are saved to Settings & DB upon Save & Import.
-            </p>
-          </div>
-
-          {/* Hidden accessible native file input */}
-          <input
-            id="csv-file-input"
-            type="file"
-            accept=".csv,text/csv"
-            onChange={handleFileChange}
-            disabled={loading}
-            style={{ display: 'none' }}
-          />
-
-          {/* Upload Zone (when no file selected yet) */}
-          {!file ? (
-            <label
-              htmlFor="csv-file-input"
-              className={`csv-upload-zone ${isDragging ? 'dragging' : ''}`}
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                textAlign: 'center',
-                padding: '28px 16px',
-                flexShrink: 0,
-              }}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-            >
-              <div className="csv-upload-icon-circle" style={{ margin: '0 auto', alignSelf: 'center' }}>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                  <polyline points="17 8 12 3 7 8" />
-                  <line x1="12" y1="3" x2="12" y2="15" />
-                </svg>
-              </div>
-
-              <div className="csv-upload-prompt" style={{ textAlign: 'center', alignItems: 'center' }}>
-                <span className="csv-upload-prompt-text">Drag and drop your bank CSV statement here</span>
-                <span className="csv-upload-hint">or click to browse your computer</span>
-              </div>
-
-              <div className="csv-choose-btn" style={{ margin: '4px auto 0', alignSelf: 'center' }}>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                  <polyline points="17 8 12 3 7 8" />
-                  <line x1="12" y1="3" x2="12" y2="15" />
-                </svg>
-                <span>Choose File</span>
-              </div>
-            </label>
-          ) : (
-            /* Compact Unified File & Target Wallet Controls Bar */
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                flexWrap: 'wrap',
-                gap: '10px',
-                padding: '7px 12px',
-                background: 'var(--pl-bg-surface-hover, #1b2334)',
-                border: '1px solid var(--pl-border-default, #1e293e)',
-                borderRadius: '8px',
-                marginBottom: '8px',
-                flexShrink: 0,
-              }}
-            >
-              {/* Left: File details + Change button */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--pl-color-success, #10b981)', flexShrink: 0 }}>
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                  <polyline points="14 2 14 8 20 8" />
-                </svg>
-                <span
+        <div
+          className="dialog-content"
+          style={{
+            maxWidth: '1100px',
+            width: '97%',
+            maxHeight: '92vh',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            padding: '18px 22px 14px',
+          }}
+        >
+          <div className="f" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+            {/* Modal Header */}
+            <div style={{ flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <h2 id="csv-modal-title" style={{ margin: '0 0 2px', fontSize: '17px', fontWeight: 700 }}>
+                  Import Transactions CSV
+                </h2>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  disabled={loading || walletCreating || incomeCreating}
+                  aria-label="Close dialog"
                   style={{
-                    fontSize: '12.5px',
-                    fontWeight: 600,
-                    color: 'var(--pl-text-primary)',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                    maxWidth: '300px',
-                  }}
-                  title={file.name}
-                >
-                  {file.name}
-                </span>
-                <span style={{ fontSize: '11px', color: 'var(--mute)', whiteSpace: 'nowrap' }}>
-                  ({formatFileSize(file.size)} &bull; {parsedRows.length} rows)
-                </span>
-                <label
-                  htmlFor="csv-file-input"
-                  style={{
-                    fontSize: '11px',
-                    color: 'var(--pl-color-primary, #818cf8)',
-                    fontWeight: 700,
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'var(--pl-text-muted)',
                     cursor: 'pointer',
-                    marginLeft: '4px',
-                    whiteSpace: 'nowrap',
+                    padding: '4px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
                   }}
                 >
-                  Change
-                </label>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
               </div>
+              <p style={{ margin: '0 0 8px', fontSize: '12px', color: 'var(--mute)' }}>
+                Imported data matches your transaction table. Preview table is strictly read-only and validates wallet availability and funds.
+              </p>
+            </div>
 
-              {/* Right: Target Wallet Selector */}
-              {wallets && wallets.length > 0 && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-                  <label
-                    htmlFor="csv-target-wallet"
-                    style={{
-                      fontSize: '11.5px',
-                      fontWeight: 700,
-                      color: 'var(--pl-text-primary)',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    Target Wallet <span style={{ color: 'var(--pl-color-danger, #ef4444)' }}>*</span>:
-                  </label>
-                  <select
-                    id="csv-target-wallet"
-                    value={selectedWalletId}
-                    onChange={(e) => setSelectedWalletId(e.target.value)}
-                    style={{
-                      height: '28px',
-                      padding: '2px 8px',
-                      fontSize: '11.5px',
-                      fontWeight: 600,
-                      borderRadius: '6px',
-                      border: '1.5px solid var(--pl-color-primary)',
-                      background: 'var(--pl-bg-surface)',
-                      color: 'var(--pl-text-primary)',
-                      cursor: 'pointer',
-                      maxWidth: '220px',
-                    }}
-                    required
-                  >
-                    {wallets.map((w) => (
-                      <option key={w.id} value={w.id}>
-                        {w.name} ({money(w.balance || 0, currency)})
-                      </option>
-                    ))}
-                  </select>
+            {/* Hidden file input */}
+            <input
+              id="csv-file-input"
+              type="file"
+              accept=".csv,text/csv"
+              onChange={handleFileChange}
+              disabled={loading}
+              style={{ display: 'none' }}
+            />
+
+            {/* Upload Zone (when no file selected yet) */}
+            {!file ? (
+              <label
+                htmlFor="csv-file-input"
+                className={`csv-upload-zone ${isDragging ? 'dragging' : ''}`}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  textAlign: 'center',
+                  padding: '32px 16px',
+                  flexShrink: 0,
+                  cursor: 'pointer',
+                  border: '2px dashed var(--pl-border-default, #2a3449)',
+                  borderRadius: '10px',
+                  background: 'var(--pl-bg-surface-hover, rgba(255, 255, 255, 0.02))',
+                  transition: 'all 0.2s ease',
+                }}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+              >
+                <div className="csv-upload-icon-circle" style={{ margin: '0 auto 10px', alignSelf: 'center' }}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="17 8 12 3 7 8" />
+                    <line x1="12" y1="3" x2="12" y2="15" />
+                  </svg>
                 </div>
-              )}
-            </div>
-          )}
 
-          {/* Slim New Categories Notice */}
-          {newCategoriesFromCsv.length > 0 && (
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '5px 10px',
-                background: 'rgba(59, 130, 246, 0.08)',
-                border: '1px solid rgba(59, 130, 246, 0.25)',
-                borderRadius: '6px',
-                marginBottom: '6px',
-                fontSize: '11px',
-                color: 'var(--pl-text-primary)',
-                flexShrink: 0,
-              }}
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--pl-color-primary)', flexShrink: 0 }}>
-                <circle cx="12" cy="12" r="10" />
-                <line x1="12" y1="16" x2="12" y2="12" />
-                <line x1="12" y1="8" x2="12.01" y2="8" />
-              </svg>
-              <span>
-                <b>{newCategoriesFromCsv.length} new category/categories detected:</b> {newCategoriesFromCsv.map((u) => `"${u.name}"`).join(', ')}. Saved automatically on Save & Import.
-              </span>
-            </div>
-          )}
+                <div className="csv-upload-prompt" style={{ textAlign: 'center', alignItems: 'center' }}>
+                  <span className="csv-upload-prompt-text" style={{ fontSize: '14px', fontWeight: 600 }}>
+                    Drag and drop your bank CSV statement here
+                  </span>
+                  <span className="csv-upload-hint" style={{ fontSize: '12px', color: 'var(--mute)', marginTop: '4px' }}>
+                    CSV must include Date, Type, Category, Wallet, and Amount columns
+                  </span>
+                </div>
 
-          {error && (
-            <div
-              className="err"
-              role="alert"
-              style={{
-                padding: '6px 10px',
-                borderRadius: '6px',
-                background: 'rgba(239, 68, 68, 0.12)',
-                border: '1px solid rgba(239, 68, 68, 0.3)',
-                color: 'var(--pl-color-danger, #ef4444)',
-                fontSize: '11.5px',
-                marginBottom: '6px',
-                flexShrink: 0,
-              }}
-            >
-              {error}
-            </div>
-          )}
-
-          {/* Slim Validation Notice when mandatory fields are missing */}
-          {invalidRows.length > 0 && (
-            <div
-              style={{
-                padding: '5px 10px',
-                borderRadius: '6px',
-                background: 'rgba(245, 158, 11, 0.12)',
-                border: '1px solid rgba(245, 158, 11, 0.35)',
-                color: 'var(--pl-color-warning, #f59e0b)',
-                fontSize: '11px',
-                marginBottom: '6px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                flexShrink: 0,
-              }}
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                <circle cx="12" cy="12" r="10" />
-                <line x1="12" y1="8" x2="12" y2="12" />
-                <line x1="12" y1="16" x2="12.01" y2="16" />
-              </svg>
-              <span>
-                <b>{invalidRows.length} row(s) missing mandatory data.</b> Fill highlighted fields to confirm import.
-              </span>
-            </div>
-          )}
-
-          {parsedRows.length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-              {/* Row Stats - Compact */}
+                <div className="csv-choose-btn" style={{ margin: '12px auto 0', alignSelf: 'center' }}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="17 8 12 3 7 8" />
+                    <line x1="12" y1="3" x2="12" y2="15" />
+                  </svg>
+                  <span>Choose File</span>
+                </div>
+              </label>
+            ) : (
+              /* File Details Bar */
               <div
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  marginBottom: '6px',
-                  fontSize: '11.5px',
+                  flexWrap: 'wrap',
+                  gap: '10px',
+                  padding: '7px 12px',
+                  background: 'var(--pl-bg-surface-hover, #1b2334)',
+                  border: '1px solid var(--pl-border-default, #1e293e)',
+                  borderRadius: '8px',
+                  marginBottom: '8px',
                   flexShrink: 0,
                 }}
               >
-                <span>
-                  <b>All {parsedRows.length} transactions</b>{' '}
-                  <span style={{ fontSize: '10.5px', color: 'var(--mute)' }}>
-                    (scroll inside table to inspect rows)
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--pl-color-success, #10b981)', flexShrink: 0 }}>
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                  </svg>
+                  <span
+                    style={{
+                      fontSize: '12.5px',
+                      fontWeight: 600,
+                      color: 'var(--pl-text-primary)',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      maxWidth: '320px',
+                    }}
+                    title={file.name}
+                  >
+                    {file.name}
                   </span>
-                </span>
-                <span style={{ color: 'var(--mute)' }}>
-                  {incomeCount} income &bull; {expenseCount} expense
+                  <span style={{ fontSize: '11px', color: 'var(--mute)', whiteSpace: 'nowrap' }}>
+                    ({formatFileSize(file.size)} &bull; {parsedRows.length} rows)
+                  </span>
+                  <label
+                    htmlFor="csv-file-input"
+                    style={{
+                      fontSize: '11px',
+                      color: 'var(--pl-color-primary, #818cf8)',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      marginLeft: '6px',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    Change File
+                  </label>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '11.5px', color: 'var(--mute)' }}>
+                  <span>
+                    <strong style={{ color: 'var(--pl-color-success)' }}>{validRows.length}</strong> Ready to import
+                  </span>
+                  {invalidRows.length > 0 && (
+                    <span>
+                      <strong style={{ color: 'var(--pl-color-danger, #ef4444)' }}>{invalidRows.length}</strong> Pending requirement
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Error Banner */}
+            {error && (
+              <div
+                className="err"
+                role="alert"
+                style={{
+                  padding: '7px 12px',
+                  borderRadius: '6px',
+                  background: 'rgba(239, 68, 68, 0.12)',
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                  color: 'var(--pl-color-danger, #ef4444)',
+                  fontSize: '11.5px',
+                  marginBottom: '6px',
+                  flexShrink: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                }}
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="8" x2="12" y2="12" />
+                  <line x1="12" y1="16" x2="12.01" y2="16" />
+                </svg>
+                <span>{error}</span>
+              </div>
+            )}
+
+            {/* Prominent Alert: Missing Wallets in Imported CSV */}
+            {missingWalletRows.length > 0 && (
+              <div
+                style={{
+                  padding: '8px 12px',
+                  borderRadius: '7px',
+                  background: 'rgba(239, 68, 68, 0.1)',
+                  border: '1.5px solid rgba(239, 68, 68, 0.35)',
+                  marginBottom: '6px',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '8px',
+                  flexShrink: 0,
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--pl-color-danger, #ef4444)', marginTop: '2px', flexShrink: 0 }}>
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                  <line x1="12" y1="9" x2="12" y2="13" />
+                  <line x1="12" y1="17" x2="12.01" y2="17" />
+                </svg>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--pl-color-danger, #ef4444)' }}>
+                    Alert: {missingWalletRows.length} transaction(s) reference a wallet that does not exist in the app.
+                  </div>
+                  <div style={{ fontSize: '11px', color: 'var(--pl-text-secondary, #94a3b8)', marginTop: '2px', lineHeight: 1.4 }}>
+                    These rows will not be imported until the wallet is created. You can click <b>Create Wallet</b> on the row to create the wallet with 0 initial amount.
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Low Funds / Did you forget to add an income banner */}
+            {insufficientFundsRows.length > 0 && (
+              <div
+                style={{
+                  padding: '7px 12px',
+                  borderRadius: '6px',
+                  background: 'rgba(245, 158, 11, 0.12)',
+                  border: '1px solid rgba(245, 158, 11, 0.35)',
+                  color: 'var(--pl-color-warning, #f59e0b)',
+                  fontSize: '11.5px',
+                  marginBottom: '6px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  flexShrink: 0,
+                }}
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="8" x2="12" y2="12" />
+                  <line x1="12" y1="16" x2="12.01" y2="16" />
+                </svg>
+                <div style={{ flex: 1 }}>
+                  <b>Low Funds: Did you forget to add an income?</b> {insufficientFundsRows.length} expense transaction(s) exceed current wallet balance. Click <u>Did you forget to add an income?</u> on the row to record an income with enough amount to add these transactions.
+                </div>
+              </div>
+            )}
+
+            {/* New Categories Notice */}
+            {newCategoriesFromCsv.length > 0 && (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '5px 10px',
+                  background: 'rgba(59, 130, 246, 0.08)',
+                  border: '1px solid rgba(59, 130, 246, 0.25)',
+                  borderRadius: '6px',
+                  marginBottom: '6px',
+                  fontSize: '11px',
+                  color: 'var(--pl-text-primary)',
+                  flexShrink: 0,
+                }}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--pl-color-primary)', flexShrink: 0 }}>
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="16" x2="12" y2="12" />
+                  <line x1="12" y1="8" x2="12.01" y2="8" />
+                </svg>
+                <span>
+                  <b>{newCategoriesFromCsv.length} new category/categories detected:</b> {newCategoriesFromCsv.map((u) => `"${u.name}"`).join(', ')}. Saved automatically on Save & Import.
                 </span>
               </div>
+            )}
 
-              {/* Table Container - No horizontal scroll, clean vertical scroll only */}
-              <div
-                className="csv-table-scroll-container"
-                style={{
-                  height: '270px',
-                  maxHeight: '330px',
-                  overflowY: 'auto',
-                  overflowX: 'hidden',
-                  overscrollBehavior: 'contain',
-                  border: '1.5px solid var(--pl-border-default)',
-                  borderRadius: 'var(--pl-radius-md, 8px)',
-                  marginBottom: '8px',
-                  position: 'relative',
-                  background: 'var(--pl-bg-surface)',
-                  flexShrink: 0,
-                }}
-              >
-                <table style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'separate', borderSpacing: 0, textAlign: 'left' }}>
-                  <colgroup>
-                    <col style={{ width: '4%' }} />
-                    <col style={{ width: '15%' }} />
-                    <col style={{ width: '9%' }} />
-                    <col style={{ width: '14%' }} />
-                    <col style={{ width: '14%' }} />
-                    <col style={{ width: '23%' }} />
-                    <col style={{ width: '11%' }} />
-                    <col style={{ width: '10%' }} />
-                  </colgroup>
-                  <thead>
-                    <tr>
-                      <th style={{ ...fixedHeaderStyle, textAlign: 'center', padding: '8px 2px' }}>#</th>
-                      <th style={fixedHeaderStyle}>Date *</th>
-                      <th style={fixedHeaderStyle}>Type *</th>
-                      <th style={fixedHeaderStyle}>Category</th>
-                      <th style={fixedHeaderStyle}>Wallet *</th>
-                      <th style={fixedHeaderStyle}>Note</th>
-                      <th style={{ ...fixedHeaderStyle, textAlign: 'right' }}>Amount *</th>
-                      <th style={{ ...fixedHeaderStyle, textAlign: 'center' }}>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {parsedRows.map((row, idx) => {
-                      const isRowValid = row.isValid
+            {/* Read-Only Preview Table */}
+            {parsedRows.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+                {/* Row Summary */}
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    marginBottom: '6px',
+                    fontSize: '11.5px',
+                    flexShrink: 0,
+                  }}
+                >
+                  <span>
+                    <b>{parsedRows.length} transactions</b>{' '}
+                    <span style={{ fontSize: '10.5px', color: 'var(--mute)' }}>
+                      (Unchangeable read-only preview matching transaction table)
+                    </span>
+                  </span>
+                  <span style={{ color: 'var(--mute)' }}>
+                    {incomeCount} income &bull; {expenseCount} expense
+                  </span>
+                </div>
 
-                      const isRowCatInDb = localCategories.some(
-                        (c) => c.name.toLowerCase() === (row.category || '').toLowerCase()
-                      )
+                {/* Table Container - Vertical scroll only, strictly unchangeable rows */}
+                <div
+                  className="csv-table-scroll-container"
+                  style={{
+                    height: '280px',
+                    maxHeight: '340px',
+                    overflowY: 'auto',
+                    overflowX: 'hidden',
+                    overscrollBehavior: 'contain',
+                    border: '1.5px solid var(--pl-border-default)',
+                    borderRadius: 'var(--pl-radius-md, 8px)',
+                    marginBottom: '8px',
+                    position: 'relative',
+                    background: 'var(--pl-bg-surface)',
+                    flexShrink: 0,
+                  }}
+                >
+                  <table style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'separate', borderSpacing: 0, textAlign: 'left' }}>
+                    <colgroup>
+                      <col style={{ width: '4%' }} />
+                      <col style={{ width: '11%' }} />
+                      <col style={{ width: '8%' }} />
+                      <col style={{ width: '13%' }} />
+                      <col style={{ width: '15%' }} />
+                      <col style={{ width: '17%' }} />
+                      <col style={{ width: '11%' }} />
+                      <col style={{ width: '21%' }} />
+                    </colgroup>
+                    <thead>
+                      <tr>
+                        <th style={{ ...fixedHeaderStyle, textAlign: 'center', padding: '8px 2px' }}>#</th>
+                        <th style={fixedHeaderStyle}>Date</th>
+                        <th style={fixedHeaderStyle}>Type</th>
+                        <th style={fixedHeaderStyle}>Category</th>
+                        <th style={fixedHeaderStyle}>Wallet</th>
+                        <th style={fixedHeaderStyle}>Description</th>
+                        <th style={{ ...fixedHeaderStyle, textAlign: 'right' }}>Amount</th>
+                        <th style={{ ...fixedHeaderStyle, textAlign: 'center' }}>Requirement</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {parsedRows.map((row, idx) => {
+                        const isRowValid = row.isValid
+                        const isRowCatInDb = localCategories.some(
+                          (c) => c.name.toLowerCase() === (row.category || '').toLowerCase()
+                        )
 
-                      return (
-                        <tr
-                          key={idx}
-                          style={{
-                            height: '38px',
-                            background: isRowValid ? 'transparent' : 'rgba(239, 68, 68, 0.05)',
-                            borderBottom: '1px solid var(--pl-border-default)',
-                          }}
-                        >
-                          <td style={{ ...tdStyle, color: 'var(--mute)', fontSize: '11px', textAlign: 'center', padding: '4px 2px' }}>
-                            {idx + 1}
-                          </td>
+                        return (
+                          <tr
+                            key={row.id || idx}
+                            style={{
+                              minHeight: '40px',
+                              background: isRowValid ? 'transparent' : 'rgba(239, 68, 68, 0.04)',
+                              borderBottom: '1px solid var(--pl-border-default)',
+                            }}
+                          >
+                            {/* Row Index */}
+                            <td style={{ ...tdStyle, color: 'var(--mute)', fontSize: '11px', textAlign: 'center', padding: '4px 2px' }}>
+                              {idx + 1}
+                            </td>
 
-                          {/* Date (Mandatory) */}
-                          <td style={tdStyle}>
-                            <input
-                              type="date"
-                              value={row.date || ''}
-                              onChange={(e) => updateRowField(idx, 'date', e.target.value)}
-                              style={{
-                                padding: '2px 4px',
-                                fontSize: '11.5px',
-                                height: '26px',
-                                minHeight: '26px',
-                                width: '100%',
-                                boxSizing: 'border-box',
-                                borderRadius: '5px',
-                                border: row.date ? '1px solid var(--pl-border-default)' : '1.5px solid var(--pl-color-danger, #ef4444)',
-                                background: 'var(--pl-bg-surface)',
-                                color: 'var(--pl-text-primary)',
-                              }}
-                              required
-                            />
-                          </td>
-
-                          {/* Type (Mandatory) */}
-                          <td style={tdStyle}>
-                            <select
-                              value={row.type || 'expense'}
-                              onChange={(e) => updateRowField(idx, 'type', e.target.value)}
-                              style={{
-                                padding: '1px 3px',
-                                fontSize: '11px',
-                                fontWeight: 700,
-                                height: '26px',
-                                minHeight: '26px',
-                                width: '100%',
-                                boxSizing: 'border-box',
-                                borderRadius: '5px',
-                                border: '1px solid var(--pl-border-default)',
-                                background: row.type === 'income' ? 'var(--pl-color-success-soft)' : 'var(--pl-color-primary-soft)',
-                                color: row.type === 'income' ? 'var(--pl-color-success)' : 'var(--pl-color-primary)',
-                                textTransform: 'uppercase',
-                                cursor: 'pointer',
-                              }}
-                            >
-                              <option value="expense">EXPENSE</option>
-                              <option value="income">INCOME</option>
-                            </select>
-                          </td>
-
-                          {/* Category (Unchangeable from CSV - Clear & Contrast Adaptive) */}
-                          <td style={{ ...tdStyle, overflow: 'hidden' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '100%', minWidth: 0, overflow: 'hidden' }}>
+                            {/* Date (Read-Only) */}
+                            <td style={tdStyle}>
                               <span
                                 style={{
                                   fontSize: '11.5px',
                                   fontWeight: 600,
-                                  color: 'var(--pl-text-primary, currentColor)',
+                                  color: row.date ? 'var(--pl-text-primary)' : 'var(--pl-color-danger, #ef4444)',
+                                  whiteSpace: 'nowrap',
+                                }}
+                              >
+                                {row.date || 'Missing Date'}
+                              </span>
+                            </td>
+
+                            {/* Type (Read-Only Badge) */}
+                            <td style={tdStyle}>
+                              <span
+                                style={{
+                                  display: 'inline-block',
                                   padding: '2px 6px',
-                                  borderRadius: '5px',
-                                  background: 'var(--pl-bg-surface-hover, rgba(0, 0, 0, 0.05))',
-                                  border: '1px solid var(--pl-border-default, rgba(0, 0, 0, 0.12))',
+                                  fontSize: '10px',
+                                  fontWeight: 700,
+                                  borderRadius: '4px',
+                                  textTransform: 'uppercase',
+                                  background: row.type === 'income' ? 'var(--pl-color-success-soft)' : 'var(--pl-color-danger-soft, rgba(239, 68, 68, 0.12))',
+                                  color: row.type === 'income' ? 'var(--pl-color-success)' : 'var(--pl-color-danger, #ef4444)',
+                                  border: `1px solid ${row.type === 'income' ? 'var(--pl-color-success-soft)' : 'rgba(239, 68, 68, 0.2)'}`,
+                                }}
+                              >
+                                {row.type}
+                              </span>
+                            </td>
+
+                            {/* Category (Read-Only Badge) */}
+                            <td style={{ ...tdStyle, overflow: 'hidden' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '100%', minWidth: 0 }}>
+                                <span
+                                  style={{
+                                    fontSize: '11.5px',
+                                    fontWeight: 600,
+                                    color: 'var(--pl-text-primary)',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                    flex: 1,
+                                    minWidth: 0,
+                                  }}
+                                  title={row.category || 'Missing'}
+                                >
+                                  {row.category || <span style={{ color: 'var(--pl-color-danger, #ef4444)' }}>Missing</span>}
+                                </span>
+                                {!isRowCatInDb && row.category && (
+                                  <span
+                                    style={{
+                                      fontSize: '9px',
+                                      fontWeight: 700,
+                                      padding: '1px 4px',
+                                      borderRadius: '4px',
+                                      background: 'var(--pl-color-primary-soft, rgba(37, 99, 235, 0.14))',
+                                      color: 'var(--pl-color-primary, #2563eb)',
+                                      textTransform: 'uppercase',
+                                      whiteSpace: 'nowrap',
+                                      flexShrink: 0,
+                                    }}
+                                    title="New category from CSV. Saved automatically on Save & Import."
+                                  >
+                                    New
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+
+                            {/* Wallet (Read-Only: Shows status or Not Found) */}
+                            <td style={{ ...tdStyle, overflow: 'hidden' }}>
+                              {row.isWalletMissing ? (
+                                <span
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '3px',
+                                    fontSize: '11px',
+                                    fontWeight: 600,
+                                    color: 'var(--pl-color-danger, #ef4444)',
+                                    background: 'rgba(239, 68, 68, 0.08)',
+                                    padding: '2px 5px',
+                                    borderRadius: '4px',
+                                    border: '1px solid rgba(239, 68, 68, 0.25)',
+                                    maxWidth: '100%',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                  }}
+                                  title={`Wallet "${row.wallet_name || row.rawWallet || 'Unknown'}" does not exist in app`}
+                                >
+                                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ flexShrink: 0 }}>
+                                    <line x1="18" y1="6" x2="6" y2="18" />
+                                    <line x1="6" y1="6" x2="18" y2="18" />
+                                  </svg>
+                                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                    {row.wallet_name || row.rawWallet || 'Not Found'}
+                                  </span>
+                                </span>
+                              ) : (
+                                <span
+                                  style={{
+                                    fontSize: '11.5px',
+                                    fontWeight: 600,
+                                    color: 'var(--pl-text-primary)',
+                                    display: 'inline-block',
+                                    maxWidth: '100%',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                  }}
+                                  title={row.wallet_name}
+                                >
+                                  {row.wallet_name}
+                                </span>
+                              )}
+                            </td>
+
+                            {/* Note / Description (Read-Only) */}
+                            <td style={{ ...tdStyle, overflow: 'hidden' }}>
+                              <span
+                                style={{
+                                  fontSize: '11.5px',
+                                  color: row.note ? 'var(--pl-text-secondary)' : 'var(--mute)',
+                                  display: 'block',
                                   overflow: 'hidden',
                                   textOverflow: 'ellipsis',
                                   whiteSpace: 'nowrap',
-                                  flex: 1,
-                                  minWidth: 0,
                                 }}
-                                title={row.category || 'Missing'}
+                                title={row.note || ''}
                               >
-                                {row.category || <span style={{ color: 'var(--pl-color-danger, #ef4444)' }}>Missing</span>}
+                                {row.note || '-'}
                               </span>
+                            </td>
 
-                              {/* Indicator showing if this category is already in DB or newly identified */}
-                              {!isRowCatInDb && row.category && (
+                            {/* Amount (Read-Only Formatted Currency) */}
+                            <td style={{ ...tdStyle, textAlign: 'right', whiteSpace: 'nowrap' }}>
+                              <span
+                                style={{
+                                  fontSize: '11.5px',
+                                  fontWeight: 700,
+                                  fontFamily: "'JetBrains Mono', monospace",
+                                  color: row.type === 'income' ? 'var(--pl-color-success)' : 'var(--pl-color-danger, #ef4444)',
+                                }}
+                              >
+                                {row.type === 'income' ? '+' : '-'}
+                                {money(row.amount || 0, currency)}
+                              </span>
+                            </td>
+
+                            {/* Requirement Column: Status & Resolution Actions */}
+                            <td style={{ ...tdStyle, textAlign: 'center', padding: '4px 2px' }}>
+                              {isRowValid ? (
                                 <span
                                   style={{
-                                    fontSize: '9px',
+                                    fontSize: '10.5px',
                                     fontWeight: 700,
-                                    padding: '1px 4px',
-                                    borderRadius: '4px',
-                                    background: 'var(--pl-color-primary-soft, rgba(37, 99, 235, 0.14))',
-                                    color: 'var(--pl-color-primary, #2563eb)',
-                                    textTransform: 'uppercase',
-                                    border: '1px solid var(--pl-color-primary-soft, rgba(37, 99, 235, 0.25))',
-                                    whiteSpace: 'nowrap',
-                                    flexShrink: 0,
+                                    padding: '2px 8px',
+                                    borderRadius: 'var(--pl-radius-pill, 9999px)',
+                                    background: 'var(--pl-color-success-soft)',
+                                    color: 'var(--pl-color-success)',
                                   }}
-                                  title="New category from CSV. Will be automatically created in Settings & DB upon Save & Import."
                                 >
-                                  New
+                                  Ready
+                                </span>
+                              ) : row.isWalletMissing ? (
+                                /* When wallet is missing: user can create new wallet with 0 initial amount */
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenCreateWalletModal(row)}
+                                  title="Wallet does not exist. Click to create this wallet with 0 initial amount."
+                                  style={{
+                                    fontSize: '10.5px',
+                                    fontWeight: 700,
+                                    padding: '3px 8px',
+                                    borderRadius: '5px',
+                                    background: 'var(--pl-color-primary, #6366f1)',
+                                    color: '#ffffff',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    whiteSpace: 'nowrap',
+                                  }}
+                                >
+                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6">
+                                    <line x1="12" y1="5" x2="12" y2="19" />
+                                    <line x1="5" y1="12" x2="19" y2="12" />
+                                  </svg>
+                                  Create Wallet
+                                </button>
+                              ) : row.isInsufficientBalance ? (
+                                /* After wallet created with 0 or low balance: shows Low Funds & "Did you forget to add an income?" */
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px' }}>
+                                  <span
+                                    style={{
+                                      fontSize: '9.5px',
+                                      fontWeight: 700,
+                                      padding: '1px 6px',
+                                      borderRadius: 'var(--pl-radius-pill, 9999px)',
+                                      background: 'rgba(245, 158, 11, 0.15)',
+                                      color: 'var(--pl-color-warning, #f59e0b)',
+                                      border: '1px solid rgba(245, 158, 11, 0.3)',
+                                      whiteSpace: 'nowrap',
+                                    }}
+                                    title={`Wallet balance: ${money(row.wallet_balance || 0, currency)}, Required: ${money(row.amount, currency)}`}
+                                  >
+                                    Low Funds
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenAddIncomeModal(row)}
+                                    title="Did you forget to add an income? Click to add an income with enough amount to record this transaction."
+                                    style={{
+                                      fontSize: '9.5px',
+                                      fontWeight: 600,
+                                      padding: '2px 6px',
+                                      borderRadius: '4px',
+                                      background: 'rgba(16, 185, 129, 0.12)',
+                                      color: 'var(--pl-color-success, #10b981)',
+                                      border: '1px solid rgba(16, 185, 129, 0.35)',
+                                      cursor: 'pointer',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '3px',
+                                      whiteSpace: 'nowrap',
+                                    }}
+                                  >
+                                    Did you forget to add an income?
+                                  </button>
+                                </div>
+                              ) : (
+                                <span
+                                  title={`Missing: ${row.missingFields?.join(', ')}`}
+                                  style={{
+                                    fontSize: '10px',
+                                    fontWeight: 700,
+                                    padding: '2px 6px',
+                                    borderRadius: 'var(--pl-radius-pill, 9999px)',
+                                    background: 'rgba(239, 68, 68, 0.15)',
+                                    color: 'var(--pl-color-danger, #ef4444)',
+                                    cursor: 'help',
+                                  }}
+                                >
+                                  Incomplete
                                 </span>
                               )}
-                            </div>
-                          </td>
-
-                          {/* Wallet (Mandatory) */}
-                          <td style={tdStyle}>
-                            <select
-                              value={row.wallet_id || selectedWalletId}
-                              onChange={(e) => updateRowField(idx, 'wallet_id', Number(e.target.value))}
-                              style={{
-                                padding: '2px 4px',
-                                fontSize: '11.5px',
-                                height: '26px',
-                                minHeight: '26px',
-                                width: '100%',
-                                boxSizing: 'border-box',
-                                borderRadius: '5px',
-                                border: row.wallet_id || selectedWalletId ? '1px solid var(--pl-border-default)' : '1.5px solid var(--pl-color-danger, #ef4444)',
-                                background: 'var(--pl-bg-surface)',
-                                color: 'var(--pl-text-primary)',
-                                cursor: 'pointer',
-                              }}
-                              required
-                            >
-                              {wallets.map((w) => (
-                                <option key={w.id} value={w.id}>
-                                  {w.name}
-                                </option>
-                              ))}
-                            </select>
-                          </td>
-
-                          {/* Note (Optional) */}
-                          <td style={tdStyle}>
-                            <input
-                              type="text"
-                              value={row.note || ''}
-                              placeholder="Optional note"
-                              onChange={(e) => updateRowField(idx, 'note', e.target.value)}
-                              style={{
-                                padding: '2px 6px',
-                                fontSize: '11.5px',
-                                height: '26px',
-                                minHeight: '26px',
-                                width: '100%',
-                                boxSizing: 'border-box',
-                                borderRadius: '5px',
-                                border: '1px solid var(--pl-border-default)',
-                                background: 'var(--pl-bg-surface)',
-                                color: 'var(--pl-text-primary)',
-                              }}
-                            />
-                          </td>
-
-                          {/* Amount (Mandatory) */}
-                          <td style={{ ...tdStyle, textAlign: 'right' }}>
-                            <input
-                              type="number"
-                              step="any"
-                              value={row.amount || ''}
-                              placeholder="0.00"
-                              onChange={(e) => updateRowField(idx, 'amount', parseFloat(e.target.value) || 0)}
-                              style={{
-                                padding: '2px 6px',
-                                fontSize: '11.5px',
-                                fontWeight: 700,
-                                height: '26px',
-                                minHeight: '26px',
-                                width: '100%',
-                                boxSizing: 'border-box',
-                                textAlign: 'right',
-                                borderRadius: '5px',
-                                border: row.amount > 0 ? '1px solid var(--pl-border-default)' : '1.5px solid var(--pl-color-danger, #ef4444)',
-                                background: 'var(--pl-bg-surface)',
-                                color: row.type === 'income' ? 'var(--pl-color-success)' : 'var(--pl-color-danger)',
-                                fontFamily: "'JetBrains Mono', monospace",
-                              }}
-                              required
-                            />
-                          </td>
-
-                          {/* Mandatory Status Indicator */}
-                          <td style={{ ...tdStyle, textAlign: 'center', whiteSpace: 'nowrap', padding: '4px 2px' }}>
-                            {isRowValid ? (
-                              <span
-                                style={{
-                                  fontSize: '10.5px',
-                                  fontWeight: 700,
-                                  padding: '2px 7px',
-                                  borderRadius: 'var(--pl-radius-pill, 9999px)',
-                                  background: 'var(--pl-color-success-soft)',
-                                  color: 'var(--pl-color-success)',
-                                }}
-                              >
-                                Ready
-                              </span>
-                            ) : (
-                              <span
-                                title={`Missing mandatory: ${row.missingFields?.join(', ')}`}
-                                style={{
-                                  fontSize: '10px',
-                                  fontWeight: 700,
-                                  padding: '2px 5px',
-                                  borderRadius: 'var(--pl-radius-pill, 9999px)',
-                                  background: 'rgba(239, 68, 68, 0.15)',
-                                  color: 'var(--pl-color-danger, #ef4444)',
-                                  cursor: 'help',
-                                }}
-                              >
-                                Missing
-                              </span>
-                            )}
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Action Buttons: Save & Import */}
-          <div className="btns" style={{ marginTop: '4px', paddingTop: '6px', flexShrink: 0 }}>
-            <button
-              type="button"
-              className="ghost"
-              onClick={onClose}
-              disabled={loading}
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              className="primary"
-              onClick={handleImport}
-              disabled={loading || parsedRows.length === 0 || !isAllValid}
-              style={{
-                opacity: loading || parsedRows.length === 0 || !isAllValid ? 0.6 : 1,
-                cursor: loading || parsedRows.length === 0 || !isAllValid ? 'not-allowed' : 'pointer',
-              }}
-            >
-              {loading
-                ? 'Saving & Importing...'
-                : !isAllValid && parsedRows.length > 0
-                ? `Resolve Missing Data (${invalidRows.length} incomplete)`
-                : `Save & Import (${parsedRows.length})`}
-            </button>
+            {/* Modal Bottom Actions */}
+            <div className="btns" style={{ marginTop: '4px', paddingTop: '6px', flexShrink: 0 }}>
+              <button
+                type="button"
+                className="ghost"
+                onClick={onClose}
+                disabled={loading || walletCreating || incomeCreating}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                className="primary"
+                onClick={handleImport}
+                disabled={loading || parsedRows.length === 0 || validRows.length === 0}
+                style={{
+                  opacity: loading || parsedRows.length === 0 || validRows.length === 0 ? 0.6 : 1,
+                  cursor: loading || parsedRows.length === 0 || validRows.length === 0 ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {loading
+                  ? 'Saving & Importing...'
+                  : validRows.length === parsedRows.length && parsedRows.length > 0
+                  ? `Save & Import All (${validRows.length})`
+                  : validRows.length > 0
+                  ? `Save & Import Valid (${validRows.length} of ${parsedRows.length})`
+                  : `Resolve Wallet Requirements (${invalidRows.length} pending)`}
+              </button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+
+      {/* Interactive Sub-Modal: Create Wallet with 0 initial amount */}
+      {walletPrompt && (
+        <div
+          className="modal-overlay"
+          style={{ zIndex: 1100 }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="create-wallet-prompt-title"
+        >
+          <div
+            className="dialog-content"
+            style={{
+              maxWidth: '460px',
+              width: '90%',
+              padding: '20px 24px',
+            }}
+          >
+            <h3 id="create-wallet-prompt-title" style={{ margin: '0 0 10px', fontSize: '16px', fontWeight: 700 }}>
+              Create Wallet &ldquo;{walletPrompt.walletName}&rdquo;
+            </h3>
+
+            <p style={{ margin: '0 0 12px', fontSize: '13px', color: 'var(--pl-text-secondary)', lineHeight: 1.5 }}>
+              The imported transaction references wallet <strong style={{ color: 'var(--pl-text-primary)' }}>&ldquo;{walletPrompt.walletName}&rdquo;</strong>, which does not exist in your app.
+            </p>
+
+            <p style={{ margin: '0 0 16px', fontSize: '13px', color: 'var(--pl-text-secondary)', lineHeight: 1.5 }}>
+              Can I create wallet <strong style={{ color: 'var(--pl-text-primary)' }}>&ldquo;{walletPrompt.walletName}&rdquo;</strong> with <b>0 initial amount</b>?
+            </p>
+
+            {walletPrompt.error && (
+              <div
+                style={{
+                  padding: '7px 10px',
+                  borderRadius: '6px',
+                  background: 'rgba(239, 68, 68, 0.12)',
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                  color: 'var(--pl-color-danger, #ef4444)',
+                  fontSize: '12px',
+                  marginBottom: '12px',
+                }}
+              >
+                {walletPrompt.error}
+              </div>
+            )}
+
+            <div className="btns" style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '16px' }}>
+              <button
+                type="button"
+                className="ghost"
+                onClick={() => setWalletPrompt(null)}
+                disabled={walletCreating}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="primary"
+                onClick={handleConfirmCreateWallet}
+                disabled={walletCreating}
+              >
+                {walletCreating ? 'Creating Wallet...' : 'Yes, Create Wallet'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Interactive Sub-Modal: "Did you forget to add an income?" */}
+      {addIncomePrompt && (
+        <div
+          className="modal-overlay"
+          style={{ zIndex: 1100 }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="add-income-prompt-title"
+        >
+          <div
+            className="dialog-content"
+            style={{
+              maxWidth: '480px',
+              width: '90%',
+              padding: '20px 24px',
+            }}
+          >
+            <h3 id="add-income-prompt-title" style={{ margin: '0 0 10px', fontSize: '16px', fontWeight: 700 }}>
+              Add Income to &ldquo;{addIncomePrompt.walletName}&rdquo;
+            </h3>
+
+            <p style={{ margin: '0 0 10px', fontSize: '13px', color: 'var(--pl-text-secondary)', lineHeight: 1.5 }}>
+              <b>Did you forget to add an income?</b>
+            </p>
+
+            <p style={{ margin: '0 0 14px', fontSize: '12.5px', color: 'var(--pl-text-secondary)', lineHeight: 1.5 }}>
+              The expense <strong style={{ color: 'var(--pl-text-primary)' }}>&ldquo;{addIncomePrompt.row.note || addIncomePrompt.row.category}&rdquo;</strong> requires <strong style={{ color: 'var(--pl-color-danger, #ef4444)' }}>{money(addIncomePrompt.row.amount, currency)}</strong>, but <strong style={{ color: 'var(--pl-text-primary)' }}>&ldquo;{addIncomePrompt.walletName}&rdquo;</strong> currently has only <strong style={{ color: 'var(--pl-color-warning, #f59e0b)' }}>{money(addIncomePrompt.walletBalance, currency)}</strong>.
+            </p>
+
+            <p style={{ margin: '0 0 14px', fontSize: '12px', color: 'var(--pl-text-muted)', lineHeight: 1.4 }}>
+              Record an income of at least <strong style={{ color: 'var(--pl-color-success, #10b981)' }}>{money(addIncomePrompt.amountNeeded, currency)}</strong> to cover this expense and add the transaction to your ledger:
+            </p>
+
+            {addIncomePrompt.error && (
+              <div
+                style={{
+                  padding: '7px 10px',
+                  borderRadius: '6px',
+                  background: 'rgba(239, 68, 68, 0.12)',
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                  color: 'var(--pl-color-danger, #ef4444)',
+                  fontSize: '12px',
+                  marginBottom: '12px',
+                }}
+              >
+                {addIncomePrompt.error}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+              <div>
+                <label
+                  htmlFor="prompt-income-amount"
+                  style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '4px', color: 'var(--pl-text-primary)' }}
+                >
+                  Income Amount (Min {money(addIncomePrompt.amountNeeded, currency)}):
+                </label>
+                <input
+                  id="prompt-income-amount"
+                  type="number"
+                  step="any"
+                  min={addIncomePrompt.amountNeeded}
+                  value={addIncomePrompt.amount}
+                  onChange={(e) => setAddIncomePrompt((prev) => ({ ...prev, amount: e.target.value }))}
+                  style={{
+                    width: '100%',
+                    boxSizing: 'border-box',
+                    padding: '6px 10px',
+                    borderRadius: '6px',
+                    border: Number(addIncomePrompt.amount) >= Number(addIncomePrompt.amountNeeded) ? '1px solid var(--pl-border-default)' : '1.5px solid var(--pl-color-danger, #ef4444)',
+                    background: 'var(--pl-bg-surface)',
+                    color: 'var(--pl-color-success, #10b981)',
+                    fontSize: '14px',
+                    fontWeight: 700,
+                    fontFamily: "'JetBrains Mono', monospace",
+                  }}
+                  required
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="prompt-income-category"
+                  style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '4px', color: 'var(--pl-text-primary)' }}
+                >
+                  Income Category:
+                </label>
+                <select
+                  id="prompt-income-category"
+                  value={addIncomePrompt.category}
+                  onChange={(e) => setAddIncomePrompt((prev) => ({ ...prev, category: e.target.value }))}
+                  style={{
+                    width: '100%',
+                    boxSizing: 'border-box',
+                    padding: '6px 10px',
+                    borderRadius: '6px',
+                    border: '1px solid var(--pl-border-default)',
+                    background: 'var(--pl-bg-surface)',
+                    color: 'var(--pl-text-primary)',
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {incomeCategoryOptions.map((cat) => (
+                    <option key={cat.id || cat.name} value={cat.name}>
+                      {cat.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="prompt-income-note"
+                  style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '4px', color: 'var(--pl-text-primary)' }}
+                >
+                  Description / Note:
+                </label>
+                <input
+                  id="prompt-income-note"
+                  type="text"
+                  value={addIncomePrompt.note}
+                  onChange={(e) => setAddIncomePrompt((prev) => ({ ...prev, note: e.target.value }))}
+                  style={{
+                    width: '100%',
+                    boxSizing: 'border-box',
+                    padding: '6px 10px',
+                    borderRadius: '6px',
+                    border: '1px solid var(--pl-border-default)',
+                    background: 'var(--pl-bg-surface)',
+                    color: 'var(--pl-text-primary)',
+                    fontSize: '13px',
+                  }}
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="prompt-income-date"
+                  style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '4px', color: 'var(--pl-text-primary)' }}
+                >
+                  Date:
+                </label>
+                <input
+                  id="prompt-income-date"
+                  type="date"
+                  value={addIncomePrompt.date}
+                  onChange={(e) => setAddIncomePrompt((prev) => ({ ...prev, date: e.target.value }))}
+                  style={{
+                    width: '100%',
+                    boxSizing: 'border-box',
+                    padding: '6px 10px',
+                    borderRadius: '6px',
+                    border: '1px solid var(--pl-border-default)',
+                    background: 'var(--pl-bg-surface)',
+                    color: 'var(--pl-text-primary)',
+                    fontSize: '13px',
+                  }}
+                />
+              </div>
+            </div>
+
+            <div className="btns" style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+              <button
+                type="button"
+                className="ghost"
+                onClick={() => setAddIncomePrompt(null)}
+                disabled={incomeCreating}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="primary"
+                onClick={handleConfirmAddIncome}
+                disabled={incomeCreating || Number(addIncomePrompt.amount) < Number(addIncomePrompt.amountNeeded)}
+                style={{
+                  opacity: Number(addIncomePrompt.amount) < Number(addIncomePrompt.amountNeeded) ? 0.6 : 1,
+                  cursor: Number(addIncomePrompt.amount) < Number(addIncomePrompt.amountNeeded) ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {incomeCreating ? 'Recording Income...' : 'Record Income & Update Wallet'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   )
 }
 
@@ -829,7 +1407,7 @@ const fixedHeaderStyle = {
   fontWeight: 700,
   textTransform: 'uppercase',
   letterSpacing: '0.04em',
-  padding: '8px 4px',
+  padding: '8px 6px',
   borderBottom: '1.5px solid var(--pl-border-default, #1e293e)',
   boxShadow: '0 1px 0 var(--pl-border-default, #1e293e)',
   whiteSpace: 'nowrap',
@@ -841,7 +1419,7 @@ const fixedHeaderStyle = {
 
 // Table cell style
 const tdStyle = {
-  padding: '4px 4px',
+  padding: '6px 6px',
   verticalAlign: 'middle',
   borderBottom: '1px solid var(--pl-border-default, #1e293e)',
   boxSizing: 'border-box',

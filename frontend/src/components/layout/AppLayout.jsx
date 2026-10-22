@@ -70,6 +70,8 @@ export function AppLayout({
   csvModalOpen,
   closeCsvModal,
   handleCsvImport,
+  addWallet,
+  refreshWallets,
   // Toast props
   toast,
   showToast,
@@ -152,6 +154,8 @@ export function AppLayout({
         categories={categories}
         refreshCategories={refreshCategories}
         showToast={showToast}
+        addWallet={addWallet}
+        refreshWallets={refreshWallets}
       />
 
       {/* Filter Drawer (Right Side Slide-Over) */}
