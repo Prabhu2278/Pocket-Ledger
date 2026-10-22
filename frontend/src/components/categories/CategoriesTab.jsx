@@ -128,7 +128,7 @@ export function CategoriesTab({
         <div>
           <h2>Category Management</h2>
           <p className="categories-subtitle">
-            Manage system defaults and configure custom categories for your transactions, expenses, and income.
+            Manage and configure custom categories for your transactions, expenses, and income.
           </p>
         </div>
         <button
@@ -204,8 +204,8 @@ export function CategoriesTab({
                       <span className={`badge-type ${cat.type}`}>
                         {cat.type}
                       </span>
-                      <span className={`badge-source ${isCustom ? 'custom' : 'default'}`}>
-                        {isCustom ? 'Custom' : 'Default'}
+                      <span className="badge-source custom">
+                        Custom
                       </span>
                     </div>
                   </div>
