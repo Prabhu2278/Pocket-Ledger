@@ -101,15 +101,27 @@ class WalletService:
         if user_id is not None:
             query = query.filter(Wallet.user_id == user_id)
         wallets = query.order_by(Wallet.id.asc()).all()
+        # Auto-classify any wallets containing 'cash' in name as CASH
+        has_updates = False
+        for w in wallets:
+            if w.name and "cash" in w.name.lower() and (not w.wallet_type or w.wallet_type.upper() == "BANK"):
+                w.wallet_type = "CASH"
+                has_updates = True
+        if has_updates:
+            db.commit()
         return [cls.to_response_dto(db, w) for w in wallets]
 
     @classmethod
     def create(cls, db: Session, wallet_in: WalletCreate) -> WalletResponse:
+        w_type = wallet_in.wallet_type or "BANK"
+        if wallet_in.name and "cash" in wallet_in.name.lower() and w_type.upper() == "BANK":
+            w_type = "CASH"
+
         new_wallet = Wallet(
             name=wallet_in.name,
-            wallet_type=wallet_in.wallet_type or "BANK",
+            wallet_type=w_type,
             initial_balance=wallet_in.initial_balance or 0.0,
-            color=wallet_in.color or "#10b981",
+            color=wallet_in.color or ("#f59e0b" if w_type == "CASH" else "#10b981"),
             user_id=wallet_in.user_id,
         )
         db.add(new_wallet)
@@ -125,6 +137,8 @@ class WalletService:
 
         if wallet_in.name is not None:
             wallet.name = wallet_in.name
+            if "cash" in wallet.name.lower() and (wallet_in.wallet_type is None or wallet_in.wallet_type.upper() == "BANK") and wallet.wallet_type.upper() == "BANK":
+                wallet.wallet_type = "CASH"
         if wallet_in.wallet_type is not None:
             wallet.wallet_type = wallet_in.wallet_type
         if wallet_in.initial_balance is not None:

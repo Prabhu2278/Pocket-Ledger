@@ -64,6 +64,7 @@ export function TransactionForm({
 
   const dbCustomList = dbCategories.filter((c) => !c.is_default).map((c) => c.name)
   const combinedCustom = Array.from(new Set([...customCategories, ...dbCustomList]))
+  const allCategoryList = Array.from(new Set([...standardList, ...combinedCustom]))
 
   // Currency symbol
   const currCode = (currency || 'INR').toUpperCase()
@@ -73,10 +74,10 @@ export function TransactionForm({
   useEffect(() => {
     if (dialogOpen) {
       if (category && category !== 'Transfer') {
-        const isStandard = standardList.some(
+        const isKnown = allCategoryList.some(
           (c) => c.toLowerCase() === category.toLowerCase()
         )
-        if (!isStandard) {
+        if (!isKnown) {
           setIsCustomMode(true)
           setCustomCategoryInput(category)
         } else {
@@ -88,7 +89,7 @@ export function TransactionForm({
         setCustomCategoryInput('')
       }
     }
-  }, [dialogOpen, category, standardList])
+  }, [dialogOpen, category, allCategoryList])
 
   if (!dialogOpen) return null
 
@@ -445,22 +446,13 @@ export function TransactionForm({
                 }}
               >
                 <option value="">-- Select Category --</option>
-                <optgroup label="Standard Categories">
-                  {standardList.map((catName) => (
+                <optgroup label="Categories">
+                  {allCategoryList.map((catName) => (
                     <option key={catName} value={catName}>
                       {catName}
                     </option>
                   ))}
                 </optgroup>
-                {combinedCustom.length > 0 && (
-                  <optgroup label="Custom Categories">
-                    {combinedCustom.map((c) => (
-                      <option key={`custom-${c}`} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </optgroup>
-                )}
                 <option value="__custom__">+ Customize Category...</option>
               </select>
 
