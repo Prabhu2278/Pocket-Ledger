@@ -3031,6 +3031,19 @@ body:has(.auth-split-wrapper) #root {
     font-size: 12px;
     gap: 6px;
   }
+/* CSV Import Table Container - Zero horizontal scroll, clean fixed layout */
+.csv-table-scroll-container {
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.csv-table-scroll-container table {
+  table-layout: fixed !important;
+  width: 100% !important;
+  max-width: 100% !important;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -246,8 +246,8 @@ export function CsvImportModal({
       <div
         className="dialog-content"
         style={{
-          maxWidth: '860px',
-          width: '94%',
+          maxWidth: '1060px',
+          width: '95%',
           maxHeight: '92vh',
           display: 'flex',
           flexDirection: 'column',
@@ -513,14 +513,14 @@ export function CsvImportModal({
                 </span>
               </div>
 
-              {/* Table Container - Moved up with generous height */}
+              {/* Table Container - No horizontal scroll, clean vertical scroll only */}
               <div
                 className="csv-table-scroll-container"
                 style={{
                   height: '270px',
                   maxHeight: '330px',
                   overflowY: 'auto',
-                  overflowX: 'auto',
+                  overflowX: 'hidden',
                   overscrollBehavior: 'contain',
                   border: '1.5px solid var(--pl-border-default)',
                   borderRadius: 'var(--pl-radius-md, 8px)',
@@ -530,10 +530,20 @@ export function CsvImportModal({
                   flexShrink: 0,
                 }}
               >
-                <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, textAlign: 'left' }}>
+                <table style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'separate', borderSpacing: 0, textAlign: 'left' }}>
+                  <colgroup>
+                    <col style={{ width: '4%' }} />
+                    <col style={{ width: '15%' }} />
+                    <col style={{ width: '9%' }} />
+                    <col style={{ width: '14%' }} />
+                    <col style={{ width: '14%' }} />
+                    <col style={{ width: '23%' }} />
+                    <col style={{ width: '11%' }} />
+                    <col style={{ width: '10%' }} />
+                  </colgroup>
                   <thead>
                     <tr>
-                      <th style={fixedHeaderStyle}>#</th>
+                      <th style={{ ...fixedHeaderStyle, textAlign: 'center', padding: '8px 2px' }}>#</th>
                       <th style={fixedHeaderStyle}>Date *</th>
                       <th style={fixedHeaderStyle}>Type *</th>
                       <th style={fixedHeaderStyle}>Category</th>
@@ -560,7 +570,7 @@ export function CsvImportModal({
                             borderBottom: '1px solid var(--pl-border-default)',
                           }}
                         >
-                          <td style={{ ...tdStyle, color: 'var(--mute)', fontSize: '11px', width: '32px' }}>
+                          <td style={{ ...tdStyle, color: 'var(--mute)', fontSize: '11px', textAlign: 'center', padding: '4px 2px' }}>
                             {idx + 1}
                           </td>
 
@@ -571,11 +581,12 @@ export function CsvImportModal({
                               value={row.date || ''}
                               onChange={(e) => updateRowField(idx, 'date', e.target.value)}
                               style={{
-                                padding: '2px 6px',
+                                padding: '2px 4px',
                                 fontSize: '11.5px',
                                 height: '26px',
                                 minHeight: '26px',
-                                width: '125px',
+                                width: '100%',
+                                boxSizing: 'border-box',
                                 borderRadius: '5px',
                                 border: row.date ? '1px solid var(--pl-border-default)' : '1.5px solid var(--pl-color-danger, #ef4444)',
                                 background: 'var(--pl-bg-surface)',
@@ -591,11 +602,13 @@ export function CsvImportModal({
                               value={row.type || 'expense'}
                               onChange={(e) => updateRowField(idx, 'type', e.target.value)}
                               style={{
-                                padding: '1px 6px',
+                                padding: '1px 3px',
                                 fontSize: '11px',
                                 fontWeight: 700,
                                 height: '26px',
                                 minHeight: '26px',
+                                width: '100%',
+                                boxSizing: 'border-box',
                                 borderRadius: '5px',
                                 border: '1px solid var(--pl-border-default)',
                                 background: row.type === 'income' ? 'var(--pl-color-success-soft)' : 'var(--pl-color-primary-soft)',
@@ -610,20 +623,24 @@ export function CsvImportModal({
                           </td>
 
                           {/* Category (Unchangeable from CSV - Clear & Contrast Adaptive) */}
-                          <td style={tdStyle}>
-                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                          <td style={{ ...tdStyle, overflow: 'hidden' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '100%', minWidth: 0, overflow: 'hidden' }}>
                               <span
                                 style={{
-                                  fontSize: '12px',
+                                  fontSize: '11.5px',
                                   fontWeight: 600,
                                   color: 'var(--pl-text-primary, currentColor)',
-                                  padding: '2px 8px',
+                                  padding: '2px 6px',
                                   borderRadius: '5px',
                                   background: 'var(--pl-bg-surface-hover, rgba(0, 0, 0, 0.05))',
                                   border: '1px solid var(--pl-border-default, rgba(0, 0, 0, 0.12))',
-                                  display: 'inline-block',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
                                   whiteSpace: 'nowrap',
+                                  flex: 1,
+                                  minWidth: 0,
                                 }}
+                                title={row.category || 'Missing'}
                               >
                                 {row.category || <span style={{ color: 'var(--pl-color-danger, #ef4444)' }}>Missing</span>}
                               </span>
@@ -634,13 +651,14 @@ export function CsvImportModal({
                                   style={{
                                     fontSize: '9px',
                                     fontWeight: 700,
-                                    padding: '1px 5px',
+                                    padding: '1px 4px',
                                     borderRadius: '4px',
                                     background: 'var(--pl-color-primary-soft, rgba(37, 99, 235, 0.14))',
                                     color: 'var(--pl-color-primary, #2563eb)',
                                     textTransform: 'uppercase',
                                     border: '1px solid var(--pl-color-primary-soft, rgba(37, 99, 235, 0.25))',
                                     whiteSpace: 'nowrap',
+                                    flexShrink: 0,
                                   }}
                                   title="New category from CSV. Will be automatically created in Settings & DB upon Save & Import."
                                 >
@@ -656,11 +674,12 @@ export function CsvImportModal({
                               value={row.wallet_id || selectedWalletId}
                               onChange={(e) => updateRowField(idx, 'wallet_id', Number(e.target.value))}
                               style={{
-                                padding: '2px 6px',
+                                padding: '2px 4px',
                                 fontSize: '11.5px',
                                 height: '26px',
                                 minHeight: '26px',
-                                minWidth: '120px',
+                                width: '100%',
+                                boxSizing: 'border-box',
                                 borderRadius: '5px',
                                 border: row.wallet_id || selectedWalletId ? '1px solid var(--pl-border-default)' : '1.5px solid var(--pl-color-danger, #ef4444)',
                                 background: 'var(--pl-bg-surface)',
@@ -685,11 +704,12 @@ export function CsvImportModal({
                               placeholder="Required note"
                               onChange={(e) => updateRowField(idx, 'note', e.target.value)}
                               style={{
-                                padding: '2px 8px',
+                                padding: '2px 6px',
                                 fontSize: '11.5px',
                                 height: '26px',
                                 minHeight: '26px',
-                                width: '150px',
+                                width: '100%',
+                                boxSizing: 'border-box',
                                 borderRadius: '5px',
                                 border: row.note ? '1px solid var(--pl-border-default)' : '1.5px solid var(--pl-color-danger, #ef4444)',
                                 background: 'var(--pl-bg-surface)',
@@ -708,12 +728,13 @@ export function CsvImportModal({
                               placeholder="0.00"
                               onChange={(e) => updateRowField(idx, 'amount', parseFloat(e.target.value) || 0)}
                               style={{
-                                padding: '2px 8px',
+                                padding: '2px 6px',
                                 fontSize: '11.5px',
                                 fontWeight: 700,
                                 height: '26px',
                                 minHeight: '26px',
-                                width: '85px',
+                                width: '100%',
+                                boxSizing: 'border-box',
                                 textAlign: 'right',
                                 borderRadius: '5px',
                                 border: row.amount > 0 ? '1px solid var(--pl-border-default)' : '1.5px solid var(--pl-color-danger, #ef4444)',
@@ -726,7 +747,7 @@ export function CsvImportModal({
                           </td>
 
                           {/* Mandatory Status Indicator */}
-                          <td style={{ ...tdStyle, textAlign: 'center', whiteSpace: 'nowrap' }}>
+                          <td style={{ ...tdStyle, textAlign: 'center', whiteSpace: 'nowrap', padding: '4px 2px' }}>
                             {isRowValid ? (
                               <span
                                 style={{
@@ -746,14 +767,14 @@ export function CsvImportModal({
                                 style={{
                                   fontSize: '10px',
                                   fontWeight: 700,
-                                  padding: '2px 6px',
+                                  padding: '2px 5px',
                                   borderRadius: 'var(--pl-radius-pill, 9999px)',
                                   background: 'rgba(239, 68, 68, 0.15)',
                                   color: 'var(--pl-color-danger, #ef4444)',
                                   cursor: 'help',
                                 }}
                               >
-                                Missing {row.missingFields?.[0] || 'Field'}
+                                Missing
                               </span>
                             )}
                           </td>
@@ -810,19 +831,23 @@ const fixedHeaderStyle = {
   fontWeight: 700,
   textTransform: 'uppercase',
   letterSpacing: '0.04em',
-  padding: '8px 10px',
+  padding: '8px 4px',
   borderBottom: '1.5px solid var(--pl-border-default, #1e293e)',
   boxShadow: '0 1px 0 var(--pl-border-default, #1e293e)',
   whiteSpace: 'nowrap',
   userSelect: 'none',
+  boxSizing: 'border-box',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
 }
 
 // Table cell style
 const tdStyle = {
-  padding: '4px 10px',
+  padding: '4px 4px',
   verticalAlign: 'middle',
   borderBottom: '1px solid var(--pl-border-default, #1e293e)',
-  whiteSpace: 'nowrap',
+  boxSizing: 'border-box',
+  overflow: 'hidden',
 }
 
 export default CsvImportModal
