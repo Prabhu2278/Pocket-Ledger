@@ -141,11 +141,18 @@ export function CsvImportModal({
             <label
               htmlFor="csv-file-input"
               className={`csv-upload-zone ${isDragging ? 'dragging' : ''}`}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                textAlign: 'center',
+              }}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
             >
-              <div className="csv-upload-icon-circle">
+              <div className="csv-upload-icon-circle" style={{ margin: '0 auto', alignSelf: 'center' }}>
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                   <polyline points="17 8 12 3 7 8" />
@@ -153,12 +160,12 @@ export function CsvImportModal({
                 </svg>
               </div>
 
-              <div className="csv-upload-prompt">
+              <div className="csv-upload-prompt" style={{ textAlign: 'center', alignItems: 'center' }}>
                 <span className="csv-upload-prompt-text">Drag and drop your bank CSV statement here</span>
                 <span className="csv-upload-hint">or click to browse your computer</span>
               </div>
 
-              <div className="csv-choose-btn">
+              <div className="csv-choose-btn" style={{ margin: '4px auto 0', alignSelf: 'center' }}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                   <polyline points="17 8 12 3 7 8" />

@@ -128,54 +128,53 @@ export function Wallets({
   }
 
   return (
-    <section className="view on wallets-view" id="v-wallets" aria-label="Wallets and Accounts">
+    <section className="view on wallets-view pl-wallets-page" id="v-wallets" aria-label="Wallets and Accounts">
       {/* Top Header Bar */}
-      <div className="wallets-top-bar">
-        <div className="wallets-header-info">
-          <h2>Wallets & Accounts</h2>
-          <p>
+      <div className="pl-wallets-header">
+        <div className="pl-wallets-header-info">
+          <h2 className="pl-wallets-title">Wallets & Accounts</h2>
+          <p className="pl-wallets-desc">
             Track bank accounts, UPI wallets, and cash. All income and expenses calculate against selected wallets.
           </p>
         </div>
         <button
           type="button"
-          className="primary"
+          className="pl-wallets-add-btn"
           id="btn-add-wallet"
           onClick={openAddModal}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
         >
-          <span aria-hidden="true">+</span>
-          Add Account
+          <span aria-hidden="true" className="pl-wallets-add-btn-plus">+</span>
+          <span>Add Account</span>
         </button>
       </div>
 
-      {/* KPI Cards (Row 1) */}
-      <div className="wallets-kpis">
-        <div className="wallets-kpi-card" style={{ '--kpi-accent': '#10b981' }}>
-          <span className="wallets-kpi-label">TOTAL BALANCE</span>
-          <b className={`wallets-kpi-value ${totalBalance >= 0 ? 'pos' : 'neg'}`}>
+      {/* 4 Summary KPI Cards (Row 1) */}
+      <div className="pl-wallets-summary-grid">
+        <div className="pl-wallets-summary-card" style={{ '--kpi-accent': '#10b981' }}>
+          <span className="pl-wallets-summary-label">TOTAL BALANCE</span>
+          <b className={`pl-wallets-summary-value ${totalBalance >= 0 ? 'pos' : 'neg'}`}>
             {money(totalBalance, currency)}
           </b>
         </div>
-        <div className="wallets-kpi-card" style={{ '--kpi-accent': '#3b82f6' }}>
-          <span className="wallets-kpi-label">BANK ACCOUNTS</span>
-          <b className="wallets-kpi-value">{money(bankTotal, currency)}</b>
+        <div className="pl-wallets-summary-card" style={{ '--kpi-accent': '#3b82f6' }}>
+          <span className="pl-wallets-summary-label">BANK ACCOUNTS</span>
+          <b className="pl-wallets-summary-value">{money(bankTotal, currency)}</b>
         </div>
-        <div className="wallets-kpi-card" style={{ '--kpi-accent': '#8b5cf6' }}>
-          <span className="wallets-kpi-label">UPI & DIGITAL</span>
-          <b className="wallets-kpi-value">{money(digitalTotal, currency)}</b>
+        <div className="pl-wallets-summary-card" style={{ '--kpi-accent': '#8b5cf6' }}>
+          <span className="pl-wallets-summary-label">UPI & DIGITAL</span>
+          <b className="pl-wallets-summary-value">{money(digitalTotal, currency)}</b>
         </div>
-        <div className="wallets-kpi-card" style={{ '--kpi-accent': '#f59e0b' }}>
-          <span className="wallets-kpi-label">CASH</span>
-          <b className="wallets-kpi-value">{money(cashTotal, currency)}</b>
+        <div className="pl-wallets-summary-card" style={{ '--kpi-accent': '#f59e0b' }}>
+          <span className="pl-wallets-summary-label">CASH</span>
+          <b className="pl-wallets-summary-value">{money(cashTotal, currency)}</b>
         </div>
       </div>
 
-      {/* Row Separation Divider & Section Header */}
-      <div className="wallets-section-divider">
-        <div className="wallets-section-title-wrap">
-          <h3 className="wallets-section-title">My Wallets & Accounts</h3>
-          <span className="wallets-section-badge">{wallets.length} active</span>
+      {/* Section Header: My Wallets & Accounts */}
+      <div className="pl-wallets-section-header">
+        <div className="pl-wallets-section-title-wrap">
+          <h3 className="pl-wallets-section-title">My Wallets & Accounts</h3>
+          <span className="pl-wallets-section-badge">{wallets.length} active</span>
         </div>
       </div>
 
@@ -186,7 +185,7 @@ export function Wallets({
           Create your first bank account or wallet using the <b>+ Add Account</b> button above.
         </div>
       ) : (
-        <div className="wallets-grid">
+        <div className="pl-wallets-grid">
           {wallets.map((w) => {
             const bal = Number(w.current_balance ?? w.balance ?? w.initial_balance ?? 0)
             const typeObj = WALLET_TYPES.find((t) => t.id === (w.wallet_type || 'BANK')) || {
@@ -202,53 +201,53 @@ export function Wallets({
               : 'digital'
 
             return (
-              <div key={w.id} className="wallet-tile" style={{ '--wallet-border-color': w.color || '#10b981' }}>
-                <div className="wallet-tile-header">
-                  <div className="wallet-tile-name-group">
-                    <span className="wallet-color-dot" style={{ background: w.color || '#10b981' }}></span>
-                    <span className="wallet-tile-name" title={w.name}>
+              <div key={w.id} className="pl-wallets-card" style={{ '--wallet-border-color': w.color || '#10b981' }}>
+                <div className="pl-wallets-card-header">
+                  <div className="pl-wallets-card-name-group">
+                    <span className="pl-wallets-card-dot" style={{ background: w.color || '#10b981' }}></span>
+                    <span className="pl-wallets-card-name" title={w.name}>
                       {w.name}
                     </span>
                   </div>
-                  <span className={`wallet-badge ${badgeClass}`}>{typeObj.label}</span>
+                  <span className={`pl-wallets-type-badge ${badgeClass}`}>{typeObj.label}</span>
                 </div>
 
-                <div className="wallet-balance-box">
-                  <span className="wallet-balance-label">Current Balance</span>
-                  <div className={`wallet-balance-value ${bal >= 0 ? 'pos' : 'neg'}`}>
+                <div className="pl-wallets-balance-box">
+                  <span className="pl-wallets-balance-label">CURRENT BALANCE</span>
+                  <div className={`pl-wallets-balance-value ${bal >= 0 ? 'pos' : 'neg'}`}>
                     {money(bal, currency)}
                   </div>
                 </div>
 
-                <div className="wallet-tile-meta">
+                <div className="pl-wallets-meta-row">
                   <span>Initial: {money(Number(w.initial_balance || 0), currency)}</span>
                   <span>ID: #{w.id}</span>
                 </div>
 
-                <div className="wallet-tile-actions">
+                <div className="pl-wallets-actions">
                   <button
                     type="button"
-                    className="wallet-btn"
+                    className="pl-wallets-action-btn edit"
                     onClick={() => openEditModal(w)}
                     aria-label={`Edit ${w.name}`}
                   >
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ marginRight: '3px' }}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                       <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                       <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                     </svg>
-                    Edit
+                    <span>Edit</span>
                   </button>
                   <button
                     type="button"
-                    className="wallet-btn delete"
+                    className="pl-wallets-action-btn delete"
                     onClick={() => setDeletingId(w.id)}
                     aria-label={`Delete ${w.name}`}
                   >
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ marginRight: '3px' }}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                       <polyline points="3 6 5 6 21 6" />
                       <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
                     </svg>
-                    Delete
+                    <span>Delete</span>
                   </button>
                 </div>
               </div>
@@ -258,13 +257,13 @@ export function Wallets({
           {/* Add Account Dashed Card inside grid */}
           <button
             type="button"
-            className="wallet-add-tile"
+            className="pl-wallets-add-card"
             onClick={openAddModal}
             aria-label="Add new account"
           >
-            <div className="wallet-add-icon" aria-hidden="true">+</div>
-            <span className="wallet-add-title">Add New Account</span>
-            <span className="wallet-add-sub">Connect bank, cash, or digital</span>
+            <div className="pl-wallets-add-icon" aria-hidden="true">+</div>
+            <span className="pl-wallets-add-title">Add New Account</span>
+            <span className="pl-wallets-add-sub">Connect bank, cash, or digital</span>
           </button>
         </div>
       )}

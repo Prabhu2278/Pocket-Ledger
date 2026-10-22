@@ -1,7 +1,7 @@
-
 import React, { useState, useMemo } from 'react'
 import { money } from '../utils/formatCurrency'
 import { getCategoryColor } from '../constants/categories'
+import { CashFlowOverview } from '../components/CashFlowOverview'
 import './Dashboard.css'
 
 // Helper for human-readable wallet type names
@@ -400,6 +400,15 @@ export function Dashboard({
 
         </div>
       </section>
+
+      {/* ---------------------------------------------------------------------
+          Full-Width Cash Flow Overview Chart (Income vs Expenses — Last 6 Months)
+          --------------------------------------------------------------------- */}
+      <CashFlowOverview
+        transactions={transactions}
+        currency={currency}
+        month={month}
+      />
 
       {/* ---------------------------------------------------------------------
           Row 3: Analytics Row (Income vs Expenses Bar + Expense Donut + Income Donut)
