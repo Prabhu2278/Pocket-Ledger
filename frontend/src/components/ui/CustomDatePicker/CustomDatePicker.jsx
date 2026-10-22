@@ -60,6 +60,30 @@ export function CustomDatePicker({
     }
   }, [selectedDateObj])
 
+  // Dynamic placement: user requested to show upside of the date box and within the form
+  const [placement, setPlacement] = useState({
+    vertical: 'top',
+    horizontal: 'left',
+  })
+
+  // Measure space and ensure popover opens upside and stays inside the form/window
+  useEffect(() => {
+    if (open && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect()
+      const spaceAbove = rect.top
+      const spaceBelow = window.innerHeight - rect.bottom
+      const spaceRight = window.innerWidth - rect.left
+
+      // Prefer upside ('top') as requested; only flip if space above is critically constrained (< 170px) and bottom has significantly more room
+      const vertical = (spaceAbove >= 170 || spaceAbove >= spaceBelow) ? 'top' : 'bottom'
+
+      // Horizontal: If less than 255px to right edge or near right border, align right: 0 to stay inside the container/form
+      const horizontal = (spaceRight < 255 || (window.innerWidth - rect.right < 20)) ? 'right' : 'left'
+
+      setPlacement({ vertical, horizontal })
+    }
+  }, [open])
+
   // Close calendar popover on outside click
   useEffect(() => {
     function handleClickOutside(e) {
@@ -239,7 +263,7 @@ export function CustomDatePicker({
         </svg>
       </div>
 
-      {/* Calendar Popover Popup - Exactly matching Image 2 */}
+      {/* Calendar Popover Popup - Positioned upside and made compact/smaller to fit within form */}
       {open && (
         <div
           role="dialog"
@@ -247,16 +271,20 @@ export function CustomDatePicker({
           className="custom-calendar-popover"
           style={{
             position: 'absolute',
-            top: 'calc(100% + 6px)',
-            left: 0,
+            ...(placement.vertical === 'top'
+              ? { bottom: 'calc(100% + 6px)', top: 'auto' }
+              : { top: 'calc(100% + 6px)', bottom: 'auto' }),
+            ...(placement.horizontal === 'right'
+              ? { right: 0, left: 'auto' }
+              : { left: 0, right: 'auto' }),
             zIndex: 1300,
-            width: '290px',
+            width: '246px',
             background: '#ffffff',
             color: '#0f172a',
             border: '1px solid #e2e8f0',
-            borderRadius: '12px',
-            padding: '16px 14px 12px',
-            boxShadow: '0 12px 32px rgba(0, 0, 0, 0.18), 0 4px 12px rgba(0, 0, 0, 0.08)',
+            borderRadius: '10px',
+            padding: '10px 10px 8px',
+            boxShadow: '0 10px 25px rgba(0, 0, 0, 0.16), 0 4px 10px rgba(0, 0, 0, 0.06)',
             boxSizing: 'border-box',
             fontFamily: 'inherit',
           }}
@@ -267,26 +295,26 @@ export function CustomDatePicker({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              marginBottom: '14px',
-              padding: '0 4px',
+              marginBottom: '10px',
+              padding: '0 2px',
             }}
           >
             {/* Month & Year Title with Caret */}
             <div
               style={{
-                fontSize: '15px',
+                fontSize: '13.5px',
                 fontWeight: 700,
                 color: '#0f172a',
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '4px',
+                gap: '3px',
                 userSelect: 'none',
               }}
             >
               <span>{MONTH_NAMES[viewMonth]}, {viewYear}</span>
               <svg
-                width="12"
-                height="12"
+                width="11"
+                height="11"
                 viewBox="0 0 24 24"
                 fill="currentColor"
                 style={{ marginLeft: '1px' }}
@@ -296,7 +324,7 @@ export function CustomDatePicker({
             </div>
 
             {/* Navigation Arrows: Up (↑) & Down (↓) side by side */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               {/* Up arrow button */}
               <button
                 type="button"
@@ -308,7 +336,7 @@ export function CustomDatePicker({
                   border: 'none',
                   color: '#0f172a',
                   cursor: 'pointer',
-                  padding: '4px',
+                  padding: '3px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -318,7 +346,7 @@ export function CustomDatePicker({
                 onMouseEnter={(e) => (e.currentTarget.style.background = '#f1f5f9')}
                 onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
               >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="12" y1="19" x2="12" y2="5" />
                   <polyline points="5 12 12 5 19 12" />
                 </svg>
@@ -335,7 +363,7 @@ export function CustomDatePicker({
                   border: 'none',
                   color: '#0f172a',
                   cursor: 'pointer',
-                  padding: '4px',
+                  padding: '3px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -345,7 +373,7 @@ export function CustomDatePicker({
                 onMouseEnter={(e) => (e.currentTarget.style.background = '#f1f5f9')}
                 onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
               >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="12" y1="5" x2="12" y2="19" />
                   <polyline points="19 12 12 19 5 12" />
                 </svg>
@@ -359,7 +387,7 @@ export function CustomDatePicker({
               display: 'grid',
               gridTemplateColumns: 'repeat(7, 1fr)',
               textAlign: 'center',
-              marginBottom: '8px',
+              marginBottom: '4px',
               userSelect: 'none',
             }}
           >
@@ -367,10 +395,10 @@ export function CustomDatePicker({
               <div
                 key={w}
                 style={{
-                  fontSize: '13px',
+                  fontSize: '11px',
                   fontWeight: 600,
                   color: '#1e293b',
-                  padding: '4px 0',
+                  padding: '2px 0',
                 }}
               >
                 {w}
@@ -383,7 +411,7 @@ export function CustomDatePicker({
             style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(7, 1fr)',
-              gap: '4px 2px',
+              gap: '2px 1px',
               textAlign: 'center',
             }}
           >
@@ -398,7 +426,7 @@ export function CustomDatePicker({
                     setOpen(false)
                   }}
                   style={{
-                    height: '34px',
+                    height: '26px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -408,14 +436,14 @@ export function CustomDatePicker({
                 >
                   <span
                     style={{
-                      width: '30px',
-                      height: '30px',
+                      width: '23px',
+                      height: '23px',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      fontSize: '13px',
+                      fontSize: '11.5px',
                       fontWeight: isSelected ? 700 : item.isCurrentMonth ? 500 : 400,
-                      borderRadius: isSelected ? '4px' : '4px',
+                      borderRadius: '3px',
                       // Selected day has charcoal filled box matching Image 2
                       background: isSelected ? '#52525b' : 'transparent',
                       color: isSelected
@@ -423,7 +451,7 @@ export function CustomDatePicker({
                         : item.isCurrentMonth
                         ? '#0f172a'
                         : '#94a3b8',
-                      border: isSelected ? '1.5px solid #27272a' : 'none',
+                      border: isSelected ? '1.2px solid #27272a' : 'none',
                       transition: 'background 0.12s ease',
                     }}
                     onMouseEnter={(e) => {
@@ -450,8 +478,9 @@ export function CustomDatePicker({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              marginTop: '14px',
-              paddingTop: '8px',
+              marginTop: '8px',
+              paddingTop: '6px',
+              borderTop: '1px solid #f1f5f9',
               userSelect: 'none',
             }}
           >
@@ -462,10 +491,10 @@ export function CustomDatePicker({
                 background: 'transparent',
                 border: 'none',
                 color: '#0284c7',
-                fontSize: '13px',
+                fontSize: '11.5px',
                 fontWeight: 600,
                 cursor: 'pointer',
-                padding: '4px 2px',
+                padding: '2px 4px',
               }}
             >
               Clear
@@ -478,10 +507,10 @@ export function CustomDatePicker({
                 background: 'transparent',
                 border: 'none',
                 color: '#0284c7',
-                fontSize: '13px',
+                fontSize: '11.5px',
                 fontWeight: 600,
                 cursor: 'pointer',
-                padding: '4px 2px',
+                padding: '2px 4px',
               }}
             >
               Today
