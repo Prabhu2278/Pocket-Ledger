@@ -948,31 +948,42 @@ h1 {
   background: var(--pl-bg-surface);
   border: 1px solid var(--pl-border-default);
   border-radius: var(--pl-radius-pill);
-  padding: 2px 4px;
+  padding: 3px 6px;
   box-shadow: var(--pl-shadow-sm);
-  height: 34px;
+  height: 36px;
   box-sizing: border-box;
+  transition: all 0.2s ease;
+}
+
+.header-month-switcher:hover {
+  border-color: var(--pl-border-strong);
+  box-shadow: var(--pl-shadow-md);
 }
 
 .header-month-btn {
   border: 0;
   background: transparent;
   color: var(--pl-text-primary);
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   border-radius: var(--pl-radius-pill);
   cursor: pointer;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.15s ease;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .header-month-btn:hover {
   background: var(--pl-color-primary-soft);
   color: var(--pl-color-primary);
+  transform: scale(1.08);
+}
+
+.header-month-btn:active {
+  transform: scale(0.92);
 }
 
 .header-month-label {

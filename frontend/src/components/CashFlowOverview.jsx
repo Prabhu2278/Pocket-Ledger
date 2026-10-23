@@ -349,7 +349,7 @@ export function CashFlowOverview({
                 y1={tick.y}
                 x2={SVG_WIDTH - PADDING.right + 6}
                 y2={tick.y}
-                stroke="rgba(255, 255, 255, 0.05)"
+                className="cashflow-grid-line"
                 strokeDasharray="4 4"
                 strokeWidth="1"
               />
@@ -357,7 +357,7 @@ export function CashFlowOverview({
                 x={PADDING.left - 12}
                 y={tick.y + 4}
                 textAnchor="end"
-                fill="var(--pl-text-muted, #64748b)"
+                className="cashflow-axis-text"
                 fontSize="11"
                 fontWeight="500"
                 fontFamily="inherit"
@@ -388,7 +388,7 @@ export function CashFlowOverview({
               y1={PADDING.top - 6}
               x2={activeIncPoint.x}
               y2={BASELINE_Y}
-              stroke="rgba(255, 255, 255, 0.16)"
+              className="cashflow-guideline"
               strokeDasharray="3 3"
               strokeWidth="1.2"
               pointerEvents="none"

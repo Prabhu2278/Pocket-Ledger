@@ -247,7 +247,7 @@ export function Dashboard({
 
   // Helper to render SVG Donut Rings
   const renderDonutCircles = (items, total) => {
-    const r = 54
+    const r = 52
     const circumference = 2 * Math.PI * r
     let accumulatedPct = 0
 
@@ -258,34 +258,52 @@ export function Dashboard({
           cy="70"
           r={r}
           fill="none"
-          stroke="var(--pl-border-default)"
-          strokeWidth="18"
+          stroke="var(--pl-border-subtle)"
+          strokeWidth="16"
+          opacity="0.5"
         />
       )
     }
 
-    return items.map((item, idx) => {
+    const track = (
+      <circle
+        key="bg-track"
+        cx="70"
+        cy="70"
+        r={r}
+        fill="none"
+        stroke="var(--pl-border-subtle)"
+        strokeWidth="16"
+        opacity="0.5"
+      />
+    )
+
+    const slices = items.map((item, idx) => {
       const pct = (item.amount / total) * 100
-      const strokeDasharray = `${(pct / 100) * circumference} ${circumference}`
+      const strokeLength = Math.max((pct / 100) * circumference - 2, 0.5)
+      const strokeDasharray = `${strokeLength} ${circumference}`
       const strokeDashoffset = -((accumulatedPct / 100) * circumference)
       accumulatedPct += pct
 
       return (
         <circle
           key={idx}
+          className="dashboard-donut-segment"
           cx="70"
           cy="70"
           r={r}
           fill="none"
           stroke={item.color}
-          strokeWidth="18"
+          strokeWidth="16"
           strokeDasharray={strokeDasharray}
           strokeDashoffset={strokeDashoffset}
           strokeLinecap="round"
-          style={{ transition: 'stroke-dasharray 0.3s ease, stroke-dashoffset 0.3s ease' }}
+          style={{ transition: 'stroke-dasharray 0.4s cubic-bezier(0.16, 1, 0.3, 1), stroke-dashoffset 0.4s cubic-bezier(0.16, 1, 0.3, 1)' }}
         />
       )
     })
+
+    return [track, ...slices]
   }
 
   return (
@@ -296,29 +314,78 @@ export function Dashboard({
       <div className="dashboard-kpis">
         {/* Card 1: Total Income (Green) */}
         <div className="dashboard-kpi-card income">
-          <span className="dashboard-kpi-label">TOTAL INCOME</span>
+          <div className="dashboard-kpi-top">
+            <span className="dashboard-kpi-label">TOTAL INCOME</span>
+            <div className="dashboard-kpi-badge income" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+                <polyline points="17 6 23 6 23 12" />
+              </svg>
+            </div>
+          </div>
           <b className="dashboard-kpi-amount pos">+{money(totalIncome, currency)}</b>
+          <div className="dashboard-kpi-sub">
+            <span className="dashboard-kpi-pill income">Income</span>
+            <span>Recorded this month</span>
+          </div>
         </div>
 
         {/* Card 2: Total Expenses (Red) */}
         <div className="dashboard-kpi-card expense">
-          <span className="dashboard-kpi-label">TOTAL EXPENSES</span>
+          <div className="dashboard-kpi-top">
+            <span className="dashboard-kpi-label">TOTAL EXPENSES</span>
+            <div className="dashboard-kpi-badge expense" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="23 18 13.5 8.5 8.5 13.5 1 6" />
+                <polyline points="17 18 23 18 23 12" />
+              </svg>
+            </div>
+          </div>
           <b className="dashboard-kpi-amount neg">-{money(totalSpent, currency)}</b>
+          <div className="dashboard-kpi-sub">
+            <span className="dashboard-kpi-pill expense">Expenses</span>
+            <span>Recorded this month</span>
+          </div>
         </div>
 
         {/* Card 3: Total Balance (Blue) */}
         <div className="dashboard-kpi-card balance">
-          <span className="dashboard-kpi-label">TOTAL BALANCE</span>
+          <div className="dashboard-kpi-top">
+            <span className="dashboard-kpi-label">TOTAL BALANCE</span>
+            <div className="dashboard-kpi-badge balance" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="5" width="20" height="14" rx="2" />
+                <line x1="2" y1="10" x2="22" y2="10" />
+              </svg>
+            </div>
+          </div>
           <b className="dashboard-kpi-amount balance">{money(totalBalance, currency)}</b>
+          <div className="dashboard-kpi-sub">
+            <span className="dashboard-kpi-pill balance">Active</span>
+            <span>Across {wallets.length || 0} wallet{wallets.length === 1 ? '' : 's'}</span>
+          </div>
         </div>
 
         {/* Card 4: Net Cash Flow (Purple) */}
         <div className="dashboard-kpi-card flow">
-          <span className="dashboard-kpi-label">NET CASH FLOW</span>
+          <div className="dashboard-kpi-top">
+            <span className="dashboard-kpi-label">NET CASH FLOW</span>
+            <div className={`dashboard-kpi-badge ${netCashFlow >= 0 ? 'flow-pos' : 'flow-neg'}`} aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+              </svg>
+            </div>
+          </div>
           <b className={`dashboard-kpi-amount ${netCashFlow >= 0 ? 'pos' : 'neg'}`}>
             {netCashFlow >= 0 ? '+' : '-'}
             {money(Math.abs(netCashFlow), currency)}
           </b>
+          <div className="dashboard-kpi-sub">
+            <span className={`dashboard-kpi-pill ${netCashFlow >= 0 ? 'flow-pos' : 'flow-neg'}`}>
+              {netCashFlow >= 0 ? 'Positive' : 'Deficit'}
+            </span>
+            <span>Net cash difference</span>
+          </div>
         </div>
       </div>
 
@@ -363,6 +430,13 @@ export function Dashboard({
                   className="dashboard-wallet-tile"
                   style={{ '--wallet-accent': accentColor }}
                 >
+                  <div
+                    className="dashboard-wallet-ambient"
+                    style={{
+                      background: `radial-gradient(circle at 15% 20%, ${accentColor}18 0%, transparent 70%)`,
+                    }}
+                    aria-hidden="true"
+                  />
                   <div className="dashboard-wallet-top">
                     <div className="dashboard-wallet-main">
                       <div
@@ -380,13 +454,20 @@ export function Dashboard({
                       </div>
                     </div>
                     <span className="dashboard-wallet-chevron" aria-hidden="true">
-                      ›
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="9 18 15 12 9 6" />
+                      </svg>
                     </span>
                   </div>
 
                   <div className="dashboard-wallet-bottom">
                     <span className="dashboard-wallet-balance">{money(bal, currency)}</span>
-                    {isPrimary && <span className="dashboard-wallet-primary-tag">Primary</span>}
+                    {isPrimary && (
+                      <span className="dashboard-wallet-primary-tag">
+                        <span className="dashboard-primary-dot" />
+                        Primary
+                      </span>
+                    )}
                   </div>
                 </div>
               )
@@ -497,13 +578,31 @@ export function Dashboard({
                       {/* Tooltip on Hover */}
                       {isHovered && (
                         <div className="dashboard-chart-tooltip">
-                          <strong>{d.displayDate || d.label}</strong>
-                          <span style={{ color: '#34d399' }}>
-                            Income: +{money(d.income, currency)}
-                          </span>
-                          <span style={{ color: '#f87171' }}>
-                            Expense: -{money(d.expense, currency)}
-                          </span>
+                          <div className="dashboard-chart-tooltip-header">
+                            <span>{d.displayDate || d.label}</span>
+                          </div>
+                          <div className="dashboard-chart-tooltip-row">
+                            <span className="dashboard-tooltip-dot income" />
+                            <span>Income</span>
+                            <span className="dashboard-chart-tooltip-val income">
+                              +{money(d.income, currency)}
+                            </span>
+                          </div>
+                          <div className="dashboard-chart-tooltip-row">
+                            <span className="dashboard-tooltip-dot expense" />
+                            <span>Expenses</span>
+                            <span className="dashboard-chart-tooltip-val expense">
+                              -{money(d.expense, currency)}
+                            </span>
+                          </div>
+                          <div className="dashboard-chart-tooltip-divider" />
+                          <div className="dashboard-chart-tooltip-row net">
+                            <span>Net</span>
+                            <span className={`dashboard-chart-tooltip-val ${d.income >= d.expense ? 'income' : 'expense'}`}>
+                              {d.income >= d.expense ? '+' : '-'}
+                              {money(Math.abs(d.income - d.expense), currency)}
+                            </span>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -643,7 +742,11 @@ export function Dashboard({
           </div>
 
           <a href="#/transactions" className="dashboard-link">
-            View All Transactions →
+            <span>View All Transactions</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <line x1="5" y1="12" x2="19" y2="12" />
+              <polyline points="12 5 19 12 12 19" />
+            </svg>
           </a>
         </div>
 
@@ -687,7 +790,24 @@ export function Dashboard({
                       <td>
                         <div className="dashboard-txn-date-cell">
                           <span className={`dashboard-txn-type-icon ${tType}`} aria-hidden="true">
-                            {isIncome ? '↑' : isTransfer ? '⇄' : '↓'}
+                            {isIncome ? (
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <line x1="7" y1="17" x2="17" y2="7" />
+                                <polyline points="7 7 17 7 17 17" />
+                              </svg>
+                            ) : isTransfer ? (
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M16 3l4 4-4 4" />
+                                <path d="M20 7H4" />
+                                <path d="M8 21l-4-4 4-4" />
+                                <path d="M4 17h16" />
+                              </svg>
+                            ) : (
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <line x1="7" y1="7" x2="17" y2="17" />
+                                <polyline points="17 7 17 17 7 17" />
+                              </svg>
+                            )}
                           </span>
                           <span>{dateStr}</span>
                         </div>
@@ -705,10 +825,12 @@ export function Dashboard({
                         <span
                           className="dashboard-badge"
                           style={{
-                            backgroundColor: `${catColor}1f`,
+                            backgroundColor: `${catColor}14`,
                             color: catColor,
+                            borderColor: `${catColor}30`,
                           }}
                         >
+                          <span className="dashboard-badge-dot" style={{ backgroundColor: catColor }} />
                           {cat}
                         </span>
                       </td>
@@ -716,6 +838,7 @@ export function Dashboard({
                       {/* Type Pill */}
                       <td>
                         <span className={`dashboard-type-pill ${tType}`}>
+                          <span className="dashboard-type-pill-dot" />
                           {isIncome ? 'Income' : isTransfer ? 'Transfer' : 'Expense'}
                         </span>
                       </td>
@@ -723,8 +846,8 @@ export function Dashboard({
                       {/* Wallet */}
                       <td>
                         <span className="dashboard-txn-wallet">
-                          <span aria-hidden="true" style={{ display: 'inline-flex', alignItems: 'center' }}>
-                            {renderWalletIcon(tx.wallet_type, 14)}
+                          <span className="dashboard-txn-wallet-icon" aria-hidden="true">
+                            {renderWalletIcon(tx.wallet_type, 13)}
                           </span>
                           <span>{walletName}</span>
                         </span>
