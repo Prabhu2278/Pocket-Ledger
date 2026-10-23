@@ -80,117 +80,98 @@ export function TransactionTable({
 
             return (
               <tr key={`${tx.type}-${tx.id}`}>
-                <td style={{ whiteSpace: 'nowrap', fontWeight: 600, color: 'var(--pl-text-secondary)', fontSize: '12px' }}>
-                  {dateStr}
+                <td>
+                  <div className="dashboard-txn-date-cell">
+                    <span className={`dashboard-txn-type-icon ${tType}`} aria-hidden="true">
+                      {isIncome ? (
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="7" y1="17" x2="17" y2="7" />
+                          <polyline points="7 7 17 7 17 17" />
+                        </svg>
+                      ) : isTransfer ? (
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M16 3l4 4-4 4" />
+                          <path d="M20 7H4" />
+                          <path d="M8 21l-4-4 4-4" />
+                          <path d="M4 17h16" />
+                        </svg>
+                      ) : (
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="7" y1="7" x2="17" y2="17" />
+                          <polyline points="17 7 17 17 7 17" />
+                        </svg>
+                      )}
+                    </span>
+                    <span>{dateStr}</span>
+                  </div>
                 </td>
-                <td style={{ fontWeight: 600, color: 'var(--pl-text-primary)' }}>
-                  {note}
+                <td>
+                  <span className="dashboard-txn-desc" title={note}>
+                    {note}
+                  </span>
                 </td>
                 <td className="hide-s">
                   <span
+                    className="dashboard-badge"
                     style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      fontSize: '12px',
-                      color: 'var(--pl-text-secondary)',
-                      fontWeight: 500,
+                      backgroundColor: `${getCategoryColor(cat)}14`,
+                      color: getCategoryColor(cat),
+                      borderColor: `${getCategoryColor(cat)}30`,
                     }}
                   >
-                    <span
-                      className="dot"
-                      style={{ background: isTransfer ? 'var(--pl-color-info)' : getCategoryColor(cat) }}
-                    ></span>
+                    <span className="dashboard-badge-dot" style={{ backgroundColor: getCategoryColor(cat) }} />
                     {cat}
                   </span>
                 </td>
                 <td className="hide-s">
-                  <span
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '5px',
-                      fontSize: '11.5px',
-                      color: isTransfer ? 'var(--pl-color-info)' : 'var(--pl-text-muted)',
-                      fontWeight: 600,
-                      background: isTransfer ? 'var(--pl-color-info-soft)' : 'var(--pl-bg-muted)',
-                      padding: '2px 8px',
-                      borderRadius: 'var(--pl-radius-sm)',
-                    }}
-                    title={accountDisplay}
-                  >
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
-                      <rect x="2" y="5" width="20" height="14" rx="2" />
-                      <line x1="2" y1="10" x2="22" y2="10" />
-                    </svg>
+                  <span className="dashboard-txn-wallet" title={accountDisplay}>
+                    <span className="dashboard-txn-wallet-icon" aria-hidden="true">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="2" y="5" width="20" height="14" rx="2" />
+                        <line x1="2" y1="10" x2="22" y2="10" />
+                      </svg>
+                    </span>
                     <span>{accountDisplay}</span>
                   </span>
                 </td>
                 <td>
-                  <span
-                    style={{
-                      display: 'inline-block',
-                      padding: '2px 8px',
-                      borderRadius: 'var(--pl-radius-sm)',
-                      fontSize: '10.5px',
-                      fontWeight: 800,
-                      letterSpacing: '0.04em',
-                      background: isIncome
-                        ? 'var(--pl-color-success-soft)'
-                        : isTransfer
-                        ? 'var(--pl-color-info-soft)'
-                        : 'var(--pl-color-danger-soft)',
-                      color: isIncome
-                        ? 'var(--pl-color-success)'
-                        : isTransfer
-                        ? 'var(--pl-color-info)'
-                        : 'var(--pl-color-danger)',
-                    }}
-                  >
-                    {isIncome ? 'INCOME' : isTransfer ? 'TRANSFER' : 'EXPENSE'}
+                  <span className={`dashboard-type-pill ${tType}`}>
+                    <span className="dashboard-type-pill-dot" />
+                    {isIncome ? 'Income' : isTransfer ? 'Transfer' : 'Expense'}
                   </span>
                 </td>
-                <td
-                  className={`r ${isIncome ? 'pos' : isTransfer ? '' : 'neg'}`}
-                  style={{
-                    whiteSpace: 'nowrap',
-                    fontWeight: 800,
-                    fontSize: '12px',
-                    fontVariantNumeric: 'tabular-nums',
-                    fontFamily: "'JetBrains Mono', monospace",
-                    color: isTransfer ? 'var(--pl-text-primary)' : undefined,
-                  }}
-                >
-                  {isIncome ? '+' : isTransfer ? '⇄ ' : '-'}
-                  {money(amountVal, currency)}
+                <td className="r">
+                  <span className={`dashboard-txn-amount ${tType}`}>
+                    {isIncome ? `+${money(amountVal, currency)}` : isTransfer ? money(amountVal, currency) : `-${money(amountVal, currency)}`}
+                  </span>
                 </td>
                 <td className="r" style={{ whiteSpace: 'nowrap' }}>
-                  <button
-                    className="rowbtn"
-                    type="button"
-                    aria-label={`Edit ${note}`}
-                    title="Edit transaction"
-                    onClick={() => onEdit(tx)}
-                  >
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                    </svg>
-                  </button>
-                  <button
-                    className="rowbtn del"
-                    type="button"
-                    aria-label={`Delete ${note}`}
-                    title="Delete transaction"
-                    onClick={() => onDelete(tx.id, tx.type)}
-                  >
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <polyline points="3 6 5 6 21 6" />
-                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                      <line x1="10" y1="11" x2="10" y2="17" />
-                      <line x1="14" y1="11" x2="14" y2="17" />
-                    </svg>
-                  </button>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                    <button
+                      className="rowbtn edit"
+                      type="button"
+                      aria-label={`Edit ${note}`}
+                      title="Edit transaction"
+                      onClick={() => onEdit(tx)}
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                      </svg>
+                    </button>
+                    <button
+                      className="rowbtn del"
+                      type="button"
+                      aria-label={`Delete ${note}`}
+                      title="Delete transaction"
+                      onClick={() => onDelete(tx.id, tx.type)}
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <polyline points="3 6 5 6 21 6" />
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                      </svg>
+                    </button>
+                  </div>
                 </td>
               </tr>
             )

@@ -150,23 +150,81 @@ export function Wallets({
 
       {/* 4 Summary KPI Cards (Row 1) */}
       <div className="pl-wallets-summary-grid">
-        <div className="pl-wallets-summary-card" style={{ '--kpi-accent': '#10b981' }}>
-          <span className="pl-wallets-summary-label">TOTAL BALANCE</span>
+        <div className="pl-wallets-summary-card total" style={{ '--kpi-accent': '#10b981' }}>
+          <div className="pl-wallets-summary-top">
+            <span className="pl-wallets-summary-label">TOTAL BALANCE</span>
+            <div className="pl-wallets-summary-badge total" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="5" width="20" height="14" rx="2" />
+                <line x1="2" y1="10" x2="22" y2="10" />
+              </svg>
+            </div>
+          </div>
           <b className={`pl-wallets-summary-value ${totalBalance >= 0 ? 'pos' : 'neg'}`}>
             {money(totalBalance, currency)}
           </b>
+          <div className="pl-wallets-summary-sub">
+            <span className="pl-wallets-summary-pill total">Combined</span>
+            <span>Across all accounts</span>
+          </div>
         </div>
-        <div className="pl-wallets-summary-card" style={{ '--kpi-accent': '#3b82f6' }}>
-          <span className="pl-wallets-summary-label">BANK ACCOUNTS</span>
+
+        <div className="pl-wallets-summary-card bank" style={{ '--kpi-accent': '#3b82f6' }}>
+          <div className="pl-wallets-summary-top">
+            <span className="pl-wallets-summary-label">BANK ACCOUNTS</span>
+            <div className="pl-wallets-summary-badge bank" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 21h18" />
+                <path d="M3 10h18" />
+                <path d="M5 6l7-3 7 3" />
+                <path d="M4 10v11" />
+                <path d="M20 10v11" />
+                <path d="M8 14v4" />
+                <path d="M12 14v4" />
+                <path d="M16 14v4" />
+              </svg>
+            </div>
+          </div>
           <b className="pl-wallets-summary-value">{money(bankTotal, currency)}</b>
+          <div className="pl-wallets-summary-sub">
+            <span className="pl-wallets-summary-pill bank">Bank</span>
+            <span>Checking & savings</span>
+          </div>
         </div>
-        <div className="pl-wallets-summary-card" style={{ '--kpi-accent': '#8b5cf6' }}>
-          <span className="pl-wallets-summary-label">UPI & DIGITAL</span>
+
+        <div className="pl-wallets-summary-card digital" style={{ '--kpi-accent': '#8b5cf6' }}>
+          <div className="pl-wallets-summary-top">
+            <span className="pl-wallets-summary-label">UPI & DIGITAL</span>
+            <div className="pl-wallets-summary-badge digital" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
+                <line x1="12" y1="18" x2="12.01" y2="18" />
+              </svg>
+            </div>
+          </div>
           <b className="pl-wallets-summary-value">{money(digitalTotal, currency)}</b>
+          <div className="pl-wallets-summary-sub">
+            <span className="pl-wallets-summary-pill digital">Digital</span>
+            <span>UPI & online wallets</span>
+          </div>
         </div>
-        <div className="pl-wallets-summary-card" style={{ '--kpi-accent': '#f59e0b' }}>
-          <span className="pl-wallets-summary-label">CASH</span>
+
+        <div className="pl-wallets-summary-card cash" style={{ '--kpi-accent': '#f59e0b' }}>
+          <div className="pl-wallets-summary-top">
+            <span className="pl-wallets-summary-label">CASH</span>
+            <div className="pl-wallets-summary-badge cash" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="6" width="20" height="12" rx="2" />
+                <circle cx="12" cy="12" r="2" />
+                <path d="M6 12h.01M18 12h.01" />
+              </svg>
+            </div>
+          </div>
           <b className="pl-wallets-summary-value">{money(cashTotal, currency)}</b>
+          <div className="pl-wallets-summary-sub">
+            <span className="pl-wallets-summary-pill cash">Cash</span>
+            <span>Physical cash in hand</span>
+          </div>
         </div>
       </div>
 
@@ -199,15 +257,47 @@ export function Wallets({
                 : typeKey.includes('credit')
                   ? 'credit'
                   : 'digital'
+            const accentColor = w.color || '#10b981'
 
             return (
-              <div key={w.id} className="pl-wallets-card" style={{ '--wallet-border-color': w.color || '#10b981' }}>
+              <div key={w.id} className="pl-wallets-card" style={{ '--wallet-border-color': accentColor }}>
+                <div
+                  className="pl-wallets-card-ambient"
+                  style={{
+                    background: `radial-gradient(circle at 15% 20%, ${accentColor}18 0%, transparent 70%)`,
+                  }}
+                  aria-hidden="true"
+                />
                 <div className="pl-wallets-card-header">
                   <div className="pl-wallets-card-name-group">
-                    <span className="pl-wallets-card-dot" style={{ background: w.color || '#10b981' }}></span>
-                    <span className="pl-wallets-card-name" title={w.name}>
-                      {w.name}
+                    <span
+                      className="pl-wallets-card-icon"
+                      style={{
+                        background: `linear-gradient(135deg, ${accentColor}, ${accentColor}dd)`,
+                        boxShadow: `0 4px 10px ${accentColor}40`,
+                      }}
+                      aria-hidden="true"
+                    >
+                      {typeKey.includes('bank') ? (
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M3 21h18" /><path d="M3 10h18" /><path d="M5 6l7-3 7 3" /><path d="M4 10v11" /><path d="M20 10v11" /><path d="M8 14v4" /><path d="M12 14v4" /><path d="M16 14v4" />
+                        </svg>
+                      ) : typeKey.includes('cash') ? (
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="2" y="6" width="20" height="12" rx="2" /><circle cx="12" cy="12" r="2" />
+                        </svg>
+                      ) : (
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="2" y="5" width="20" height="14" rx="2" /><line x1="2" y1="10" x2="22" y2="10" />
+                        </svg>
+                      )}
                     </span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
+                      <span className="pl-wallets-card-name" title={w.name}>
+                        {w.name}
+                      </span>
+                      <span className="pl-wallets-card-sub">{typeObj.label}</span>
+                    </div>
                   </div>
                   <span className={`pl-wallets-type-badge ${badgeClass}`}>{typeObj.label}</span>
                 </div>
@@ -231,7 +321,7 @@ export function Wallets({
                     onClick={() => openEditModal(w)}
                     aria-label={`Edit ${w.name}`}
                   >
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                       <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                       <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                     </svg>
@@ -243,7 +333,7 @@ export function Wallets({
                     onClick={() => setDeletingId(w.id)}
                     aria-label={`Delete ${w.name}`}
                   >
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                       <polyline points="3 6 5 6 21 6" />
                       <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
                     </svg>
