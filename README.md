@@ -73,14 +73,14 @@ Copy `.env.example` to `backend/.env`:
 ```env
 DATABASE_URL=postgresql+psycopg2://postgres:YOUR_PASSWORD@localhost:5432/expense_tracker
 SECRET_KEY=pocket-ledger-super-secure-jwt-secret-key-2026-production
-PORT=8000
+PORT=9000
 ```
 > **Note**: If PostgreSQL is not detected, the backend will automatically fallback to `sqlite:///./expenses.db` without crashing!
 
 ### 2. Frontend Environment Setup (`frontend/.env`)
 ```env
-VITE_API_BASE_URL=http://localhost:8000
-VITE_API_URL=http://localhost:8000/api
+VITE_API_BASE_URL=http://localhost:9000
+VITE_API_URL=http://localhost:9000/api
 ```
 
 ---
@@ -102,11 +102,11 @@ cd backend
 # macOS / Linux: source venv/bin/activate
 
 pip install -r requirements.txt
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+uvicorn main:app --reload --host 0.0.0.0 --port 9000
 ```
-- API Base: `http://localhost:8000`
-- Interactive Swagger Docs: `http://localhost:8000/docs`
-- Health Probe: `http://localhost:8000/health`
+- API Base: `http://localhost:9000`
+- Interactive Swagger Docs: `http://localhost:9000/docs`
+- Health Probe: `http://localhost:9000/health`
 
 #### 2. Start the Frontend:
 In a new terminal window:

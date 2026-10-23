@@ -4,7 +4,7 @@
 
 import { authApi } from './authApi'
 
-const API_BASE = (import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/api$/, '')
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'http://localhost:9000').replace(/\/api$/, '')
 
 export const expenseApi = {
   // Fetch expenses with optional month, category, search, and sorting filters

@@ -2,7 +2,7 @@
  * settingsApi.js - Settings API service for persisting theme, currency, and user preferences in DB
  */
 
-const API_BASE = (import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/api$/, '')
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'http://localhost:9000').replace(/\/api$/, '')
 
 const TOKEN_KEY = 'pocket_ledger_auth_token'
 

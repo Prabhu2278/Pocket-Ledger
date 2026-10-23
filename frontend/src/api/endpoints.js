@@ -1,4 +1,4 @@
-export const API_BASE_URL = 'http://localhost:8000/api/v1'
+export const API_BASE_URL = 'http://localhost:9000/api/v1'
 
 export const ENDPOINTS = {
   HEALTH: `${API_BASE_URL}/health`,
