@@ -59,6 +59,12 @@ export function Register({ onRegisterSuccess, onNavigateToLogin }) {
     <div className="auth-split-wrapper">
       {/* Left Information Panel */}
       <div className="auth-split-left">
+        {/* Animated ambient lighting orbs & grid */}
+        <div className="auth-ambient-orb orb-left-1" aria-hidden="true" />
+        <div className="auth-ambient-orb orb-left-2" aria-hidden="true" />
+        <div className="auth-ambient-orb orb-left-3" aria-hidden="true" />
+        <div className="auth-grid-overlay" aria-hidden="true" />
+
         <div className="auth-left-inner">
           <div className="auth-brand-badge">
             <div className="auth-brand-icon">
@@ -68,6 +74,7 @@ export function Register({ onRegisterSuccess, onNavigateToLogin }) {
               </svg>
             </div>
             <span className="auth-brand-name">Pocket Ledger</span>
+            <span className="auth-brand-pill">Pro v2.4</span>
           </div>
 
           <div className="auth-pitch-content">
@@ -77,7 +84,7 @@ export function Register({ onRegisterSuccess, onNavigateToLogin }) {
             </p>
 
             <div className="auth-features-list">
-              <div className="auth-feature-item">
+              <div className="auth-feature-item feature-wallet">
                 <div className="auth-feature-icon">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
@@ -90,7 +97,7 @@ export function Register({ onRegisterSuccess, onNavigateToLogin }) {
                 </div>
               </div>
 
-              <div className="auth-feature-item">
+              <div className="auth-feature-item feature-analytics">
                 <div className="auth-feature-icon">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <circle cx="12" cy="12" r="10" />
@@ -103,7 +110,7 @@ export function Register({ onRegisterSuccess, onNavigateToLogin }) {
                 </div>
               </div>
 
-              <div className="auth-feature-item">
+              <div className="auth-feature-item feature-parser">
                 <div className="auth-feature-icon">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <circle cx="12" cy="12" r="9" />
@@ -122,10 +129,11 @@ export function Register({ onRegisterSuccess, onNavigateToLogin }) {
           <div className="auth-left-footer">
             <span>&copy; {new Date().getFullYear()} Pocket Ledger. All rights reserved.</span>
             <div className="auth-security-badge">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <span className="auth-radar-dot" aria-hidden="true"></span>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
               </svg>
-              <span>Verified & Protected</span>
+              <span>Verified &amp; Protected</span>
             </div>
           </div>
         </div>
@@ -133,8 +141,18 @@ export function Register({ onRegisterSuccess, onNavigateToLogin }) {
 
       {/* Right Register Form Panel */}
       <div className="auth-split-right">
+        {/* Ambient aura glow behind the card */}
+        <div className="auth-card-backdrop-glow" aria-hidden="true" />
+        <div className="auth-ambient-orb orb-right-1" aria-hidden="true" />
+
         <div className="auth-form-card">
+          <div className="auth-card-glow-bar" aria-hidden="true" />
+
           <div className="auth-form-header">
+            <div className="auth-form-badge">
+              <span className="auth-badge-dot"></span>
+              New Account
+            </div>
             <h2>Create your account</h2>
             <p>Join Pocket Ledger to start tracking your finances.</p>
           </div>
@@ -152,10 +170,17 @@ export function Register({ onRegisterSuccess, onNavigateToLogin }) {
 
           <form onSubmit={handleSubmit} className="f" noValidate>
             <label>
-              Full name
+              <span>Full name</span>
               <div className="auth-input-wrapper">
+                <span className="auth-input-icon" aria-hidden="true">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                    <circle cx="12" cy="7" r="4" />
+                  </svg>
+                </span>
                 <input
                   type="text"
+                  className="auth-has-icon"
                   placeholder="e.g. Alex Morgan"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
@@ -166,10 +191,17 @@ export function Register({ onRegisterSuccess, onNavigateToLogin }) {
             </label>
 
             <label>
-              Email address
+              <span>Email address</span>
               <div className="auth-input-wrapper">
+                <span className="auth-input-icon" aria-hidden="true">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="2" y="4" width="20" height="16" rx="2" />
+                    <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+                  </svg>
+                </span>
                 <input
                   type="email"
+                  className="auth-has-icon"
                   placeholder="name@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -179,10 +211,17 @@ export function Register({ onRegisterSuccess, onNavigateToLogin }) {
             </label>
 
             <label>
-              Password
+              <span>Password</span>
               <div className="auth-input-wrapper">
+                <span className="auth-input-icon" aria-hidden="true">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                  </svg>
+                </span>
                 <input
                   type={showPassword ? 'text' : 'password'}
+                  className="auth-has-icon auth-has-toggle"
                   placeholder="At least 6 characters"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -211,10 +250,16 @@ export function Register({ onRegisterSuccess, onNavigateToLogin }) {
             </label>
 
             <label>
-              Confirm password
+              <span>Confirm password</span>
               <div className="auth-input-wrapper">
+                <span className="auth-input-icon" aria-hidden="true">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                  </svg>
+                </span>
                 <input
                   type={showPassword ? 'text' : 'password'}
+                  className="auth-has-icon"
                   placeholder="Re-enter your password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
@@ -224,11 +269,11 @@ export function Register({ onRegisterSuccess, onNavigateToLogin }) {
             </label>
 
             <button
-              className="primary"
+              className="primary auth-submit-btn"
               type="submit"
               disabled={loading}
-              style={{ width: '100%', marginTop: '12px', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
             >
+              <span className="auth-btn-sheen" aria-hidden="true" />
               {loading ? (
                 <>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="spin-icon">
@@ -239,7 +284,7 @@ export function Register({ onRegisterSuccess, onNavigateToLogin }) {
               ) : (
                 <>
                   <span>Create account</span>
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="auth-btn-arrow">
                     <line x1="5" y1="12" x2="19" y2="12" />
                     <polyline points="12 5 19 12 12 19" />
                   </svg>
@@ -249,9 +294,10 @@ export function Register({ onRegisterSuccess, onNavigateToLogin }) {
           </form>
 
           <div className="auth-footer">
-            Already have an account?{' '}
+            <span>Already have an account?</span>{' '}
             <a
               href="#/login"
+              className="auth-link-highlight"
               onClick={(e) => {
                 e.preventDefault()
                 if (onNavigateToLogin) onNavigateToLogin()
