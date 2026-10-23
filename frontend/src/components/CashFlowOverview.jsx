@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react'
 import { money } from '../utils/formatCurrency'
-import './CashFlowOverview.css'
+import '../styles/components/CashFlowOverview.css'
 
 /**
  * Currency compact formatter for chart Y-axis (e.g., ₹0, ₹25k, ₹1.5L / $25k, $1.5M)

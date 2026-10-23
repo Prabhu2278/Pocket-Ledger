@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react'
 import { money, CURRENCY_CONFIGS } from '../utils/formatCurrency'
 import { getCategoryColor } from '../constants/categories'
 import { CashFlowOverview } from '../components/CashFlowOverview'
-import './Dashboard.css'
+import '../styles/pages/Dashboard.css'
 
 // Helper for human-readable wallet type names
 function getWalletTypeLabel(type) {

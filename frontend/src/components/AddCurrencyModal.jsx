@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { POPULAR_CURRENCIES } from '../utils/formatCurrency'
-import './AddCurrencyModal.css'
+import '../styles/components/AddCurrencyModal.css'
 
 const REGION_FILTERS = [
   { id: 'all', label: 'All Currencies' },

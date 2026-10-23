@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import './App.css'
+import './styles/global/App.css'
 import { useExpenses } from './hooks/useExpenses'
 import { MainLayout } from './layouts/MainLayout'
 import { Transactions } from './pages/Transactions'

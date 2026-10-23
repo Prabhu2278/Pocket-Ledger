@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react'
 import { categoryApi } from '../../services/categoryApi'
-import './CategoriesTab.css'
+import '../../styles/components/CategoriesTab.css'
 
 const PRESET_COLORS = [
   '#b42c45', // Crimson

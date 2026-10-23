@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react'
 import { money } from '../utils/formatCurrency'
-import './Wallets.css'
+import '../styles/pages/Wallets.css'
 
 const WALLET_TYPES = [
   { id: 'BANK', label: 'Bank Account' },

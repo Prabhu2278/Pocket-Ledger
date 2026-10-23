@@ -3,7 +3,7 @@ import { WalletCard } from './components/WalletCard'
 import { CreateWalletModal } from './components/CreateWalletModal'
 import { EditWalletModal } from './components/EditWalletModal'
 import { DeleteWalletModal } from './components/DeleteWalletModal'
-import './WalletBar.css'
+import '../../styles/components/WalletBar.css'
 
 export function WalletBar({
   wallets = [],
