@@ -71,6 +71,7 @@ export function WalletBar({
       <DeleteWalletModal
         isOpen={Boolean(deletingId)}
         walletId={deletingId}
+        walletName={wallets.find((w) => String(w.id) === String(deletingId))?.name}
         onClose={() => setDeletingId(null)}
         onConfirm={(id) => {
           onDeleteWallet(id)

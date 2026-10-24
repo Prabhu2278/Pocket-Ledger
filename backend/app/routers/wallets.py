@@ -44,5 +44,6 @@ def delete_wallet(
     current_user: Optional[User] = Depends(get_optional_current_user),
     db: Session = Depends(get_db)
 ):
-    WalletService.delete(db, wallet_id)
-    return {"message": "Wallet deleted successfully", "id": wallet_id}
+    user_id = current_user.id if current_user else None
+    WalletService.delete(db, wallet_id, user_id=user_id)
+    return {"message": "Wallet and all associated transactions deleted successfully", "id": wallet_id}

@@ -90,13 +90,21 @@ export function useWalletsSlice(currentUser, transactions = [], monthTransaction
     async (id) => {
       try {
         await fetch(`${API_BASE}/api/v1/wallets/${id}`, { method: 'DELETE' })
+        if (setData) {
+          setData((prev) => ({
+            ...prev,
+            transactions: (prev.transactions || []).filter(
+              (t) => String(t.wallet_id) !== String(id) && String(t.to_wallet_id) !== String(id)
+            ),
+          }))
+        }
         await loadWalletsFromDb()
-        if (showToast) showToast('Account deleted from database')
+        if (showToast) showToast('Wallet and all related transactions deleted')
       } catch (e) {
         if (showToast) showToast('Failed to delete account')
       }
     },
-    [loadWalletsFromDb, showToast]
+    [loadWalletsFromDb, setData, showToast]
   )
 
   return {

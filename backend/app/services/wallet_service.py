@@ -137,10 +137,33 @@ class WalletService:
         return cls.to_response_dto(db, wallet)
 
     @classmethod
-    def delete(cls, db: Session, wallet_id: int) -> None:
-        wallet = db.query(Wallet).filter(Wallet.id == wallet_id).first()
+    def delete(cls, db: Session, wallet_id: int, user_id: Optional[int] = None) -> None:
+        from app.models.income import Income
+        query = db.query(Wallet).filter(Wallet.id == wallet_id)
+        if user_id is not None:
+            query = query.filter(Wallet.user_id == user_id)
+        wallet = query.first()
         if not wallet:
-            raise HTTPException(status_code=404, detail="Wallet not found")
+            wallet_any = db.query(Wallet).filter(Wallet.id == wallet_id).first()
+            if not wallet_any:
+                raise HTTPException(status_code=404, detail="Wallet not found")
+            raise HTTPException(status_code=403, detail="Not authorized to delete this wallet")
+
+        # 1. Delete all expenses and transfers associated with this wallet (as source or destination)
+        exp_q = db.query(Expense).filter(
+            or_(Expense.wallet_id == wallet_id, Expense.to_wallet_id == wallet_id)
+        )
+        if user_id is not None:
+            exp_q = exp_q.filter(Expense.user_id == user_id)
+        exp_q.delete(synchronize_session=False)
+
+        # 2. Delete all incomes associated with this wallet
+        inc_q = db.query(Income).filter(Income.wallet_id == wallet_id)
+        if user_id is not None:
+            inc_q = inc_q.filter(Income.user_id == user_id)
+        inc_q.delete(synchronize_session=False)
+
+        # 3. Delete the wallet
         db.delete(wallet)
         db.commit()
 
@@ -158,5 +181,5 @@ class WalletService:
         return cls.update(db, wallet_id, wallet_in)
 
     @classmethod
-    def delete_wallet(cls, db: Session, wallet_id: int) -> None:
-        return cls.delete(db, wallet_id)
+    def delete_wallet(cls, db: Session, wallet_id: int, user_id: Optional[int] = None) -> None:
+        return cls.delete(db, wallet_id, user_id=user_id)

@@ -438,36 +438,87 @@ export function Wallets({
       )}
 
       {/* Delete Confirmation Modal */}
-      {deletingId && (
-        <div
-          className="modal-overlay"
-          role="dialog"
-          aria-modal="true"
-          onClick={() => setDeletingId(null)}
-        >
-          <div className="dialog-content wallet-dialog-content">
-            <div className="f">
-              <h2>Delete Account</h2>
-              <p style={{ color: 'var(--pl-text-muted)', fontSize: '13px', margin: '4px 0 16px' }}>
-                Are you sure you want to delete this account? Transactions linked to it may lose their wallet association.
-              </p>
-              <div className="btns">
-                <button type="button" className="ghost" onClick={() => setDeletingId(null)}>
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="primary"
-                  style={{ background: 'var(--pl-color-danger)', borderColor: 'var(--pl-color-danger)' }}
-                  onClick={handleConfirmDelete}
-                >
-                  Confirm Delete
-                </button>
+      {deletingId && (() => {
+        const targetWallet = wallets.find((w) => String(w.id) === String(deletingId))
+        return (
+          <div
+            className="modal-overlay"
+            role="dialog"
+            aria-modal="true"
+            onClick={() => setDeletingId(null)}
+          >
+            <div className="dialog-content wallet-dialog-content" onClick={(e) => e.stopPropagation()}>
+              <div className="f">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                  <div style={{
+                    width: '38px',
+                    height: '38px',
+                    borderRadius: '50%',
+                    background: 'rgba(239, 68, 68, 0.12)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#ef4444',
+                    flexShrink: 0
+                  }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                      <line x1="12" y1="9" x2="12" y2="13" />
+                      <line x1="12" y1="17" x2="12.01" y2="17" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h2 style={{ fontSize: '18px', margin: 0, color: 'var(--pl-text-primary, #1e293b)' }}>
+                      Delete Wallet?
+                    </h2>
+                    <p style={{ margin: '2px 0 0', fontSize: '13px', color: 'var(--pl-text-muted, #64748b)' }}>
+                      Account: <strong>{targetWallet?.name || 'Selected Wallet'}</strong>
+                    </p>
+                  </div>
+                </div>
+
+                <div style={{
+                  background: 'rgba(239, 68, 68, 0.08)',
+                  border: '1px solid rgba(239, 68, 68, 0.25)',
+                  borderRadius: '10px',
+                  padding: '12px 14px',
+                  color: '#b91c1c',
+                  fontSize: '13px',
+                  lineHeight: '1.45',
+                  margin: '12px 0 18px'
+                }}>
+                  <strong>⚠️ Warning:</strong> Deleting this wallet will <strong>permanently delete all associated transactions</strong> (expenses, incomes, and transfers). This action cannot be undone.
+                </div>
+
+                <div className="btns" style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                  <button
+                    type="button"
+                    className="ghost"
+                    onClick={() => setDeletingId(null)}
+                    style={{ padding: '8px 16px', fontWeight: 600 }}
+                  >
+                    No, Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="primary"
+                    style={{
+                      background: 'var(--pl-color-danger, #ef4444)',
+                      borderColor: 'var(--pl-color-danger, #ef4444)',
+                      color: '#ffffff',
+                      padding: '8px 18px',
+                      fontWeight: 600,
+                    }}
+                    onClick={handleConfirmDelete}
+                  >
+                    Yes, Delete
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
     </section>
   )
 }

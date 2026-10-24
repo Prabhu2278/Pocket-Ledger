@@ -723,7 +723,14 @@ export function useExpenses() {
     async (id) => {
       try {
         await walletApi.deleteWallet(id)
-        showToast('Account deleted successfully')
+        // Immediately purge any transactions linked to this wallet from memory
+        setTransactions((prev) =>
+          prev.filter(
+            (t) => String(t.wallet_id) !== String(id) && String(t.to_wallet_id) !== String(id)
+          )
+        )
+        setWallets((prev) => prev.filter((w) => String(w.id) !== String(id)))
+        showToast('Wallet and all related transactions deleted successfully')
         await loadData()
       } catch (err) {
         showToast(err.message || 'Failed to delete account')
