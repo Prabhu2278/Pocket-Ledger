@@ -90,7 +90,6 @@ export function AppLayout({
         <div className="shell-ambient-orb orb-2" />
         <div className="shell-ambient-orb orb-3" />
         <div className="shell-ambient-orb orb-4" />
-        <div className="shell-grid-overlay" />
       </div>
 
       <Sidebar
