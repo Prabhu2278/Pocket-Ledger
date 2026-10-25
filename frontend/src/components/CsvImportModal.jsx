@@ -284,23 +284,42 @@ export function CsvImportModal({
     }
   }
 
-  // Open "Did you forget to add an income?" modal for a Low Funds expense row
-  const handleOpenAddIncomeModal = (row) => {
-    const w = localWallets.find((item) => String(item.id) === String(row.wallet_id))
-    const currBal = Number(row.wallet_balance !== undefined ? row.wallet_balance : (w?.current_balance ?? w?.balance ?? w?.initial_balance ?? 0))
-    const needed = Math.max(0, row.amount - currBal)
+  // Open "Did you forget to add an income?" modal for a Low Funds expense row or globally
+  const handleOpenAddIncomeModal = (row = null) => {
+    const targetRow = row || insufficientFundsRows[0]
+    if (!targetRow) return
+
+    const w = localWallets.find((item) => String(item.id) === String(targetRow.wallet_id))
+    const currBal = Number(
+      targetRow.wallet_balance !== undefined
+        ? targetRow.wallet_balance
+        : (w?.current_balance ?? w?.balance ?? w?.initial_balance ?? 0)
+    )
+
+    // Calculate total needed across all insufficient funds rows for this wallet
+    const relatedWalletRows = insufficientFundsRows.filter(
+      (r) => String(r.wallet_id) === String(targetRow.wallet_id)
+    )
+    const totalWalletDeficit = relatedWalletRows.reduce((sum, r) => sum + Number(r.amount || 0), 0)
+    const amountToCoverAll = Math.max(0, totalWalletDeficit - currBal)
+    const singleRowDeficit = Math.max(0, Number(targetRow.amount || 0) - currBal)
+    const needed = amountToCoverAll > 0 ? amountToCoverAll : (singleRowDeficit > 0 ? singleRowDeficit : Number(targetRow.amount || 0))
+
     const defaultCat = incomeCategoryOptions[0]?.name || 'Salary'
 
     setAddIncomePrompt({
-      row,
-      walletId: row.wallet_id,
-      walletName: row.wallet_name,
+      row: targetRow,
+      relatedCount: relatedWalletRows.length,
+      walletId: targetRow.wallet_id,
+      walletName: targetRow.wallet_name || 'Wallet',
       walletBalance: currBal,
-      amountNeeded: needed,
-      amount: needed > 0 ? needed : row.amount,
+      amountNeeded: needed > 0 ? needed : Number(targetRow.amount || 0),
+      amount: needed > 0 ? needed : Number(targetRow.amount || 0),
       category: defaultCat,
-      note: `Deposit for ${row.note || row.category || 'expenses'}`,
-      date: row.date || new Date().toISOString().split('T')[0],
+      note: relatedWalletRows.length > 1
+        ? `Deposit to cover ${relatedWalletRows.length} CSV transactions`
+        : `Deposit for ${targetRow.note || targetRow.category || 'expenses'}`,
+      date: targetRow.date || new Date().toISOString().split('T')[0],
       error: '',
     })
   }
@@ -671,27 +690,58 @@ export function CsvImportModal({
             {insufficientFundsRows.length > 0 && (
               <div
                 style={{
-                  padding: '7px 12px',
-                  borderRadius: '6px',
+                  padding: '8px 14px',
+                  borderRadius: '8px',
                   background: 'rgba(245, 158, 11, 0.12)',
                   border: '1px solid rgba(245, 158, 11, 0.35)',
                   color: 'var(--pl-color-warning, #f59e0b)',
                   fontSize: '11.5px',
-                  marginBottom: '6px',
+                  marginBottom: '8px',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '8px',
+                  justifyContent: 'space-between',
+                  gap: '12px',
                   flexShrink: 0,
+                  flexWrap: 'wrap',
                 }}
               >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                  <circle cx="12" cy="12" r="10" />
-                  <line x1="12" y1="8" x2="12" y2="12" />
-                  <line x1="12" y1="16" x2="12.01" y2="16" />
-                </svg>
-                <div style={{ flex: 1 }}>
-                  <b>Low Funds: Did you forget to add an income?</b> {insufficientFundsRows.length} expense transaction(s) exceed current wallet balance. Click <u>Did you forget to add an income?</u> on the row to record an income with enough amount to add these transactions.
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: '220px' }}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="12" />
+                    <line x1="12" y1="16" x2="12.01" y2="16" />
+                  </svg>
+                  <div style={{ flex: 1 }}>
+                    <b>Low Funds: Did you forget to add an income?</b> {insufficientFundsRows.length} expense transaction(s) exceed current wallet balance. Click <u>Add Income</u> to record an income to add these transactions.
+                  </div>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={() => handleOpenAddIncomeModal()}
+                  style={{
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    padding: '5px 12px',
+                    borderRadius: 'var(--pl-radius-md, 6px)',
+                    background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
+                    color: '#ffffff',
+                    border: 'none',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    whiteSpace: 'nowrap',
+                    boxShadow: '0 2px 8px rgba(16, 185, 129, 0.35)',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6">
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
+                  Add Income
+                </button>
               </div>
             )}
 
@@ -1071,7 +1121,7 @@ export function CsvImportModal({
             )}
 
             {/* Modal Bottom Actions */}
-            <div className="btns" style={{ marginTop: '4px', paddingTop: '6px', flexShrink: 0 }}>
+            <div className="btns" style={{ marginTop: '4px', paddingTop: '6px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '10px' }}>
               <button
                 type="button"
                 className="ghost"
@@ -1081,14 +1131,54 @@ export function CsvImportModal({
                 Cancel
               </button>
 
+              {/* Explicit "Add Income" button during Low Funds stage */}
+              {insufficientFundsRows.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => handleOpenAddIncomeModal()}
+                  disabled={loading || walletCreating || incomeCreating}
+                  style={{
+                    fontSize: '12.5px',
+                    fontWeight: 700,
+                    padding: '0 16px',
+                    minHeight: '38px',
+                    borderRadius: 'var(--pl-radius-md, 10px)',
+                    background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
+                    color: '#ffffff',
+                    border: 'none',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    whiteSpace: 'nowrap',
+                    boxShadow: '0 4px 14px rgba(16, 185, 129, 0.35)',
+                    transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                  }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
+                  Add Income
+                </button>
+              )}
+
               <button
                 type="button"
                 className="primary"
-                onClick={handleImport}
-                disabled={loading || parsedRows.length === 0 || validRows.length === 0}
+                onClick={() => {
+                  if (validRows.length > 0) {
+                    handleImport()
+                  } else if (insufficientFundsRows.length > 0) {
+                    handleOpenAddIncomeModal()
+                  } else if (missingWalletRows.length > 0) {
+                    handleOpenCreateWalletModal(missingWalletRows[0])
+                  }
+                }}
+                disabled={loading || parsedRows.length === 0}
                 style={{
-                  opacity: loading || parsedRows.length === 0 || validRows.length === 0 ? 0.6 : 1,
-                  cursor: loading || parsedRows.length === 0 || validRows.length === 0 ? 'not-allowed' : 'pointer',
+                  opacity: loading || parsedRows.length === 0 ? 0.6 : 1,
+                  cursor: loading || parsedRows.length === 0 ? 'not-allowed' : 'pointer',
                 }}
               >
                 {loading
@@ -1097,6 +1187,8 @@ export function CsvImportModal({
                   ? `Save & Import All (${validRows.length})`
                   : validRows.length > 0
                   ? `Save & Import Valid (${validRows.length} of ${parsedRows.length})`
+                  : insufficientFundsRows.length > 0
+                  ? `Resolve Requirements (${invalidRows.length} pending)`
                   : `Resolve Wallet Requirements (${invalidRows.length} pending)`}
               </button>
             </div>
@@ -1197,11 +1289,19 @@ export function CsvImportModal({
             </p>
 
             <p style={{ margin: '0 0 14px', fontSize: '12.5px', color: 'var(--pl-text-secondary)', lineHeight: 1.5 }}>
-              The expense <strong style={{ color: 'var(--pl-text-primary)' }}>&ldquo;{addIncomePrompt.row.note || addIncomePrompt.row.category}&rdquo;</strong> requires <strong style={{ color: 'var(--pl-color-danger, #ef4444)' }}>{money(addIncomePrompt.row.amount, currency)}</strong>, but <strong style={{ color: 'var(--pl-text-primary)' }}>&ldquo;{addIncomePrompt.walletName}&rdquo;</strong> currently has only <strong style={{ color: 'var(--pl-color-warning, #f59e0b)' }}>{money(addIncomePrompt.walletBalance, currency)}</strong>.
+              {addIncomePrompt.relatedCount > 1 ? (
+                <>
+                  The <strong style={{ color: 'var(--pl-text-primary)' }}>{addIncomePrompt.relatedCount} expense transactions</strong> for wallet <strong style={{ color: 'var(--pl-text-primary)' }}>&ldquo;{addIncomePrompt.walletName}&rdquo;</strong> require a total of <strong style={{ color: 'var(--pl-color-danger, #ef4444)' }}>{money(addIncomePrompt.amountNeeded + addIncomePrompt.walletBalance, currency)}</strong>, but the wallet currently has only <strong style={{ color: 'var(--pl-color-warning, #f59e0b)' }}>{money(addIncomePrompt.walletBalance, currency)}</strong>.
+                </>
+              ) : (
+                <>
+                  The expense <strong style={{ color: 'var(--pl-text-primary)' }}>&ldquo;{addIncomePrompt.row?.note || addIncomePrompt.row?.category || 'expense'}&rdquo;</strong> requires <strong style={{ color: 'var(--pl-color-danger, #ef4444)' }}>{money(addIncomePrompt.row?.amount || addIncomePrompt.amountNeeded, currency)}</strong>, but <strong style={{ color: 'var(--pl-text-primary)' }}>&ldquo;{addIncomePrompt.walletName}&rdquo;</strong> currently has only <strong style={{ color: 'var(--pl-color-warning, #f59e0b)' }}>{money(addIncomePrompt.walletBalance, currency)}</strong>.
+                </>
+              )}
             </p>
 
             <p style={{ margin: '0 0 14px', fontSize: '12px', color: 'var(--pl-text-muted)', lineHeight: 1.4 }}>
-              Record an income of at least <strong style={{ color: 'var(--pl-color-success, #10b981)' }}>{money(addIncomePrompt.amountNeeded, currency)}</strong> to cover this expense and add the transaction to your ledger:
+              Record an income of at least <strong style={{ color: 'var(--pl-color-success, #10b981)' }}>{money(addIncomePrompt.amountNeeded, currency)}</strong> to cover {addIncomePrompt.relatedCount > 1 ? 'these expenses' : 'this expense'} and add the transaction(s) to your ledger:
             </p>
 
             {addIncomePrompt.error && (
