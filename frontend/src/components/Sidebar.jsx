@@ -7,6 +7,12 @@ export function Sidebar({
 }) {
   const isTxnActive = page === 'transactions' || page === 'expenses' || page === 'income'
 
+  const displayName = user
+    ? user.full_name || user.name || (user.email ? user.email.split('@')[0] : 'User')
+    : ''
+  const firstName = displayName.trim().split(/\s+/)[0] || 'U'
+  const userInitial = firstName ? firstName.charAt(0).toUpperCase() : 'U'
+
   return (
     <aside className="side">
       <div className="brand">Pocket Ledger</div>
@@ -98,9 +104,13 @@ export function Sidebar({
 
       {user ? (
         <div className="side-user">
-          <div className="side-user-info">
-            <div className="side-user-name">{user.full_name || user.name || 'User'}</div>
-            <div className="side-user-email">{user.email}</div>
+          <div className="side-user-profile">
+            <div className="side-user-avatar" aria-label={`Profile: ${displayName}`}>
+              {userInitial}
+            </div>
+            <div className="side-user-info">
+              <div className="side-user-name" title={displayName}>{displayName}</div>
+            </div>
           </div>
           <button
             type="button"
@@ -113,9 +123,13 @@ export function Sidebar({
         </div>
       ) : (
         <div className="side-user">
-          <div className="side-user-info">
-            <div className="side-user-name">Guest session</div>
-            <div className="side-user-email">Data saved locally</div>
+          <div className="side-user-profile">
+            <div className="side-user-avatar side-user-avatar-guest" aria-label="Guest session">
+              G
+            </div>
+            <div className="side-user-info">
+              <div className="side-user-name">Guest session</div>
+            </div>
           </div>
           <a
             href="#/login"

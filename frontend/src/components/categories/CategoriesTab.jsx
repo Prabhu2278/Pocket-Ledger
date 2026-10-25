@@ -183,7 +183,6 @@ export function CategoriesTab({
           </div>
         ) : (
           filteredCategories.map((cat) => {
-            const isCustom = !cat.is_default
             return (
               <div key={`${cat.type}-${cat.id}`} className="category-card" id={`cat-card-${cat.id}`}>
                 <div className="category-card-left">
@@ -203,9 +202,6 @@ export function CategoriesTab({
                     <div className="category-badges">
                       <span className={`badge-type ${cat.type}`}>
                         {cat.type}
-                      </span>
-                      <span className="badge-source custom">
-                        Custom
                       </span>
                     </div>
                   </div>

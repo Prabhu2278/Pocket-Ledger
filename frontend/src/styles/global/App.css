@@ -859,7 +859,7 @@ textarea {
 /* Sidebar User Footer */
 .side-user {
   margin-top: auto;
-  padding: 10px 12px;
+  padding: 8px 10px;
   border-radius: var(--pl-radius-md);
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid var(--pl-border-sidebar);
@@ -870,18 +870,54 @@ textarea {
   font-size: 12px;
 }
 
+.side-user-profile {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  overflow: hidden;
+  flex: 1;
+}
+
+.side-user-avatar {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--pl-color-primary, #4f46e5) 0%, var(--pl-color-primary-hover, #6366f1) 100%);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 13.5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  border: 1.5px solid rgba(255, 255, 255, 0.18);
+  flex-shrink: 0;
+  text-transform: uppercase;
+  user-select: none;
+}
+
+.side-user-avatar-guest {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--pl-text-sidebar-muted, #94a3b8);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
 .side-user-info {
   min-width: 0;
   overflow: hidden;
+  flex: 1;
 }
 
 .side-user-name {
   color: #fff;
   font-weight: 700;
-  font-size: 12.5px;
+  font-size: 13px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  line-height: 1.2;
 }
 
 .side-user-email {
@@ -899,10 +935,11 @@ textarea {
   cursor: pointer;
   font-size: 11.5px;
   font-weight: 700;
-  padding: 4px 8px;
+  padding: 5px 9px;
   border-radius: var(--pl-radius-sm);
   transition: all 0.15s ease;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .side-logout-btn:hover {
