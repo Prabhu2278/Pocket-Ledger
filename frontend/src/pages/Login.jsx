@@ -69,9 +69,10 @@ export function Login({ onLoginSuccess, onNavigateToRegister, theme = 'light', t
           )}
         </button>
       )}
+
       {/* Left Information Panel */}
       <div className="auth-split-left">
-        {/* Animated ambient lighting orbs & grid */}
+        {/* Animated ambient lighting orbs & cyber grid */}
         <div className="auth-ambient-orb orb-left-1" aria-hidden="true" />
         <div className="auth-ambient-orb orb-left-2" aria-hidden="true" />
         <div className="auth-ambient-orb orb-left-3" aria-hidden="true" />
@@ -154,9 +155,11 @@ export function Login({ onLoginSuccess, onNavigateToRegister, theme = 'light', t
 
       {/* Right Login Form Panel */}
       <div className="auth-split-right">
-        {/* Ambient aura glow behind the card */}
+        {/* Animated ambient lighting orbs & cyber grid for whole-screen continuity */}
+        <div className="auth-grid-overlay" aria-hidden="true" />
         <div className="auth-card-backdrop-glow" aria-hidden="true" />
         <div className="auth-ambient-orb orb-right-1" aria-hidden="true" />
+        <div className="auth-ambient-orb orb-right-2" aria-hidden="true" />
 
         <div className="auth-form-card">
           <div className="auth-card-glow-bar" aria-hidden="true" />
