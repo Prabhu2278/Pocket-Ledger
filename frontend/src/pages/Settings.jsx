@@ -12,149 +12,52 @@ import {
   removeCustomCurrency,
 } from '../utils/formatCurrency'
 
-const DARK_THEMES = [
-  {
-    id: 'dark',
-    name: 'Midnight Dark',
-    category: 'Fintech Slate',
-    description: 'Deep navy background with high-contrast text and glowing indigo accents.',
-    swatches: ['#818cf8', '#131926', '#34d399', '#f87171'],
-    preview: {
-      bg: '#0a0e17',
-      card: '#131926',
-      accent: '#818cf8',
-      border: '#1e293e',
-      text: '#f8fafc',
-    },
-  },
-  {
-    id: 'emerald',
-    name: 'Emerald Wealth',
-    category: 'Forest Jade',
-    description: 'Deep forest obsidian theme with glowing mint emerald and jade accents.',
-    swatches: ['#10b981', '#0b241c', '#34d399', '#f87171'],
-    preview: {
-      bg: '#051410',
-      card: '#0b241c',
-      accent: '#10b981',
-      border: '#174233',
-      text: '#f0fdf4',
-    },
-  },
-  {
-    id: 'ocean',
-    name: 'Ocean Sapphire',
-    category: 'Marine Cyan',
-    description: 'Deep oceanic blues with electric cyan highlights and high visual clarity.',
-    swatches: ['#0ea5e9', '#0b1e36', '#10b981', '#f43f5e'],
-    preview: {
-      bg: '#06111f',
-      card: '#0b1e36',
-      accent: '#0ea5e9',
-      border: '#173b66',
-      text: '#f0f9ff',
-    },
-  },
-  {
-    id: 'violet',
-    name: 'Royal Violet',
-    category: 'Cosmic Nebula',
-    description: 'Rich royal purple with vivid neon violet accents and deep nebula tones.',
-    swatches: ['#a855f7', '#18112d', '#10b981', '#f43f5e'],
-    preview: {
-      bg: '#0f0a1d',
-      card: '#18112d',
-      accent: '#a855f7',
-      border: '#342460',
-      text: '#faf5ff',
-    },
-  },
-  {
-    id: 'sunset',
-    name: 'Sunset Amber',
-    category: 'Golden Bronze',
-    description: 'Warm twilight obsidian with vibrant amber and gold financial highlights.',
-    swatches: ['#f59e0b', '#20150d', '#10b981', '#f43f5e'],
-    preview: {
-      bg: '#140d07',
-      card: '#20150d',
-      accent: '#f59e0b',
-      border: '#432e1c',
-      text: '#fffbeb',
-    },
-  },
-]
-
-const LIGHT_THEMES = [
+const APP_THEMES = [
   {
     id: 'light',
-    name: 'Crisp Daylight',
-    category: 'Clean Daylight',
-    description: 'Clean white cards with soft grayish-blue background and classic indigo tones.',
-    swatches: ['#4f46e5', '#ffffff', '#15803d', '#b91c1c'],
+    name: 'Light Mode',
+    category: 'Vibrant Daylight',
+    description: 'Crisp, daylight-optimized design with colorful iridescent ambient background, frosted glass cards, and royal purple accents.',
+    swatches: ['#5247e8', '#ffffff', '#10b981', '#ec4899'],
     preview: {
-      bg: '#f8fafc',
+      bg: 'linear-gradient(135deg, #eef2ff, #fae8ff, #ecfdf5)',
       card: '#ffffff',
-      accent: '#4f46e5',
+      accent: '#5247e8',
       border: '#e2e8f0',
       text: '#0f172a',
     },
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="5" />
+        <line x1="12" y1="1" x2="12" y2="3" />
+        <line x1="12" y1="21" x2="12" y2="23" />
+        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+        <line x1="1" y1="12" x2="3" y2="12" />
+        <line x1="21" y1="12" x2="23" y2="12" />
+        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+      </svg>
+    ),
   },
   {
-    id: 'light-emerald',
-    name: 'Mint Meadow',
-    category: 'Spring Sage',
-    description: 'Fresh spring mint with soft jade borders and clean white surfaces.',
-    swatches: ['#059669', '#ffffff', '#10b981', '#dc2626'],
+    id: 'dark',
+    name: 'Dark Mode',
+    category: 'Midnight Obsidian',
+    description: 'Deep cyber navy obsidian workspace with glowing indigo and emerald aura, high-contrast typography, and dark frosted surfaces.',
+    swatches: ['#818cf8', '#0f172a', '#34d399', '#f87171'],
     preview: {
-      bg: '#f0fdf4',
-      card: '#ffffff',
-      accent: '#059669',
-      border: '#bbf7d0',
-      text: '#06241a',
+      bg: 'radial-gradient(circle at 50% 50%, #0d1322 0%, #070a12 100%)',
+      card: '#0f172a',
+      accent: '#818cf8',
+      border: 'rgba(255, 255, 255, 0.12)',
+      text: '#f8fafc',
     },
-  },
-  {
-    id: 'light-ocean',
-    name: 'Glacier Azure',
-    category: 'Breeze Sky',
-    description: 'Cool sky blue with arctic azure accents and high-contrast readability.',
-    swatches: ['#0284c7', '#ffffff', '#059669', '#e11d48'],
-    preview: {
-      bg: '#f0f9ff',
-      card: '#ffffff',
-      accent: '#0284c7',
-      border: '#bae6fd',
-      text: '#082136',
-    },
-  },
-  {
-    id: 'light-violet',
-    name: 'Lavender Whisper',
-    category: 'Royal Lilac',
-    description: 'Gentle lavender background with rich royal purple accents and elegant cards.',
-    swatches: ['#7c3aed', '#ffffff', '#059669', '#e11d48'],
-    preview: {
-      bg: '#faf5ff',
-      card: '#ffffff',
-      accent: '#7c3aed',
-      border: '#e9d5ff',
-      text: '#1d0e3b',
-    },
-  },
-  {
-    id: 'light-sunset',
-    name: 'Champagne Sand',
-    category: 'Warm Honey',
-    description: 'Warm ivory background with golden amber and warm bronze accents.',
-    swatches: ['#d97706', '#ffffff', '#059669', '#dc2626'],
-    preview: {
-      bg: '#fffbeb',
-      card: '#ffffff',
-      accent: '#d97706',
-      border: '#fde68a',
-      text: '#2b1807',
-    },
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+      </svg>
+    ),
   },
 ]
 
@@ -228,7 +131,6 @@ export function Settings({
   onCategoriesChange,
 }) {
   const [activeTab, setActiveTab] = useState('profile')
-  const [themeModeFilter, setThemeModeFilter] = useState('all') // 'all' | 'dark' | 'light'
 
   // Profile state
   const [fullName, setFullName] = useState(user?.full_name || '')
@@ -420,11 +322,11 @@ export function Settings({
   }
 
   const renderThemeCard = (t) => {
-    const isSelected = theme === t.id
+    const isSelected = (theme === 'dark' && t.id === 'dark') || (theme !== 'dark' && t.id === 'light')
     return (
       <div
         key={t.id}
-        className="theme-card"
+        className={`theme-card ${isSelected ? 'selected' : ''}`}
         role="radio"
         aria-checked={isSelected}
         onClick={() => {
@@ -439,7 +341,7 @@ export function Settings({
         <div className="theme-card-top">
           <div className="theme-card-title-group">
             <div className="theme-icon-box">
-              <span style={{ width: '12px', height: '12px', borderRadius: '50%', background: t.swatches[0], display: 'inline-block' }}></span>
+              {t.icon}
             </div>
             <div className="theme-card-names">
               <span className="theme-card-name">{t.name}</span>
@@ -478,18 +380,18 @@ export function Settings({
               background: t.preview.card,
               border: `1px solid ${t.preview.border}`,
               borderTop: `2.5px solid ${t.preview.accent}`,
-              borderRadius: '6px',
-              padding: '6px 8px',
+              borderRadius: '8px',
+              padding: '8px 10px',
               display: 'flex',
               flexDirection: 'column',
-              gap: '4px',
+              gap: '6px',
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ width: '36px', height: '4px', background: t.preview.text, opacity: 0.5, borderRadius: '2px' }}></span>
-              <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: t.preview.accent }}></span>
+              <span style={{ width: '40px', height: '5px', background: t.preview.text, opacity: 0.5, borderRadius: '2px' }}></span>
+              <span style={{ width: '12px', height: '12px', borderRadius: '50%', background: t.preview.accent }}></span>
             </div>
-            <span style={{ width: '52px', height: '5px', background: t.preview.accent, borderRadius: '2px' }}></span>
+            <span style={{ width: '60px', height: '6px', background: t.preview.accent, borderRadius: '2px' }}></span>
           </div>
         </div>
 
@@ -566,68 +468,17 @@ export function Settings({
             <div className="card" id="panel-appearance" role="tabpanel" aria-labelledby="tab-appearance">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
                 <h2 style={{ margin: 0 }}>Theme preferences</h2>
-                <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: 'var(--pl-radius-pill)', background: 'var(--pl-color-primary-soft)', color: 'var(--pl-color-primary)' }}>
-                  10 curated palettes (5 Dark &bull; 5 Light)
+                <span style={{ fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: 'var(--pl-radius-pill)', background: 'var(--pl-color-primary-soft)', color: 'var(--pl-color-primary)' }}>
+                  {theme === 'dark' ? 'Dark Mode Active' : 'Light Mode Active'}
                 </span>
               </div>
-              <p style={{ margin: '0 0 16px', fontSize: '13px', color: 'var(--mute)' }}>
-                Personalize your workspace with 10 curated financial color palettes. Each theme automatically customizes accents, cards, and data visuals.
+              <p style={{ margin: '0 0 20px', fontSize: '13px', color: 'var(--mute)' }}>
+                Choose your preferred interface theme. Select between crisp daylight mode and midnight obsidian dark mode.
               </p>
 
-              {/* Theme Mode Filter Filter Tabs */}
-              <div className="theme-category-tabs" role="tablist" aria-label="Filter theme modes">
-                <button
-                  type="button"
-                  className={`theme-category-pill ${themeModeFilter === 'all' ? 'active' : ''}`}
-                  onClick={() => setThemeModeFilter('all')}
-                >
-                  All Palettes (10)
-                </button>
-                <button
-                  type="button"
-                  className={`theme-category-pill ${themeModeFilter === 'dark' ? 'active' : ''}`}
-                  onClick={() => setThemeModeFilter('dark')}
-                >
-                  Dark Themes (5)
-                </button>
-                <button
-                  type="button"
-                  className={`theme-category-pill ${themeModeFilter === 'light' ? 'active' : ''}`}
-                  onClick={() => setThemeModeFilter('light')}
-                >
-                  Light Themes (5)
-                </button>
+              <div className="theme-options theme-options-dual">
+                {APP_THEMES.map(renderThemeCard)}
               </div>
-
-              {/* Dark Themes Section */}
-              {(themeModeFilter === 'all' || themeModeFilter === 'dark') && (
-                <div style={{ marginBottom: '28px' }}>
-                  <div className="theme-group-header">
-                    <span className="theme-group-title">
-                      Dark Themes (5 Options)
-                    </span>
-                    <span style={{ fontSize: '11px', color: 'var(--pl-text-muted)' }}>High-contrast dark modes</span>
-                  </div>
-                  <div className="theme-options">
-                    {DARK_THEMES.map(renderThemeCard)}
-                  </div>
-                </div>
-              )}
-
-              {/* Light Themes Section */}
-              {(themeModeFilter === 'all' || themeModeFilter === 'light') && (
-                <div>
-                  <div className="theme-group-header">
-                    <span className="theme-group-title">
-                      Light Themes (5 Options)
-                    </span>
-                    <span style={{ fontSize: '11px', color: 'var(--pl-text-muted)' }}>Clean, daylight-optimized palettes</span>
-                  </div>
-                  <div className="theme-options">
-                    {LIGHT_THEMES.map(renderThemeCard)}
-                  </div>
-                </div>
-              )}
             </div>
           )}
 

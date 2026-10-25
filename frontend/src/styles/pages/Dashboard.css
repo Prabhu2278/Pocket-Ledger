@@ -54,6 +54,8 @@
 
 .dashboard-kpi-card {
   background: var(--pl-bg-surface);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--pl-border-default);
   border-radius: var(--pl-radius-lg, 18px);
   padding: 18px 20px;
@@ -61,7 +63,7 @@
   flex-direction: column;
   justify-content: space-between;
   min-height: 116px;
-  box-shadow: var(--pl-shadow-sm);
+  box-shadow: var(--pl-shadow-card, var(--pl-shadow-sm));
   transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease;
   position: relative;
   overflow: hidden;
@@ -247,10 +249,12 @@
    -------------------------------------------------------------------------- */
 .dashboard-section-card {
   background: var(--pl-bg-surface);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--pl-border-default);
   border-radius: var(--pl-radius-lg, 18px);
   padding: 24px;
-  box-shadow: var(--pl-shadow-sm);
+  box-shadow: var(--pl-shadow-card, var(--pl-shadow-sm));
   display: flex;
   flex-direction: column;
   transition: border-color 0.2s ease, box-shadow 0.25s ease;
@@ -357,6 +361,8 @@
 
 .dashboard-wallet-tile {
   background: var(--pl-bg-surface);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--pl-border-default);
   border-left: 4.5px solid var(--wallet-accent, #10b981);
   border-radius: 14px;
@@ -366,7 +372,7 @@
   justify-content: space-between;
   min-height: 114px;
   transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease;
-  box-shadow: var(--pl-shadow-sm);
+  box-shadow: var(--pl-shadow-card, var(--pl-shadow-sm));
   position: relative;
   overflow: hidden;
   cursor: pointer;

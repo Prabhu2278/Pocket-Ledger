@@ -84,6 +84,15 @@ export function AppLayout({
 }) {
   return (
     <div className="shell">
+      {/* Global Ambient Backdrop for all pages */}
+      <div className="shell-ambient-backdrop" aria-hidden="true">
+        <div className="shell-ambient-orb orb-1" />
+        <div className="shell-ambient-orb orb-2" />
+        <div className="shell-ambient-orb orb-3" />
+        <div className="shell-ambient-orb orb-4" />
+        <div className="shell-grid-overlay" />
+      </div>
+
       <Sidebar
         page={page}
         month={month}

@@ -15,7 +15,29 @@ export function Sidebar({
 
   return (
     <aside className="side">
-      <div className="brand">Pocket Ledger</div>
+      <div className="brand">
+        <div className="brand-icon-box">
+          <svg
+            width="17"
+            height="17"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.4"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+            <path d="M8 7h8M8 11h5" />
+          </svg>
+        </div>
+        <div className="brand-text-col">
+          <span className="brand-title">Pocket Ledger</span>
+          <span className="brand-sub">PRO V2.4</span>
+        </div>
+      </div>
 
       <nav aria-label="Modules">
         <a

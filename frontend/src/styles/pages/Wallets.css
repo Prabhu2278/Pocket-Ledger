@@ -120,6 +120,8 @@
 
 .pl-wallets-summary-card {
   background: var(--pl-bg-surface, #ffffff);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--pl-border-default, #e2e8f0);
   border-top: 3.5px solid var(--kpi-accent, var(--pl-color-primary));
   border-radius: var(--pl-radius-lg, 18px);
@@ -128,7 +130,7 @@
   flex-direction: column;
   justify-content: space-between;
   min-height: 116px;
-  box-shadow: var(--pl-shadow-sm);
+  box-shadow: var(--pl-shadow-card, var(--pl-shadow-sm));
   transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease;
   position: relative;
   overflow: hidden;
@@ -335,6 +337,8 @@
 
 .pl-wallets-card {
   background: var(--pl-bg-surface, #ffffff);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--pl-border-default, #e2e8f0);
   border-top: 4px solid var(--wallet-border-color, #10b981);
   border-radius: var(--pl-radius-lg, 18px);
@@ -343,7 +347,7 @@
   flex-direction: column;
   justify-content: space-between;
   min-height: 195px;
-  box-shadow: var(--pl-shadow-sm);
+  box-shadow: var(--pl-shadow-card, var(--pl-shadow-sm));
   transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease;
   position: relative;
   overflow: hidden;
