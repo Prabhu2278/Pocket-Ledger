@@ -140,6 +140,8 @@ export function App() {
             onNavigateToLogin={() => {
               window.location.hash = '#/login'
             }}
+            theme={theme}
+            toggleTheme={toggleTheme}
           />
           <div className="toast" id="toast" role="status" hidden={toast.hidden}>
             <span id="tmsg">{toast.message}</span>
@@ -155,6 +157,8 @@ export function App() {
           onNavigateToRegister={() => {
             window.location.hash = '#/register'
           }}
+          theme={theme}
+          toggleTheme={toggleTheme}
         />
         <div className="toast" id="toast" role="status" hidden={toast.hidden}>
           <span id="tmsg">{toast.message}</span>

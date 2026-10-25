@@ -88,12 +88,12 @@ export function useExpenses() {
     endDate,
   ])
 
-  // Theme state
+  // Theme state: defaults to light on first launch, or preserved theme from localStorage
   const [theme, setThemeState] = useState(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('pocket_ledger_theme') || 'dark'
+      return localStorage.getItem('pocket_ledger_theme') || 'light'
     }
-    return 'dark'
+    return 'light'
   })
 
   const setTheme = useCallback((newTheme) => {

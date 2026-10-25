@@ -3,9 +3,9 @@ import { useState, useEffect } from 'react'
 export function useThemeSlice() {
   const [theme, setTheme] = useState(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('pocket_ledger_theme') || 'dark'
+      return localStorage.getItem('pocket_ledger_theme') || 'light'
     }
-    return 'dark'
+    return 'light'
   })
 
   useEffect(() => {

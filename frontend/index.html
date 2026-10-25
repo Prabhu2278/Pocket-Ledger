@@ -1,7 +1,16 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="light">
   <head>
     <meta charset="UTF-8" />
+    <script>
+      (function() {
+        try {
+          var saved = localStorage.getItem('pocket_ledger_theme');
+          var theme = saved || 'light';
+          document.documentElement.setAttribute('data-theme', theme);
+        } catch (e) {}
+      })();
+    </script>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="description" content="PocketLedger - Personal Finance, Multi-Wallet & Expense Tracker with Smart Bank Import." />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
