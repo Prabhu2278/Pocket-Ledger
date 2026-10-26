@@ -285,6 +285,84 @@ DEFAULT_INCOME_CATEGORIES = [
     {"name": "Other", "type": "income", "icon": "dollar-sign", "color": "#64748b"},
 ]
 
+CATEGORY_PALETTE = [
+    "#ef4444", "#f97316", "#f59e0b", "#eab308", "#84cc16", "#22c55e",
+    "#10b981", "#14b8a6", "#06b6d4", "#0ea5e9", "#3b82f6", "#6366f1",
+    "#8b5cf6", "#a855f7", "#d946ef", "#ec4899", "#f43f5e", "#b42c45",
+    "#0d7a6f", "#15803d", "#b45309", "#0284c7", "#9333ea", "#c026d3",
+    "#db2777", "#e11d48", "#ea580c", "#d97706", "#65a30d", "#16a34a",
+    "#059669", "#0891b2", "#2563eb", "#4f46e5", "#7c3aed", "#475569",
+    "#f87171", "#fb923c", "#fbbf24", "#a3e635", "#4ade80", "#34d399",
+    "#2dd4bf", "#38bdf8", "#60a5fa", "#818cf8", "#a78bfa", "#c084fc",
+    "#e879f9", "#f472b6", "#fb7185", "#dc2626", "#c2410c", "#4d7c0f",
+    "#047857", "#0f766e", "#0369a1", "#1d4ed8", "#4338ca", "#6d28d9",
+    "#7e22ce", "#a21caf", "#be185d", "#be123c", "#057a55", "#1e40af"
+]
+
+def get_unique_category_color(db: Session, exclude_id: Optional[int] = None) -> str:
+    """Generate a unique hex color that does not exist on any active category in the database."""
+    import random
+    import colorsys
+
+    query = db.query(Category.color).filter(Category.is_active == True)
+    if exclude_id is not None:
+        query = query.filter(Category.id != exclude_id)
+    
+    existing_colors = {
+        (row[0] or "").strip().lower() for row in query.all() if row[0]
+    }
+
+    # First attempt: pick a random unused color from the curated palette
+    available = [c for c in CATEGORY_PALETTE if c.lower() not in existing_colors]
+    if available:
+        return random.choice(available)
+
+    # Second attempt: generate non-colliding HSL colors using golden ratio angle
+    for step in range(360):
+        hue = ((step + 7) * 137.5) % 360.0
+        r, g, b = colorsys.hls_to_rgb(hue / 360.0, 0.52, 0.78)
+        hex_code = f"#{int(r * 255):02x}{int(g * 255):02x}{int(b * 255):02x}"
+        if hex_code.lower() not in existing_colors:
+            return hex_code
+
+    import uuid
+    return f"#{uuid.uuid4().hex[:6]}"
+
+def ensure_all_categories_have_unique_colors(db: Session) -> None:
+    """Ensure every existing category in the database has a unique, non-colliding color."""
+    cats = db.query(Category).order_by(Category.is_default.desc(), Category.id.asc()).all()
+    used_colors = set()
+    changed = False
+
+    for c in cats:
+        col = (c.color or "").strip().lower()
+        # If color is missing, default blue #2563eb, or duplicate of an earlier category
+        if not col or col in used_colors or (col == "#2563eb" and not c.is_default):
+            new_col = None
+            # pick an unused color from palette
+            for cand in CATEGORY_PALETTE:
+                if cand.lower() not in used_colors:
+                    new_col = cand
+                    break
+            if not new_col:
+                import colorsys
+                for step in range(360):
+                    hue = ((step + len(used_colors)) * 137.5) % 360.0
+                    r, g, b = colorsys.hls_to_rgb(hue / 360.0, 0.52, 0.78)
+                    hex_code = f"#{int(r * 255):02x}{int(g * 255):02x}{int(b * 255):02x}"
+                    if hex_code.lower() not in used_colors:
+                        new_col = hex_code
+                        break
+            if new_col:
+                c.color = new_col
+                used_colors.add(new_col.lower())
+                changed = True
+        else:
+            used_colors.add(col)
+
+    if changed:
+        db.commit()
+
 def seed_default_categories_if_needed(db: Session) -> None:
     """Ensure system default categories are present in database without creating duplicates."""
     existing = db.query(Category.name, Category.type).filter(Category.user_id == None).all()
@@ -325,6 +403,9 @@ def get_categories(
     has_defaults = db.query(Category.id).filter(Category.user_id == None).first()
     if not has_defaults:
         seed_default_categories_if_needed(db)
+
+    # Ensure any categories with colliding colors (e.g. from previous imports) are assigned unique colors
+    ensure_all_categories_have_unique_colors(db)
 
     query = db.query(Category)
     
@@ -375,18 +456,23 @@ def create_category(db: Session, user_id: int, cat_in: CategoryCreate) -> Catego
                 user_dup.icon = cat_in.icon
             if cat_in.color:
                 user_dup.color = cat_in.color
+            else:
+                user_dup.color = get_unique_category_color(db, exclude_id=user_dup.id)
             db.commit()
             db.refresh(user_dup)
             return user_dup
             
     category_color = cat_in.color
     if not category_color:
-        import random
-        category_color = random.choice([
-            '#b42c45', '#2563eb', '#15803d', '#b45309', '#0d7a6f',
-            '#9333ea', '#ec4899', '#0284c7', '#6366f1', '#d97706',
-            '#059669', '#e11d48', '#7c3aed', '#0891b2'
-        ])
+        category_color = get_unique_category_color(db)
+    else:
+        # Check if color is already in use by another category
+        existing_color_used = db.query(Category.id).filter(
+            Category.is_active == True,
+            func.lower(Category.color) == category_color.strip().lower()
+        ).first()
+        if existing_color_used:
+            category_color = get_unique_category_color(db)
 
     cat = Category(
         user_id=user_id,

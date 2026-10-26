@@ -2,6 +2,7 @@ import React, { useEffect } from 'react'
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '../constants/categories'
 import { CURRENCY_CONFIGS } from '../utils/formatCurrency'
 import { CustomDatePicker } from './ui/CustomDatePicker/CustomDatePicker'
+import { CustomDropdown } from './ui/CustomDropdown/CustomDropdown'
 
 export function FilterDrawer({
   isOpen,
@@ -169,7 +170,7 @@ export function FilterDrawer({
           {/* 1. Wallet Filter */}
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-              <label style={{ fontSize: '12.5px', fontWeight: 700 }}>
+              <label htmlFor="filter-drawer-wallet-select" style={{ fontSize: '12.5px', fontWeight: 700 }}>
                 Wallet
               </label>
               {walletFilter !== 'all' && (
@@ -189,58 +190,25 @@ export function FilterDrawer({
               )}
             </div>
 
-            <div className="chips" role="radiogroup" aria-label="Wallet Selection" style={{ gap: '6px', marginBottom: 0 }}>
-              <button
-                type="button"
-                className="chip"
-                aria-pressed={walletFilter === 'all'}
-                onClick={() => setWalletFilter('all')}
-                style={{
-                  fontSize: '11.5px',
-                  padding: '4px 10px',
-                  minHeight: '28px',
-                  background: walletFilter === 'all' ? 'var(--pl-color-primary)' : 'var(--pl-bg-surface)',
-                  color: walletFilter === 'all' ? '#fff' : 'var(--pl-text-primary)',
-                  borderColor: walletFilter === 'all' ? 'var(--pl-color-primary)' : 'var(--pl-border-default)',
-                  fontWeight: walletFilter === 'all' ? 700 : 500,
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease',
-                }}
-              >
-                All
-              </button>
-              {wallets.map((w) => {
-                const isSelected = String(walletFilter) === String(w.id)
-                return (
-                  <button
-                    key={w.id}
-                    type="button"
-                    className="chip"
-                    aria-pressed={isSelected}
-                    onClick={() => setWalletFilter(String(w.id))}
-                    style={{
-                      fontSize: '11.5px',
-                      padding: '4px 10px',
-                      minHeight: '28px',
-                      background: isSelected ? 'var(--pl-color-primary)' : 'var(--pl-bg-surface)',
-                      color: isSelected ? '#fff' : 'var(--pl-text-primary)',
-                      borderColor: isSelected ? 'var(--pl-color-primary)' : 'var(--pl-border-default)',
-                      fontWeight: isSelected ? 700 : 500,
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease',
-                    }}
-                  >
-                    {w.name}
-                  </button>
-                )
-              })}
-            </div>
+            <CustomDropdown
+              id="filter-drawer-wallet-select"
+              value={walletFilter}
+              onChange={(val) => setWalletFilter(val)}
+              placeholder="Select Wallet"
+              options={[
+                { value: 'all', label: 'All Wallets' },
+                ...wallets.map((w) => ({
+                  value: String(w.id),
+                  label: w.name,
+                })),
+              ]}
+            />
           </div>
 
           {/* 2. Category Filter */}
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-              <label style={{ fontSize: '12.5px', fontWeight: 700 }}>
+              <label htmlFor="filter-drawer-category-select" style={{ fontSize: '12.5px', fontWeight: 700 }}>
                 Category
               </label>
               {categoryFilter !== 'All' && (
@@ -260,33 +228,16 @@ export function FilterDrawer({
               )}
             </div>
 
-            <div className="chips" role="radiogroup" aria-label="Category Selection" style={{ gap: '6px', marginBottom: 0 }}>
-              {availableCategories.map((name) => {
-                const isSelected = categoryFilter === name
-                return (
-                  <button
-                    key={name}
-                    type="button"
-                    className="chip"
-                    aria-pressed={isSelected}
-                    onClick={() => setCategoryFilter(name)}
-                    style={{
-                      fontSize: '11.5px',
-                      padding: '4px 10px',
-                      minHeight: '28px',
-                      background: isSelected ? 'var(--pl-color-primary)' : 'var(--pl-bg-surface)',
-                      color: isSelected ? '#fff' : 'var(--pl-text-primary)',
-                      borderColor: isSelected ? 'var(--pl-color-primary)' : 'var(--pl-border-default)',
-                      fontWeight: isSelected ? 700 : 500,
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease',
-                    }}
-                  >
-                    {name === 'All' ? 'All' : name}
-                  </button>
-                )
-              })}
-            </div>
+            <CustomDropdown
+              id="filter-drawer-category-select"
+              value={categoryFilter}
+              onChange={(val) => setCategoryFilter(val)}
+              placeholder="Select Category"
+              options={availableCategories.map((name) => ({
+                value: name,
+                label: name === 'All' ? 'All Categories' : name,
+              }))}
+            />
           </div>
 
           {/* 4. Date Range */}

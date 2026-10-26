@@ -1,19 +1,7 @@
 import React, { useState, useMemo } from 'react'
 import { categoryApi } from '../../services/categoryApi'
+import { getUniqueCategoryColor, getCategoryColor } from '../../constants/categories'
 import '../../styles/components/CategoriesTab.css'
-
-const PRESET_COLORS = [
-  '#b42c45', // Crimson
-  '#2563eb', // Royal Blue
-  '#15803d', // Forest Emerald
-  '#b45309', // Amber Brown
-  '#0d7a6f', // Deep Teal
-  '#9333ea', // Purple
-  '#ec4899', // Pink
-  '#0284c7', // Sky Blue
-  '#6366f1', // Indigo
-  '#64748b', // Slate Gray
-]
 
 export function CategoriesTab({
   categories = [],
@@ -46,7 +34,7 @@ export function CategoriesTab({
     setEditingCategory(null)
     setCategoryName('')
     setCategoryType(filterType === 'income' ? 'income' : 'expense')
-    setCategoryColor(PRESET_COLORS[0])
+    setCategoryColor(getUniqueCategoryColor(categories))
     setFormError('')
     setIsModalOpen(true)
   }
@@ -56,7 +44,7 @@ export function CategoriesTab({
     setEditingCategory(cat)
     setCategoryName(cat.name)
     setCategoryType(cat.type)
-    setCategoryColor(cat.color || PRESET_COLORS[0])
+    setCategoryColor(cat.color || getUniqueCategoryColor(categories))
     setFormError('')
     setIsModalOpen(true)
   }
@@ -188,7 +176,7 @@ export function CategoriesTab({
                 <div className="category-card-left">
                   <div
                     className="category-color-dot"
-                    style={{ background: cat.color || '#64748b' }}
+                    style={{ background: cat.color || getCategoryColor(cat.name) }}
                     aria-hidden="true"
                   >
                     {cat.name.slice(0, 1).toUpperCase()}
@@ -271,25 +259,33 @@ export function CategoriesTab({
               )}
 
               <div className="category-form-field">
-                <label>Badge Color</label>
-                <div className="color-swatch-row" role="radiogroup" aria-label="Select color">
-                  {PRESET_COLORS.map((c) => (
-                    <button
-                      key={c}
-                      type="button"
-                      className={`color-swatch-btn ${categoryColor === c ? 'selected' : ''}`}
-                      style={{ background: c }}
-                      onClick={() => setCategoryColor(c)}
-                      aria-label={`Color ${c}`}
-                      aria-checked={categoryColor === c}
-                    >
-                      {categoryColor === c && (
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="20 6 9 17 4 12" />
-                        </svg>
-                      )}
-                    </button>
-                  ))}
+                <label>Assigned Unique Color</label>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    padding: '9px 12px',
+                    background: 'var(--pl-bg-surface-hover, rgba(0, 0, 0, 0.03))',
+                    borderRadius: 'var(--pl-radius-md, 8px)',
+                    border: '1px solid var(--pl-border-default, #e2e8f0)',
+                  }}
+                >
+                  <span
+                    style={{
+                      width: '20px',
+                      height: '20px',
+                      borderRadius: '50%',
+                      background: categoryColor,
+                      display: 'inline-block',
+                      boxShadow: '0 2px 5px rgba(0,0,0,0.15)',
+                      flexShrink: 0,
+                    }}
+                    aria-hidden="true"
+                  />
+                  <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--pl-text-muted)' }}>
+                    {categoryColor} (Auto-assigned unique color)
+                  </span>
                 </div>
               </div>
 

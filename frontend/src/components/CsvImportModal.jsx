@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { parseCsvText, recalculateRowsWithRunningBalance } from '../utils/csvParser'
 import { money } from '../utils/formatCurrency'
+import { getUniqueCategoryColor } from '../constants/categories'
 import { categoryApi } from '../api/categoryApi'
 import { walletApi } from '../api/walletApi'
 import { transactionApi } from '../api/transactionApi'
@@ -398,7 +399,7 @@ export function CsvImportModal({
             await categoryApi.createCategory({
               name: nc.name,
               type: nc.type,
-              color: '#2563eb',
+              color: getUniqueCategoryColor(categories),
               icon: 'tag',
             })
           } catch {

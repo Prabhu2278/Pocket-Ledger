@@ -272,13 +272,9 @@ def create_transaction(
             func.lower(Category.name) == clean_cat.lower()
         ).first()
         if not existing_cat:
-            import random
-            fallback_colors = [
-                '#b42c45', '#2563eb', '#15803d', '#b45309', '#0d7a6f',
-                '#9333ea', '#ec4899', '#0284c7', '#6366f1', '#d97706',
-                '#059669', '#e11d48', '#7c3aed', '#0891b2'
-            ]
-            cat_color = getattr(tx_in, "category_color", None) or random.choice(fallback_colors)
+            cat_color = getattr(tx_in, "category_color", None)
+            if not cat_color:
+                cat_color = crud.get_unique_category_color(db)
             new_category = Category(
                 user_id=user_id,
                 name=clean_cat,
@@ -424,7 +420,7 @@ def bulk_import_transactions(
                         name=clean_cat,
                         type=cat_type,
                         icon="tag",
-                        color="#2563eb",
+                        color=crud.get_unique_category_color(db),
                         is_default=False,
                         is_active=True
                     )

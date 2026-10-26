@@ -1,32 +1,9 @@
 import React, { useState, useEffect } from 'react'
-import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, registerCategoryColors } from '../constants/categories'
+import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, registerCategoryColors, getUniqueCategoryColor } from '../constants/categories'
 import { money, CURRENCY_CONFIGS } from '../utils/formatCurrency'
 import { categoryApi } from '../services/categoryApi'
 import { CustomDropdown } from './ui/CustomDropdown/CustomDropdown'
 import { CustomDatePicker } from './ui/CustomDatePicker/CustomDatePicker'
-
-const RANDOM_CATEGORY_COLORS = [
-  '#b42c45', // Crimson
-  '#2563eb', // Royal Blue
-  '#15803d', // Forest Emerald
-  '#b45309', // Amber Brown
-  '#0d7a6f', // Deep Teal
-  '#9333ea', // Purple
-  '#ec4899', // Pink
-  '#0284c7', // Sky Blue
-  '#6366f1', // Indigo
-  '#d97706', // Orange Amber
-  '#059669', // Emerald
-  '#e11d48', // Rose
-  '#7c3aed', // Violet
-  '#0891b2', // Cyan
-  '#ea580c', // Burnt Orange
-]
-
-function getRandomCategoryColor() {
-  const idx = Math.floor(Math.random() * RANDOM_CATEGORY_COLORS.length)
-  return RANDOM_CATEGORY_COLORS[idx]
-}
 
 export function TransactionForm({
   dialogOpen,
@@ -65,7 +42,7 @@ export function TransactionForm({
   })
   const [isCustomMode, setIsCustomMode] = useState(false)
   const [customCategoryInput, setCustomCategoryInput] = useState('')
-  const [randomCategoryColor, setRandomCategoryColor] = useState(() => getRandomCategoryColor())
+  const [randomCategoryColor, setRandomCategoryColor] = useState(() => getUniqueCategoryColor(categories))
 
   // Scroll Lock: disable background/outside scrolling when modal is open
   useEffect(() => {
@@ -99,7 +76,7 @@ export function TransactionForm({
   // Sync category mode ONLY when opening dialog or editing
   useEffect(() => {
     if (dialogOpen) {
-      setRandomCategoryColor(getRandomCategoryColor())
+      setRandomCategoryColor(getUniqueCategoryColor(categories))
       if (isEditing && category && category !== 'Transfer') {
         const isKnown = allCategoryList.some(
           (c) => c.toLowerCase() === category.toLowerCase()
@@ -149,7 +126,7 @@ export function TransactionForm({
         return
       }
       categoryToSave = trimmed
-      colorToSave = randomCategoryColor || getRandomCategoryColor()
+      colorToSave = randomCategoryColor || getUniqueCategoryColor(categories)
 
       setCustomCategories((prev) => {
         if (!prev.includes(trimmed)) {
