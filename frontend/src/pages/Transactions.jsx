@@ -104,6 +104,21 @@ export function Transactions({
   const expenseCount = scopedTransactions.filter((t) => (t.type || '').toLowerCase() === 'expense').length
   const transferCount = scopedTransactions.filter((t) => (t.type || '').toLowerCase() === 'transfer').length
 
+  // Summary Metrics for top KPI cards
+  const summaryIncome = useMemo(() => {
+    return scopedTransactions
+      .filter((t) => (t.type || '').toLowerCase() === 'income')
+      .reduce((sum, t) => sum + Number(t.amount || t.amt || 0), 0)
+  }, [scopedTransactions])
+
+  const summaryExpense = useMemo(() => {
+    return scopedTransactions
+      .filter((t) => (t.type || '').toLowerCase() === 'expense')
+      .reduce((sum, t) => sum + Number(t.amount || t.amt || 0), 0)
+  }, [scopedTransactions])
+
+  const summaryNet = summaryIncome - summaryExpense
+
   // Filter and sort for the table
   const visibleTransactions = useMemo(() => {
     let rows = scopedTransactions
@@ -304,6 +319,117 @@ export function Transactions({
 
   return (
     <section className="view on" id="v-transactions" aria-label="Transactions ledger">
+      {/* Top Summary KPI Cards (Income, Expense, Total Transactions) */}
+      <div className="transactions-kpis">
+        {/* Card 1: Total Income */}
+        <div
+          className={`transactions-kpi-card income ${typeFilter === 'income' ? 'active' : ''}`}
+          onClick={() => {
+            setTypeFilter(typeFilter === 'income' ? 'all' : 'income')
+            setCategoryFilter('All')
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              setTypeFilter(typeFilter === 'income' ? 'all' : 'income')
+              setCategoryFilter('All')
+            }
+          }}
+          role="button"
+          tabIndex={0}
+          title="Click to filter by income"
+        >
+          <div className="transactions-kpi-top">
+            <span className="transactions-kpi-label">TOTAL INCOME</span>
+            <div className="transactions-kpi-badge income" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+                <polyline points="17 6 23 6 23 12" />
+              </svg>
+            </div>
+          </div>
+          <div className="transactions-kpi-amount pos">+{money(summaryIncome, currency)}</div>
+          <div className="transactions-kpi-sub">
+            <span className="transactions-kpi-pill income">{incomeCount} Incomes</span>
+            <span>{hasCustomDateRange ? 'Filtered Range' : 'This Month'}</span>
+          </div>
+        </div>
+
+        {/* Card 2: Total Expenses */}
+        <div
+          className={`transactions-kpi-card expense ${typeFilter === 'expense' ? 'active' : ''}`}
+          onClick={() => {
+            setTypeFilter(typeFilter === 'expense' ? 'all' : 'expense')
+            setCategoryFilter('All')
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              setTypeFilter(typeFilter === 'expense' ? 'all' : 'expense')
+              setCategoryFilter('All')
+            }
+          }}
+          role="button"
+          tabIndex={0}
+          title="Click to filter by expenses"
+        >
+          <div className="transactions-kpi-top">
+            <span className="transactions-kpi-label">TOTAL EXPENSES</span>
+            <div className="transactions-kpi-badge expense" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="23 18 13.5 8.5 8.5 13.5 1 6" />
+                <polyline points="17 18 23 18 23 12" />
+              </svg>
+            </div>
+          </div>
+          <div className="transactions-kpi-amount neg">-{money(summaryExpense, currency)}</div>
+          <div className="transactions-kpi-sub">
+            <span className="transactions-kpi-pill expense">{expenseCount} Expenses</span>
+            <span>{hasCustomDateRange ? 'Filtered Range' : 'This Month'}</span>
+          </div>
+        </div>
+
+        {/* Card 3: Total Transactions & Net Balance */}
+        <div
+          className={`transactions-kpi-card total ${typeFilter === 'all' ? 'active' : ''}`}
+          onClick={() => {
+            setTypeFilter('all')
+            setCategoryFilter('All')
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              setTypeFilter('all')
+              setCategoryFilter('All')
+            }
+          }}
+          role="button"
+          tabIndex={0}
+          title="Click to view all transactions"
+        >
+          <div className="transactions-kpi-top">
+            <span className="transactions-kpi-label">TOTAL TRANSACTIONS</span>
+            <div className="transactions-kpi-badge total" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="8" y1="6" x2="21" y2="6" />
+                <line x1="8" y1="12" x2="21" y2="12" />
+                <line x1="8" y1="18" x2="21" y2="18" />
+                <line x1="3" y1="6" x2="3.01" y2="6" />
+                <line x1="3" y1="12" x2="3.01" y2="12" />
+                <line x1="3" y1="18" x2="3.01" y2="18" />
+              </svg>
+            </div>
+          </div>
+          <div className="transactions-kpi-amount">{scopedTransactions.length} Records</div>
+          <div className="transactions-kpi-sub">
+            <span className={`transactions-kpi-pill ${summaryNet >= 0 ? 'income' : 'expense'}`}>
+              Net: {summaryNet >= 0 ? '+' : '-'}{money(Math.abs(summaryNet), currency)}
+            </span>
+            <span>{hasCustomDateRange ? 'Filtered Range' : 'This Month'}</span>
+          </div>
+        </div>
+      </div>
+
       <div className="card">
         {/* Custom Date Range Active Indicator */}
         {hasCustomDateRange && (
