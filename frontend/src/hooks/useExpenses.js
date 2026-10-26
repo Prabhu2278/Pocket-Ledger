@@ -26,7 +26,7 @@ export function useExpenses() {
       if (hash.includes('dashboard')) return 'dashboard'
       if (hash.includes('insights')) return 'insights'
       if (hash.includes('wallets')) return 'wallets'
-      if (hash.includes('settings')) return 'settings'
+      if (hash.includes('settings') || hash.includes('profile')) return 'settings'
       if (hash.includes('register')) return 'register'
       if (hash.includes('login')) return 'login'
       return 'dashboard'
@@ -253,7 +253,7 @@ export function useExpenses() {
         setPage('insights')
       } else if (hash.includes('wallets')) {
         setPage('wallets')
-      } else if (hash.includes('settings')) {
+      } else if (hash.includes('settings') || hash.includes('profile')) {
         setPage('settings')
       } else if (hash.includes('register')) {
         setPage('register')
@@ -513,9 +513,15 @@ export function useExpenses() {
   }, [insightsSummary, transactions])
 
   // Navigation
-  const changeMonth = useCallback((delta) => {
+  const changeMonth = useCallback((deltaOrObj) => {
     setMonth((curr) => {
-      const nextDate = new Date(curr.year, curr.month + delta, 1)
+      if (typeof deltaOrObj === 'object' && deltaOrObj !== null) {
+        return {
+          year: Number(deltaOrObj.year),
+          month: Number(deltaOrObj.month),
+        }
+      }
+      const nextDate = new Date(curr.year, curr.month + deltaOrObj, 1)
       return {
         year: nextDate.getFullYear(),
         month: nextDate.getMonth(),

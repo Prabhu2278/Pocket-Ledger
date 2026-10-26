@@ -130,7 +130,35 @@ export function Settings({
   categories = [],
   onCategoriesChange,
 }) {
-  const [activeTab, setActiveTab] = useState('profile')
+  const getTabFromLocation = () => {
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash.toLowerCase()
+      if (hash.includes('tab=appearance') || hash.includes('tab=theme') || hash.includes('/appearance') || hash.includes('/theme')) return 'appearance'
+      if (hash.includes('tab=currency') || hash.includes('/currency')) return 'currency'
+      if (hash.includes('tab=categories') || hash.includes('/categories')) return 'categories'
+      if (hash.includes('tab=security') || hash.includes('/security')) return 'security'
+      if (hash.includes('profile')) return 'profile'
+    }
+    return 'profile'
+  }
+
+  const [activeTab, setActiveTab] = useState(() => getTabFromLocation())
+
+  useEffect(() => {
+    const handleSyncTab = () => {
+      const tab = getTabFromLocation()
+      if (tab) setActiveTab(tab)
+    }
+    const handleCustomTab = (e) => {
+      if (e?.detail) setActiveTab(e.detail)
+    }
+    window.addEventListener('hashchange', handleSyncTab)
+    window.addEventListener('settings-tab-change', handleCustomTab)
+    return () => {
+      window.removeEventListener('hashchange', handleSyncTab)
+      window.removeEventListener('settings-tab-change', handleCustomTab)
+    }
+  }, [])
 
   // Profile state
   const [fullName, setFullName] = useState(user?.full_name || '')
@@ -416,7 +444,12 @@ export function Settings({
                 aria-selected={isActive}
                 aria-controls={`panel-${tab.id}`}
                 className={`settings-tab-btn ${isActive ? 'active' : ''}`}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => {
+                  setActiveTab(tab.id)
+                  if (typeof window !== 'undefined') {
+                    window.location.hash = `#/settings?tab=${tab.id}`
+                  }
+                }}
               >
                 <span className="settings-tab-icon">{tab.icon}</span>
                 <span>{tab.label}</span>

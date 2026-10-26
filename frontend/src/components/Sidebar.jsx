@@ -126,14 +126,26 @@ export function Sidebar({
 
       {user ? (
         <div className="side-user">
-          <div className="side-user-profile">
+          <a
+            href="#/settings?tab=profile"
+            className="side-user-profile"
+            id="side-profile-btn"
+            title="Profile settings"
+            aria-label={`Profile settings for ${displayName}`}
+            onClick={() => {
+              window.dispatchEvent(new CustomEvent('settings-tab-change', { detail: 'profile' }))
+              if (window.location.hash !== '#/settings?tab=profile') {
+                window.location.hash = '#/settings?tab=profile'
+              }
+            }}
+          >
             <div className="side-user-avatar" aria-label={`Profile: ${displayName}`}>
               {userInitial}
             </div>
             <div className="side-user-info">
               <div className="side-user-name" title={displayName}>{displayName}</div>
             </div>
-          </div>
+          </a>
           <button
             type="button"
             className="side-logout-btn"
@@ -145,14 +157,20 @@ export function Sidebar({
         </div>
       ) : (
         <div className="side-user">
-          <div className="side-user-profile">
+          <a
+            href="#/login"
+            className="side-user-profile"
+            id="side-profile-btn"
+            title="Sign in"
+            aria-label="Sign in"
+          >
             <div className="side-user-avatar side-user-avatar-guest" aria-label="Guest session">
               G
             </div>
             <div className="side-user-info">
               <div className="side-user-name">Guest session</div>
             </div>
-          </div>
+          </a>
           <a
             href="#/login"
             className="side-logout-btn"

@@ -1179,6 +1179,7 @@ textarea {
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
 }
 
+a.side-user-profile,
 .side-user-profile {
   display: flex;
   align-items: center;
@@ -1186,6 +1187,44 @@ textarea {
   min-width: 0;
   overflow: hidden;
   flex: 1;
+  text-decoration: none;
+  color: inherit;
+  min-height: unset;
+  padding: 4px 6px;
+  margin: -4px -4px;
+  border-radius: var(--pl-radius-sm);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+a.side-user-profile:hover,
+.side-user-profile:hover {
+  background: rgba(99, 102, 241, 0.08);
+  border-color: rgba(99, 102, 241, 0.18);
+  transform: translateY(-1px);
+}
+
+:root[data-theme="dark"] a.side-user-profile:hover,
+[data-theme="dark"] a.side-user-profile:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+a.side-user-profile:hover .side-user-avatar,
+.side-user-profile:hover .side-user-avatar {
+  transform: scale(1.06);
+  box-shadow: 0 0 12px rgba(99, 102, 241, 0.55);
+}
+
+a.side-user-profile:hover .side-user-name,
+.side-user-profile:hover .side-user-name {
+  color: var(--pl-color-primary, #6366f1);
+}
+
+a.side-user-profile:active,
+.side-user-profile:active {
+  transform: scale(0.98);
 }
 
 .side-user-avatar {

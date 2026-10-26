@@ -21,7 +21,7 @@ export function AppProvider({ children }) {
       if (hash.includes('expenses')) return 'expenses'
       if (hash.includes('insights')) return 'insights'
       if (hash.includes('wallets')) return 'wallets'
-      if (hash.includes('settings')) return 'settings'
+      if (hash.includes('settings') || hash.includes('profile')) return 'settings'
       if (hash.includes('dashboard')) return 'dashboard'
     }
     return 'dashboard'
@@ -33,7 +33,7 @@ export function AppProvider({ children }) {
       if (hash.includes('expenses')) setPage('expenses')
       else if (hash.includes('insights')) setPage('insights')
       else if (hash.includes('wallets')) setPage('wallets')
-      else if (hash.includes('settings')) setPage('settings')
+      else if (hash.includes('settings') || hash.includes('profile')) setPage('settings')
       else setPage('dashboard')
     }
     window.addEventListener('hashchange', handleRoute)
