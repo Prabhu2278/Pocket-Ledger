@@ -687,11 +687,19 @@
   cursor: pointer;
   padding: 0 4px;
   border-radius: 8px;
-  transition: background 0.15s ease;
+  transition: background 0.18s ease;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
+.dashboard-bar-group.active,
 .dashboard-bar-group:hover {
-  background: rgba(99, 102, 241, 0.05);
+  background: rgba(99, 102, 241, 0.09) !important;
+}
+
+:root[data-theme="dark"] .dashboard-bar-group.active,
+:root[data-theme="dark"] .dashboard-bar-group:hover {
+  background: rgba(99, 102, 241, 0.18) !important;
 }
 
 .dashboard-bar {
@@ -732,29 +740,47 @@
   padding: 0 6px;
 }
 
-/* Frosted Glass Tooltip */
+/* Modern Fintech Dark Tooltip matching design spec */
 .dashboard-chart-tooltip {
   position: absolute;
-  bottom: 108%;
+  bottom: calc(100% + 8px);
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(15, 23, 42, 0.94);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: #111827;
+  border: 1px solid #1f293d;
   color: #ffffff;
   padding: 10px 14px;
   border-radius: 12px;
-  font-size: 11.5px;
+  font-size: 12px;
   pointer-events: none;
   white-space: nowrap;
-  box-shadow: 0 16px 32px -4px rgba(0, 0, 0, 0.45);
-  z-index: 20;
+  box-shadow: 0 16px 32px -4px rgba(0, 0, 0, 0.5), 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 30;
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  min-width: 150px;
-  animation: cfTooltipPop 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  gap: 6px;
+  min-width: 164px;
+  animation: cfTooltipPop 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dashboard-chart-tooltip.align-left {
+  left: 0;
+  transform: none;
+}
+.dashboard-chart-tooltip.align-left::after {
+  left: 20px;
+  transform: none;
+}
+
+.dashboard-chart-tooltip.align-right {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+.dashboard-chart-tooltip.align-right::after {
+  left: auto;
+  right: 20px;
+  transform: none;
 }
 
 .dashboard-chart-tooltip::after {
@@ -763,9 +789,9 @@
   top: 100%;
   left: 50%;
   transform: translateX(-50%);
-  border-width: 5px;
+  border-width: 6px;
   border-style: solid;
-  border-color: rgba(15, 23, 42, 0.94) transparent transparent transparent;
+  border-color: #111827 transparent transparent transparent;
 }
 
 .dashboard-chart-tooltip-header {
@@ -856,12 +882,13 @@
 
 .dashboard-donut-segment {
   cursor: pointer;
-  transition: opacity 0.2s ease, stroke-width 0.2s ease;
+  transition: stroke-width 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease, filter 0.2s ease;
 }
 
-.dashboard-donut-segment:hover {
-  opacity: 0.85;
-  stroke-width: 19;
+.dashboard-donut-segment:hover,
+.dashboard-donut-segment.hovered {
+  opacity: 1 !important;
+  stroke-width: 21 !important;
 }
 
 .dashboard-donut-center {
@@ -873,6 +900,7 @@
   text-align: center;
   pointer-events: none;
   max-width: 90px;
+  transition: transform 0.2s ease;
 }
 
 .dashboard-donut-center-amount {
@@ -885,6 +913,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 100%;
+  transition: color 0.2s ease;
 }
 
 .dashboard-donut-center-label {
@@ -894,6 +923,96 @@
   margin-top: 3px;
   text-transform: uppercase;
   letter-spacing: 0.03em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+/* Donut Interactive Hover Tooltip */
+.dashboard-donut-tooltip {
+  position: absolute;
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 11.5px;
+  pointer-events: none;
+  white-space: nowrap;
+  box-shadow: 0 14px 28px -4px rgba(0, 0, 0, 0.5);
+  z-index: 35;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 125px;
+  animation: cfTooltipPop 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: left 0.08s ease-out, top 0.08s ease-out;
+}
+
+.dashboard-donut-tooltip.placed-above::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 5px;
+  border-style: solid;
+  border-color: rgba(15, 23, 42, 0.95) transparent transparent transparent;
+}
+
+.dashboard-donut-tooltip.placed-below::after {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 5px;
+  border-style: solid;
+  border-color: transparent transparent rgba(15, 23, 42, 0.95) transparent;
+}
+
+.dashboard-donut-tooltip-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+}
+
+.dashboard-donut-tooltip-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 6px currentColor;
+}
+
+.dashboard-donut-tooltip-title {
+  font-weight: 700;
+  color: #f8fafc;
+  max-width: 90px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-donut-tooltip-pct {
+  font-size: 11px;
+  font-weight: 700;
+  color: #94a3b8;
+  margin-left: auto;
+}
+
+.dashboard-donut-tooltip-amount {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: #ffffff;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.015em;
+  text-align: right;
+  margin-top: 1px;
 }
 
 .dashboard-donut-legend {

@@ -75,6 +75,42 @@ export function Dashboard({
 }) {
   const [period, setPeriod] = useState('7D')
   const [hoveredBarIndex, setHoveredBarIndex] = useState(null)
+  const [hoveredExpenseSlice, setHoveredExpenseSlice] = useState(null)
+  const [expenseTooltipPos, setExpenseTooltipPos] = useState(null)
+  const [hoveredIncomeSlice, setHoveredIncomeSlice] = useState(null)
+  const [incomeTooltipPos, setIncomeTooltipPos] = useState(null)
+
+  const handleSliceHover = (item, e, setSlice, setPos) => {
+    setSlice(item)
+    if (e && e.currentTarget) {
+      const wrapper = e.currentTarget.closest('.dashboard-donut-graphic-wrapper')
+      if (wrapper) {
+        const rect = wrapper.getBoundingClientRect()
+        setPos({
+          x: Math.round(e.clientX - rect.left),
+          y: Math.round(e.clientY - rect.top),
+        })
+      }
+    }
+  }
+
+  const handleSliceMove = (item, e, setPos) => {
+    if (e && e.currentTarget) {
+      const wrapper = e.currentTarget.closest('.dashboard-donut-graphic-wrapper')
+      if (wrapper) {
+        const rect = wrapper.getBoundingClientRect()
+        setPos({
+          x: Math.round(e.clientX - rect.left),
+          y: Math.round(e.clientY - rect.top),
+        })
+      }
+    }
+  }
+
+  const handleSliceLeave = (setSlice, setPos) => {
+    setSlice(null)
+    setPos(null)
+  }
 
   // 1. Total Balance across all wallets
   const totalBalance = useMemo(() => {
@@ -246,7 +282,7 @@ export function Dashboard({
   }, [monthTransactions, transactions])
 
   // Helper to render SVG Donut Rings
-  const renderDonutCircles = (items, total) => {
+  const renderDonutCircles = (items, total, hoveredSlice, onHover, onMove, onLeave, prefix = '') => {
     const r = 52
     const circumference = 2 * Math.PI * r
     let accumulatedPct = 0
@@ -274,32 +310,46 @@ export function Dashboard({
         fill="none"
         stroke="var(--pl-border-subtle)"
         strokeWidth="16"
-        opacity="0.5"
+        opacity="0.35"
       />
     )
 
     const slices = items.map((item, idx) => {
       const pct = (item.amount / total) * 100
-      const strokeLength = Math.max((pct / 100) * circumference - 2, 0.5)
+      const gap = items.length > 1 ? 2.5 : 0
+      const strokeLength = Math.max((pct / 100) * circumference - gap, 3)
       const strokeDasharray = `${strokeLength} ${circumference}`
       const strokeDashoffset = -((accumulatedPct / 100) * circumference)
       accumulatedPct += pct
 
+      const isHovered = hoveredSlice && hoveredSlice.name === item.name
+      const isDimmed = hoveredSlice && hoveredSlice.name !== item.name
+
       return (
         <circle
-          key={idx}
-          className="dashboard-donut-segment"
+          key={item.name || idx}
+          className={`dashboard-donut-segment ${isHovered ? 'hovered' : ''}`}
           cx="70"
           cy="70"
           r={r}
           fill="none"
           stroke={item.color}
-          strokeWidth="16"
+          strokeWidth={isHovered ? 21 : 16}
           strokeDasharray={strokeDasharray}
           strokeDashoffset={strokeDashoffset}
-          strokeLinecap="round"
-          style={{ transition: 'stroke-dasharray 0.4s cubic-bezier(0.16, 1, 0.3, 1), stroke-dashoffset 0.4s cubic-bezier(0.16, 1, 0.3, 1)' }}
-        />
+          strokeLinecap={items.length === 1 ? 'round' : 'butt'}
+          onMouseEnter={(e) => onHover && onHover(item, e)}
+          onMouseMove={(e) => onMove && onMove(item, e)}
+          onMouseLeave={() => onLeave && onLeave()}
+          style={{
+            cursor: 'pointer',
+            opacity: isDimmed ? 0.35 : 1,
+            filter: isHovered ? `drop-shadow(0 0 6px ${item.color}99)` : 'none',
+            transition: 'stroke-width 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease, filter 0.2s ease',
+          }}
+        >
+          <title>{`${item.name}: ${prefix}${money(item.amount, currency)} (${item.percentage}%)`}</title>
+        </circle>
       )
     })
 
@@ -550,18 +600,29 @@ export function Dashboard({
                 <div className="dashboard-grid-line"></div>
               </div>
 
-              <div className="dashboard-bars-wrapper">
+              <div className="dashboard-bars-wrapper" onClick={(e) => { if (e.target === e.currentTarget) setHoveredBarIndex(null) }}>
                 {chartData.map((d, idx) => {
                   const incHeight = Math.max((d.income / maxChartVal) * 140, 3)
                   const expHeight = Math.max((d.expense / maxChartVal) * 140, 3)
                   const isHovered = hoveredBarIndex === idx
+                  const alignClass = idx === 0 ? 'align-left' : idx === chartData.length - 1 ? 'align-right' : ''
 
                   return (
                     <div
                       key={idx}
-                      className="dashboard-bar-group"
+                      className={`dashboard-bar-group ${isHovered ? 'active' : ''}`}
                       onMouseEnter={() => setHoveredBarIndex(idx)}
                       onMouseLeave={() => setHoveredBarIndex(null)}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setHoveredBarIndex((prev) => (prev === idx ? null : idx))
+                      }}
+                      onTouchStart={(e) => {
+                        e.stopPropagation()
+                        setHoveredBarIndex((prev) => (prev === idx ? null : idx))
+                      }}
+                      role="button"
+                      tabIndex={0}
                       title={`${d.displayDate || d.label}: +${money(d.income, currency)} / -${money(d.expense, currency)}`}
                     >
                       {/* Income Bar */}
@@ -575,22 +636,26 @@ export function Dashboard({
                         style={{ height: `${expHeight}px` }}
                       ></div>
 
-                      {/* Tooltip on Hover */}
+                      {/* Tooltip on Touch / Hover */}
                       {isHovered && (
-                        <div className="dashboard-chart-tooltip">
+                        <div className={`dashboard-chart-tooltip ${alignClass}`}>
                           <div className="dashboard-chart-tooltip-header">
                             <span>{d.displayDate || d.label}</span>
                           </div>
                           <div className="dashboard-chart-tooltip-row">
-                            <span className="dashboard-tooltip-dot income" />
-                            <span>Income</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <span className="dashboard-tooltip-dot income" />
+                              <span>Income</span>
+                            </div>
                             <span className="dashboard-chart-tooltip-val income">
                               +{money(d.income, currency)}
                             </span>
                           </div>
                           <div className="dashboard-chart-tooltip-row">
-                            <span className="dashboard-tooltip-dot expense" />
-                            <span>Expenses</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <span className="dashboard-tooltip-dot expense" />
+                              <span>Expenses</span>
+                            </div>
                             <span className="dashboard-chart-tooltip-val expense">
                               -{money(d.expense, currency)}
                             </span>
@@ -636,39 +701,108 @@ export function Dashboard({
           <div className="dashboard-donut-content">
             <div className="dashboard-donut-graphic-wrapper">
               <svg className="dashboard-donut-svg" viewBox="0 0 140 140">
-                {renderDonutCircles(expenseBreakdown, totalSpent)}
+                {renderDonutCircles(
+                  expenseBreakdown,
+                  totalSpent,
+                  hoveredExpenseSlice,
+                  (item, e) => handleSliceHover(item, e, setHoveredExpenseSlice, setExpenseTooltipPos),
+                  (item, e) => handleSliceMove(item, e, setExpenseTooltipPos),
+                  () => handleSliceLeave(setHoveredExpenseSlice, setExpenseTooltipPos),
+                  '-'
+                )}
               </svg>
 
               <div className="dashboard-donut-center">
-                <span className="dashboard-donut-center-amount" title={money(totalSpent, currency)}>
-                  {money(totalSpent, currency)}
+                <span
+                  className="dashboard-donut-center-amount"
+                  style={{
+                    color: hoveredExpenseSlice ? hoveredExpenseSlice.color : 'var(--pl-text-primary)',
+                    transition: 'color 0.2s ease',
+                  }}
+                  title={money(hoveredExpenseSlice ? hoveredExpenseSlice.amount : totalSpent, currency)}
+                >
+                  {money(hoveredExpenseSlice ? hoveredExpenseSlice.amount : totalSpent, currency)}
                 </span>
-                <span className="dashboard-donut-center-label">Total Expenses</span>
+                <span className="dashboard-donut-center-label">
+                  {hoveredExpenseSlice
+                    ? `${hoveredExpenseSlice.name} (${hoveredExpenseSlice.percentage}%)`
+                    : 'Total Expenses'}
+                </span>
               </div>
+
+              {/* Floating Tooltip */}
+              {hoveredExpenseSlice && (
+                <div
+                  className={`dashboard-donut-tooltip ${expenseTooltipPos && expenseTooltipPos.y <= 55 ? 'placed-below' : 'placed-above'}`}
+                  role="tooltip"
+                  style={
+                    expenseTooltipPos
+                      ? {
+                          left: `${expenseTooltipPos.x}px`,
+                          top: `${expenseTooltipPos.y <= 55 ? expenseTooltipPos.y + 18 : expenseTooltipPos.y - 12}px`,
+                          transform: expenseTooltipPos.y <= 55 ? 'translate(-50%, 0)' : 'translate(-50%, -100%)',
+                        }
+                      : {
+                          left: '50%',
+                          bottom: 'calc(100% + 10px)',
+                          transform: 'translateX(-50%)',
+                        }
+                  }
+                >
+                  <div className="dashboard-donut-tooltip-header">
+                    <span
+                      className="dashboard-donut-tooltip-dot"
+                      style={{ backgroundColor: hoveredExpenseSlice.color }}
+                    />
+                    <span className="dashboard-donut-tooltip-title">{hoveredExpenseSlice.name}</span>
+                    <span className="dashboard-donut-tooltip-pct">{hoveredExpenseSlice.percentage}%</span>
+                  </div>
+                  <div className="dashboard-donut-tooltip-amount">
+                    -{money(hoveredExpenseSlice.amount, currency)}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Legend */}
             <div className="dashboard-donut-legend">
               {expenseBreakdown.length > 0 ? (
-                expenseBreakdown.map((item, idx) => (
-                  <div key={idx} className="dashboard-donut-legend-item">
-                    <div className="dashboard-donut-legend-left">
-                      <span
-                        className="dashboard-donut-legend-dot"
-                        style={{ backgroundColor: item.color }}
-                      ></span>
-                      <span className="dashboard-donut-legend-name" title={item.name}>
-                        {item.name}
-                      </span>
+                expenseBreakdown.map((item, idx) => {
+                  const isHovered = hoveredExpenseSlice && hoveredExpenseSlice.name === item.name
+                  const isDimmed = hoveredExpenseSlice && hoveredExpenseSlice.name !== item.name
+                  return (
+                    <div
+                      key={idx}
+                      className={`dashboard-donut-legend-item ${isHovered ? 'is-hovered' : ''}`}
+                      onMouseEnter={() => setHoveredExpenseSlice(item)}
+                      onMouseLeave={() => {
+                        setHoveredExpenseSlice(null)
+                        setExpenseTooltipPos(null)
+                      }}
+                      style={{
+                        opacity: isDimmed ? 0.35 : 1,
+                        cursor: 'pointer',
+                        transition: 'opacity 0.2s ease, background 0.15s ease, transform 0.15s ease',
+                      }}
+                    >
+                      <div className="dashboard-donut-legend-left">
+                        <span
+                          className="dashboard-donut-legend-dot"
+                          style={{ backgroundColor: item.color }}
+                        ></span>
+                        <span className="dashboard-donut-legend-name" title={item.name}>
+                          {item.name}
+                        </span>
+                      </div>
+                      <div className="dashboard-donut-legend-right">
+                        <span className="dashboard-donut-legend-pct">{item.percentage}%</span>
+                        <span className="dashboard-donut-legend-amt">
+                          {money(item.amount, currency)}
+                        </span>
+                      </div>
                     </div>
-                    <div className="dashboard-donut-legend-right">
-                      <span className="dashboard-donut-legend-pct">{item.percentage}%</span>
-                      <span className="dashboard-donut-legend-amt">
-                        {money(item.amount, currency)}
-                      </span>
-                    </div>
-                  </div>
-                ))
+                  )
+                })
               ) : (
                 <div className="dashboard-empty-sub" style={{ textAlign: 'center', padding: '10px 0' }}>
                   No expenses recorded this month
@@ -688,39 +822,108 @@ export function Dashboard({
           <div className="dashboard-donut-content">
             <div className="dashboard-donut-graphic-wrapper">
               <svg className="dashboard-donut-svg" viewBox="0 0 140 140">
-                {renderDonutCircles(incomeBreakdown, totalIncome)}
+                {renderDonutCircles(
+                  incomeBreakdown,
+                  totalIncome,
+                  hoveredIncomeSlice,
+                  (item, e) => handleSliceHover(item, e, setHoveredIncomeSlice, setIncomeTooltipPos),
+                  (item, e) => handleSliceMove(item, e, setIncomeTooltipPos),
+                  () => handleSliceLeave(setHoveredIncomeSlice, setIncomeTooltipPos),
+                  '+'
+                )}
               </svg>
 
               <div className="dashboard-donut-center">
-                <span className="dashboard-donut-center-amount" title={money(totalIncome, currency)}>
-                  {money(totalIncome, currency)}
+                <span
+                  className="dashboard-donut-center-amount"
+                  style={{
+                    color: hoveredIncomeSlice ? hoveredIncomeSlice.color : 'var(--pl-text-primary)',
+                    transition: 'color 0.2s ease',
+                  }}
+                  title={money(hoveredIncomeSlice ? hoveredIncomeSlice.amount : totalIncome, currency)}
+                >
+                  {money(hoveredIncomeSlice ? hoveredIncomeSlice.amount : totalIncome, currency)}
                 </span>
-                <span className="dashboard-donut-center-label">Total Income</span>
+                <span className="dashboard-donut-center-label">
+                  {hoveredIncomeSlice
+                    ? `${hoveredIncomeSlice.name} (${hoveredIncomeSlice.percentage}%)`
+                    : 'Total Income'}
+                </span>
               </div>
+
+              {/* Floating Tooltip */}
+              {hoveredIncomeSlice && (
+                <div
+                  className={`dashboard-donut-tooltip ${incomeTooltipPos && incomeTooltipPos.y <= 55 ? 'placed-below' : 'placed-above'}`}
+                  role="tooltip"
+                  style={
+                    incomeTooltipPos
+                      ? {
+                          left: `${incomeTooltipPos.x}px`,
+                          top: `${incomeTooltipPos.y <= 55 ? incomeTooltipPos.y + 18 : incomeTooltipPos.y - 12}px`,
+                          transform: incomeTooltipPos.y <= 55 ? 'translate(-50%, 0)' : 'translate(-50%, -100%)',
+                        }
+                      : {
+                          left: '50%',
+                          bottom: 'calc(100% + 10px)',
+                          transform: 'translateX(-50%)',
+                        }
+                  }
+                >
+                  <div className="dashboard-donut-tooltip-header">
+                    <span
+                      className="dashboard-donut-tooltip-dot"
+                      style={{ backgroundColor: hoveredIncomeSlice.color }}
+                    />
+                    <span className="dashboard-donut-tooltip-title">{hoveredIncomeSlice.name}</span>
+                    <span className="dashboard-donut-tooltip-pct">{hoveredIncomeSlice.percentage}%</span>
+                  </div>
+                  <div className="dashboard-donut-tooltip-amount">
+                    +{money(hoveredIncomeSlice.amount, currency)}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Legend */}
             <div className="dashboard-donut-legend">
               {incomeBreakdown.length > 0 ? (
-                incomeBreakdown.map((item, idx) => (
-                  <div key={idx} className="dashboard-donut-legend-item">
-                    <div className="dashboard-donut-legend-left">
-                      <span
-                        className="dashboard-donut-legend-dot"
-                        style={{ backgroundColor: item.color }}
-                      ></span>
-                      <span className="dashboard-donut-legend-name" title={item.name}>
-                        {item.name}
-                      </span>
+                incomeBreakdown.map((item, idx) => {
+                  const isHovered = hoveredIncomeSlice && hoveredIncomeSlice.name === item.name
+                  const isDimmed = hoveredIncomeSlice && hoveredIncomeSlice.name !== item.name
+                  return (
+                    <div
+                      key={idx}
+                      className={`dashboard-donut-legend-item ${isHovered ? 'is-hovered' : ''}`}
+                      onMouseEnter={() => setHoveredIncomeSlice(item)}
+                      onMouseLeave={() => {
+                        setHoveredIncomeSlice(null)
+                        setIncomeTooltipPos(null)
+                      }}
+                      style={{
+                        opacity: isDimmed ? 0.35 : 1,
+                        cursor: 'pointer',
+                        transition: 'opacity 0.2s ease, background 0.15s ease, transform 0.15s ease',
+                      }}
+                    >
+                      <div className="dashboard-donut-legend-left">
+                        <span
+                          className="dashboard-donut-legend-dot"
+                          style={{ backgroundColor: item.color }}
+                        ></span>
+                        <span className="dashboard-donut-legend-name" title={item.name}>
+                          {item.name}
+                        </span>
+                      </div>
+                      <div className="dashboard-donut-legend-right">
+                        <span className="dashboard-donut-legend-pct">{item.percentage}%</span>
+                        <span className="dashboard-donut-legend-amt">
+                          {money(item.amount, currency)}
+                        </span>
+                      </div>
                     </div>
-                    <div className="dashboard-donut-legend-right">
-                      <span className="dashboard-donut-legend-pct">{item.percentage}%</span>
-                      <span className="dashboard-donut-legend-amt">
-                        {money(item.amount, currency)}
-                      </span>
-                    </div>
-                  </div>
-                ))
+                  )
+                })
               ) : (
                 <div className="dashboard-empty-sub" style={{ textAlign: 'center', padding: '10px 0' }}>
                   No income recorded this month
