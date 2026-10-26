@@ -2,6 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react'
 import { parseCsvText, recalculateRowsWithRunningBalance } from '../utils/csvParser'
 import { money } from '../utils/formatCurrency'
 import { getUniqueCategoryColor } from '../constants/categories'
+import { getUniqueWalletColor } from '../pages/Wallets'
+import '../styles/pages/Wallets.css'
 import { categoryApi } from '../api/categoryApi'
 import { walletApi } from '../api/walletApi'
 import { transactionApi } from '../api/transactionApi'
@@ -206,17 +208,20 @@ export function CsvImportModal({
   const missingWalletRows = parsedRows.filter((r) => r.isWalletMissing)
   const insufficientFundsRows = parsedRows.filter((r) => r.isInsufficientBalance)
 
-  // Wallet creation trigger: creates with 0 initial balance for both income & expense
+  // Wallet creation trigger: opens full Add Wallet Form with prefilled name
   const handleOpenCreateWalletModal = (row) => {
     setWalletPrompt({
       row,
-      walletName: row.wallet_name || row.rawWallet || 'New Wallet',
+      walletName: row?.wallet_name || row?.rawWallet || '',
+      walletType: 'BANK',
+      initialBalance: '0.00',
       error: '',
     })
   }
 
-  // Confirm creation of wallet with 0 initial amount
-  const handleConfirmCreateWallet = async () => {
+  // Confirm creation of wallet via Add Wallet form
+  const handleConfirmCreateWallet = async (e) => {
+    if (e && e.preventDefault) e.preventDefault()
     if (!walletPrompt) return
 
     const cleanName = (walletPrompt.walletName || '').trim()
@@ -229,11 +234,13 @@ export function CsvImportModal({
     setWalletCreating(true)
     try {
       let created = null
+      const initBal = parseFloat(walletPrompt.initialBalance) || 0
+      const assignedColor = getUniqueWalletColor(localWallets)
       const walletPayload = {
         name: cleanName,
-        wallet_type: 'BANK',
-        initial_balance: 0,
-        color: '#6366f1',
+        wallet_type: walletPrompt.walletType || 'BANK',
+        initial_balance: initBal,
+        color: assignedColor,
       }
 
       if (addWallet) {
@@ -271,7 +278,7 @@ export function CsvImportModal({
       })
 
       if (showToast) {
-        showToast(`Wallet "${cleanName}" created with 0 initial amount.`)
+        showToast(`Wallet "${cleanName}" created successfully!`)
       }
 
       setWalletPrompt(null)
@@ -660,30 +667,60 @@ export function CsvImportModal({
             {missingWalletRows.length > 0 && (
               <div
                 style={{
-                  padding: '8px 12px',
-                  borderRadius: '7px',
+                  padding: '9px 14px',
+                  borderRadius: '8px',
                   background: 'rgba(239, 68, 68, 0.1)',
                   border: '1.5px solid rgba(239, 68, 68, 0.35)',
-                  marginBottom: '6px',
+                  marginBottom: '8px',
                   display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: '8px',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '12px',
                   flexShrink: 0,
+                  flexWrap: 'wrap',
                 }}
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--pl-color-danger, #ef4444)', marginTop: '2px', flexShrink: 0 }}>
-                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                  <line x1="12" y1="9" x2="12" y2="13" />
-                  <line x1="12" y1="17" x2="12.01" y2="17" />
-                </svg>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--pl-color-danger, #ef4444)' }}>
-                    Alert: {missingWalletRows.length} transaction(s) reference a wallet that does not exist in the app.
-                  </div>
-                  <div style={{ fontSize: '11px', color: 'var(--pl-text-secondary, #94a3b8)', marginTop: '2px', lineHeight: 1.4 }}>
-                    These rows will not be imported until the wallet is created. You can click <b>Create Wallet</b> on the row to create the wallet with 0 initial amount.
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', flex: 1, minWidth: '220px' }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--pl-color-danger, #ef4444)', marginTop: '2px', flexShrink: 0 }}>
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                    <line x1="12" y1="9" x2="12" y2="13" />
+                    <line x1="12" y1="17" x2="12.01" y2="17" />
+                  </svg>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--pl-color-danger, #ef4444)' }}>
+                      Requirement: {missingWalletRows.length} transaction(s) reference a new wallet not yet created in the app.
+                    </div>
+                    <div style={{ fontSize: '11px', color: 'var(--pl-text-secondary, #94a3b8)', marginTop: '2px', lineHeight: 1.4 }}>
+                      Create this wallet to fulfill the requirement and import your transactions.
+                    </div>
                   </div>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={() => handleOpenCreateWalletModal(missingWalletRows[0])}
+                  style={{
+                    padding: '6px 14px',
+                    fontSize: '11.5px',
+                    fontWeight: 700,
+                    borderRadius: '6px',
+                    background: 'var(--pl-color-danger, #ef4444)',
+                    color: '#ffffff',
+                    border: 'none',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
+                  Add Wallet
+                </button>
               </div>
             )}
 
@@ -1033,7 +1070,7 @@ export function CsvImportModal({
                                 <button
                                   type="button"
                                   onClick={() => handleOpenCreateWalletModal(row)}
-                                  title="Wallet does not exist. Click to create this wallet with 0 initial amount."
+                                  title="Wallet does not exist. Click to open Add Wallet form."
                                   style={{
                                     fontSize: '10.5px',
                                     fontWeight: 700,
@@ -1049,11 +1086,11 @@ export function CsvImportModal({
                                     whiteSpace: 'nowrap',
                                   }}
                                 >
-                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6">
+                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8">
                                     <line x1="12" y1="5" x2="12" y2="19" />
                                     <line x1="5" y1="12" x2="19" y2="12" />
                                   </svg>
-                                  Create Wallet
+                                  Add Wallet
                                 </button>
                               ) : row.isInsufficientBalance ? (
                                 /* After wallet created with 0 or low balance: shows Low Funds & "Did you forget to add an income?" */
@@ -1197,69 +1234,175 @@ export function CsvImportModal({
         </div>
       </div>
 
-      {/* Interactive Sub-Modal: Create Wallet with 0 initial amount */}
+      {/* Interactive Sub-Modal: Add Wallet Form for Missing CSV Wallet */}
       {walletPrompt && (
         <div
           className="modal-overlay"
-          style={{ zIndex: 1100 }}
+          style={{ zIndex: 1200 }}
           role="dialog"
           aria-modal="true"
           aria-labelledby="create-wallet-prompt-title"
+          onClick={() => !walletCreating && setWalletPrompt(null)}
         >
           <div
-            className="dialog-content"
-            style={{
-              maxWidth: '460px',
-              width: '90%',
-              padding: '20px 24px',
-            }}
+            className="dialog-content wallet-dialog-content"
+            style={{ maxWidth: '480px', width: '92%' }}
+            onClick={(e) => e.stopPropagation()}
           >
-            <h3 id="create-wallet-prompt-title" style={{ margin: '0 0 10px', fontSize: '16px', fontWeight: 700 }}>
-              Create Wallet &ldquo;{walletPrompt.walletName}&rdquo;
-            </h3>
-
-            <p style={{ margin: '0 0 12px', fontSize: '13px', color: 'var(--pl-text-secondary)', lineHeight: 1.5 }}>
-              The imported transaction references wallet <strong style={{ color: 'var(--pl-text-primary)' }}>&ldquo;{walletPrompt.walletName}&rdquo;</strong>, which does not exist in your app.
-            </p>
-
-            <p style={{ margin: '0 0 16px', fontSize: '13px', color: 'var(--pl-text-secondary)', lineHeight: 1.5 }}>
-              Can I create wallet <strong style={{ color: 'var(--pl-text-primary)' }}>&ldquo;{walletPrompt.walletName}&rdquo;</strong> with <b>0 initial amount</b>?
-            </p>
-
-            {walletPrompt.error && (
-              <div
-                style={{
-                  padding: '7px 10px',
-                  borderRadius: '6px',
-                  background: 'rgba(239, 68, 68, 0.12)',
-                  border: '1px solid rgba(239, 68, 68, 0.3)',
-                  color: 'var(--pl-color-danger, #ef4444)',
-                  fontSize: '12px',
-                  marginBottom: '12px',
-                }}
-              >
-                {walletPrompt.error}
+            <div className="wallet-modal-header">
+              <div className="wallet-modal-title-wrap">
+                <div className="wallet-modal-icon-badge" aria-hidden="true">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="2" y="5" width="20" height="14" rx="2" />
+                    <line x1="2" y1="10" x2="22" y2="10" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 id="create-wallet-prompt-title" className="wallet-modal-title" style={{ margin: 0, fontSize: '18px', fontWeight: 700 }}>
+                    Add Wallet
+                  </h3>
+                  <p className="wallet-modal-subtitle" style={{ margin: '3px 0 0', fontSize: '12.5px', color: 'var(--pl-text-muted)' }}>
+                    Configure the wallet referenced in your imported CSV data.
+                  </p>
+                </div>
               </div>
-            )}
-
-            <div className="btns" style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '16px' }}>
               <button
                 type="button"
-                className="ghost"
+                className="wallet-modal-close"
                 onClick={() => setWalletPrompt(null)}
                 disabled={walletCreating}
+                aria-label="Close"
               >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="primary"
-                onClick={handleConfirmCreateWallet}
-                disabled={walletCreating}
-              >
-                {walletCreating ? 'Creating Wallet...' : 'Yes, Create Wallet'}
+                ×
               </button>
             </div>
+
+            <form onSubmit={handleConfirmCreateWallet}>
+              {/* Account / Wallet Name */}
+              <div className="wallet-field-group">
+                <label htmlFor="csv-wallet-name-input" className="wallet-field-label">
+                  Wallet Name <span style={{ color: 'var(--pl-color-danger)' }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  id="csv-wallet-name-input"
+                  className="wallet-form-input"
+                  required
+                  placeholder="e.g. HDFC Bank, GPay, Cash in Hand"
+                  value={walletPrompt.walletName || ''}
+                  onChange={(e) => setWalletPrompt((prev) => ({ ...prev, walletName: e.target.value }))}
+                  autoFocus
+                />
+              </div>
+
+              {/* Account Type Selection Grid */}
+              <div className="wallet-field-group">
+                <label className="wallet-field-label">
+                  Wallet Type
+                </label>
+                <div className="wallet-type-grid" role="radiogroup" aria-label="Wallet Type">
+                  {[
+                    { id: 'BANK', label: 'Bank Account' },
+                    { id: 'WALLET', label: 'Digital / UPI' },
+                    { id: 'CASH', label: 'Cash' },
+                    { id: 'CREDIT_CARD', label: 'Credit Card' },
+                  ].map((t) => {
+                    const isSelected = (walletPrompt.walletType || 'BANK') === t.id
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        className={`wallet-type-btn ${isSelected ? 'active' : ''}`}
+                        aria-pressed={isSelected}
+                        onClick={() => setWalletPrompt((prev) => ({ ...prev, walletType: t.id }))}
+                      >
+                        <span className="wallet-type-btn-icon" aria-hidden="true">
+                          {t.id === 'BANK' && (
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v4M12 14v4M16 14v4" />
+                            </svg>
+                          )}
+                          {t.id === 'WALLET' && (
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
+                              <line x1="12" y1="18" x2="12.01" y2="18" />
+                            </svg>
+                          )}
+                          {t.id === 'CASH' && (
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <rect x="2" y="6" width="20" height="12" rx="2" />
+                              <circle cx="12" cy="12" r="2" />
+                              <path d="M6 12h.01M18 12h.01" />
+                            </svg>
+                          )}
+                          {t.id === 'CREDIT_CARD' && (
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
+                              <line x1="1" y1="10" x2="23" y2="10" />
+                            </svg>
+                          )}
+                        </span>
+                        <span className="wallet-type-btn-label">{t.label}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Initial Starting Balance */}
+              <div className="wallet-field-group">
+                <label htmlFor="csv-wallet-balance-input" className="wallet-field-label">
+                  Initial Starting Balance ({currency})
+                </label>
+                <div className="wallet-balance-input-wrap">
+                  <span className="wallet-currency-badge" aria-hidden="true">
+                    {currency === 'INR' ? '₹' : currency}
+                  </span>
+                  <input
+                    type="number"
+                    id="csv-wallet-balance-input"
+                    className="wallet-form-input wallet-balance-input"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={walletPrompt.initialBalance ?? '0.00'}
+                    onChange={(e) => setWalletPrompt((prev) => ({ ...prev, initialBalance: e.target.value }))}
+                  />
+                </div>
+                <span style={{ display: 'block', fontSize: '11px', color: 'var(--pl-text-muted)', marginTop: '4px' }}>
+                  Starting balance will be applied to this wallet before calculating imported transactions.
+                </span>
+              </div>
+
+              {walletPrompt.error && (
+                <div className="wallet-form-error" role="alert">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="12" />
+                    <line x1="12" y1="16" x2="12.01" y2="16" />
+                  </svg>
+                  <span>{walletPrompt.error}</span>
+                </div>
+              )}
+
+              {/* Form Actions */}
+              <div className="wallet-modal-actions">
+                <button
+                  type="button"
+                  className="wallet-btn-cancel"
+                  onClick={() => setWalletPrompt(null)}
+                  disabled={walletCreating}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="wallet-btn-submit"
+                  disabled={walletCreating}
+                >
+                  {walletCreating ? 'Creating Wallet...' : 'Create Wallet'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

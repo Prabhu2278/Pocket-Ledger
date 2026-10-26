@@ -199,7 +199,7 @@ export function Wallets({
       {/* Top Header Bar */}
       <div className="pl-wallets-header">
         <div className="pl-wallets-header-info">
-          <h2 className="pl-wallets-title">Wallets & Accounts</h2>
+          <h2 className="pl-wallets-title">Wallet Overview</h2>
           <p className="pl-wallets-desc">
             Track bank accounts, UPI wallets, and cash. All income and expenses calculate against selected wallets.
           </p>
@@ -211,7 +211,7 @@ export function Wallets({
           onClick={openAddModal}
         >
           <span aria-hidden="true" className="pl-wallets-add-btn-plus">+</span>
-          <span>Add Account</span>
+          <span>Add Wallet</span>
         </button>
       </div>
 
@@ -295,10 +295,10 @@ export function Wallets({
         </div>
       </div>
 
-      {/* Section Header: My Wallets & Accounts */}
+      {/* Section Header: Linked Accounts */}
       <div className="pl-wallets-section-header">
         <div className="pl-wallets-section-title-wrap">
-          <h3 className="pl-wallets-section-title">My Wallets & Accounts</h3>
+          <h3 className="pl-wallets-section-title">Linked Wallets</h3>
           <span className="pl-wallets-section-badge">{wallets.length} active</span>
         </div>
       </div>
@@ -307,7 +307,7 @@ export function Wallets({
       {wallets.length === 0 ? (
         <div className="card empty">
           <b>No wallets found</b>
-          Create your first bank account or wallet using the <b>+ Add Account</b> button above.
+          Create your first bank account or wallet using the <b>+ Add Wallet</b> button above.
         </div>
       ) : (
         <div className="pl-wallets-grid">

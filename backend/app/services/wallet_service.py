@@ -5,6 +5,7 @@ from fastapi import HTTPException
 
 from app.models.wallet import Wallet
 from app.models.expense import Expense
+from app.models.transfer import Transfer
 from app.schemas.wallet import WalletCreate, WalletUpdate, WalletResponse
 
 class WalletService:
@@ -62,21 +63,41 @@ class WalletService:
             incomes_table_q = incomes_table_q.filter(Income.user_id.is_(None))
         incomes_table = incomes_table_q.scalar()
 
-        transfers_in_q = db.query(func.coalesce(func.sum(Expense.amount), 0.0))\
+        # Dedicated transfers table
+        transfers_in_table_q = db.query(func.coalesce(func.sum(Transfer.amount), 0.0))\
+            .filter(Transfer.to_wallet_id == wallet.id)
+        if wallet.user_id is not None:
+            transfers_in_table_q = transfers_in_table_q.filter(Transfer.user_id == wallet.user_id)
+        else:
+            transfers_in_table_q = transfers_in_table_q.filter(Transfer.user_id.is_(None))
+        transfers_in = transfers_in_table_q.scalar()
+
+        # Legacy Expense transfer support
+        leg_transfers_in_q = db.query(func.coalesce(func.sum(Expense.amount), 0.0))\
             .filter(Expense.to_wallet_id == wallet.id, func.upper(Expense.type) == "TRANSFER")
         if wallet.user_id is not None:
-            transfers_in_q = transfers_in_q.filter(Expense.user_id == wallet.user_id)
+            leg_transfers_in_q = leg_transfers_in_q.filter(Expense.user_id == wallet.user_id)
         else:
-            transfers_in_q = transfers_in_q.filter(Expense.user_id.is_(None))
-        transfers_in = transfers_in_q.scalar()
+            leg_transfers_in_q = leg_transfers_in_q.filter(Expense.user_id.is_(None))
+        transfers_in += leg_transfers_in_q.scalar()
 
-        transfers_out_q = db.query(func.coalesce(func.sum(Expense.amount), 0.0))\
+        # Dedicated transfers table out
+        transfers_out_table_q = db.query(func.coalesce(func.sum(Transfer.amount), 0.0))\
+            .filter(Transfer.from_wallet_id == wallet.id)
+        if wallet.user_id is not None:
+            transfers_out_table_q = transfers_out_table_q.filter(Transfer.user_id == wallet.user_id)
+        else:
+            transfers_out_table_q = transfers_out_table_q.filter(Transfer.user_id.is_(None))
+        transfers_out = transfers_out_table_q.scalar()
+
+        # Legacy Expense transfer out support
+        leg_transfers_out_q = db.query(func.coalesce(func.sum(Expense.amount), 0.0))\
             .filter(Expense.wallet_id == wallet.id, func.upper(Expense.type) == "TRANSFER")
         if wallet.user_id is not None:
-            transfers_out_q = transfers_out_q.filter(Expense.user_id == wallet.user_id)
+            leg_transfers_out_q = leg_transfers_out_q.filter(Expense.user_id == wallet.user_id)
         else:
-            transfers_out_q = transfers_out_q.filter(Expense.user_id.is_(None))
-        transfers_out = transfers_out_q.scalar()
+            leg_transfers_out_q = leg_transfers_out_q.filter(Expense.user_id.is_(None))
+        transfers_out += leg_transfers_out_q.scalar()
 
         return round(float(wallet.initial_balance or 0.0) + float(incomes) + float(incomes_table) - float(expenses) + float(transfers_in) - float(transfers_out), 2)
 
@@ -163,7 +184,15 @@ class WalletService:
             inc_q = inc_q.filter(Income.user_id == user_id)
         inc_q.delete(synchronize_session=False)
 
-        # 3. Delete the wallet
+        # 3. Delete all transfers associated with this wallet
+        tr_q = db.query(Transfer).filter(
+            or_(Transfer.from_wallet_id == wallet_id, Transfer.to_wallet_id == wallet_id)
+        )
+        if user_id is not None:
+            tr_q = tr_q.filter(Transfer.user_id == user_id)
+        tr_q.delete(synchronize_session=False)
+
+        # 4. Delete the wallet
         db.delete(wallet)
         db.commit()
 

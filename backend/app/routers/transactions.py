@@ -10,7 +10,7 @@ import io
 from pydantic import BaseModel, Field
 
 from app.database import get_db
-from app.models import Expense, Income, User, Category
+from app.models import Expense, Income, User, Category, Transfer
 from app.models.wallet import Wallet
 from app.deps import get_optional_current_user
 from app.services.wallet_service import WalletService
@@ -153,28 +153,21 @@ def fetch_transactions(
         except Exception:
             pass
 
-    # 1. Fetch Expenses & Transfers
-    if type_clean in ("all", "expense", "expenses", "transfer", "transfers"):
-        eq = db.query(Expense)
+    # 1. Fetch Expenses (excluding transfers)
+    if type_clean in ("all", "expense", "expenses"):
+        eq = db.query(Expense).filter(or_(Expense.type != "TRANSFER", Expense.type == None))
         if user_id is not None:
             eq = eq.filter(Expense.user_id == user_id)
-        if type_clean in ("transfer", "transfers"):
-            eq = eq.filter(Expense.type == "TRANSFER")
-        elif type_clean in ("expense", "expenses"):
-            eq = eq.filter(Expense.type != "TRANSFER")
-
         if wallet_id is not None:
-            eq = eq.filter(or_(Expense.wallet_id == wallet_id, Expense.to_wallet_id == wallet_id))
+            eq = eq.filter(Expense.wallet_id == wallet_id)
         if start_d:
             eq = eq.filter(Expense.spent_on >= start_d)
         if end_d:
             eq = eq.filter(Expense.spent_on <= end_d)
         if category and category != "All":
             eq = eq.filter(Expense.category == category)
-        expenses = eq.all()
-        for e in expenses:
-            e_type = "transfer" if (e.type or "").upper() == "TRANSFER" else "expense"
-            results.append(serialize_unified(e, e_type, db=db))
+        for e in eq.all():
+            results.append(serialize_unified(e, "expense", db=db))
 
     # 2. Fetch Incomes
     if type_clean in ("all", "income", "incomes"):
@@ -189,9 +182,37 @@ def fetch_transactions(
             iq = iq.filter(Income.received_on <= end_d)
         if category and category != "All":
             iq = iq.filter(Income.category == category)
-        incomes = iq.all()
-        for i in incomes:
+        for i in iq.all():
             results.append(serialize_unified(i, "income", db=db))
+
+    # 3. Fetch Transfers from dedicated transfers table (and any legacy expense transfers)
+    if type_clean in ("all", "transfer", "transfers"):
+        tq = db.query(Transfer)
+        if user_id is not None:
+            tq = tq.filter(Transfer.user_id == user_id)
+        if wallet_id is not None:
+            tq = tq.filter(or_(Transfer.from_wallet_id == wallet_id, Transfer.to_wallet_id == wallet_id))
+        if start_d:
+            tq = tq.filter(Transfer.transferred_on >= start_d)
+        if end_d:
+            tq = tq.filter(Transfer.transferred_on <= end_d)
+        if category and category != "All" and category != "Transfer":
+            tq = tq.filter(Transfer.category == category)
+        for t in tq.all():
+            results.append(serialize_unified(t, "transfer", db=db))
+
+        # Legacy Expense transfer query if any exist
+        leg_q = db.query(Expense).filter(Expense.type == "TRANSFER")
+        if user_id is not None:
+            leg_q = leg_q.filter(Expense.user_id == user_id)
+        if wallet_id is not None:
+            leg_q = leg_q.filter(or_(Expense.wallet_id == wallet_id, Expense.to_wallet_id == wallet_id))
+        if start_d:
+            leg_q = leg_q.filter(Expense.spent_on >= start_d)
+        if end_d:
+            leg_q = leg_q.filter(Expense.spent_on <= end_d)
+        for le in leg_q.all():
+            results.append(serialize_unified(le, "transfer", db=db))
 
     # 3. Search filtering
     if search:
@@ -312,14 +333,13 @@ def create_transaction(
             )
 
         transfer_note = note if note else f"Transfer from {src_wallet.name} to {dest_wallet.name}"
-        item = Expense(
+        item = Transfer(
             amount=amt,
             category=cat or "Transfer",
             note=transfer_note,
-            spent_on=d,
+            transferred_on=d,
             payment_method=tx_in.payment_method or "Wallet Transfer",
-            type="TRANSFER",
-            wallet_id=wallet_id,
+            from_wallet_id=wallet_id,
             to_wallet_id=to_wallet_id,
             user_id=user_id,
         )
@@ -456,14 +476,13 @@ def bulk_import_transactions(
                     running_balances[to_wallet_id] += amt
 
                 transfer_note = note if note else "Wallet Transfer"
-                item = Expense(
+                item = Transfer(
                     amount=amt,
                     category=cat or "Transfer",
                     note=transfer_note,
-                    spent_on=d,
+                    transferred_on=d,
                     payment_method=tx.payment_method or "Wallet Transfer",
-                    type="TRANSFER",
-                    wallet_id=wallet_id,
+                    from_wallet_id=wallet_id,
                     to_wallet_id=to_wallet_id,
                     user_id=user_id,
                 )
@@ -515,29 +534,46 @@ def update_transaction(
 
     expense = None
     income = None
+    transfer_item = None
 
-    if t_type in ("income", "deposit"):
+    if t_type == "transfer":
+        tq = db.query(Transfer).filter(Transfer.id == tx_id)
+        if user_id:
+            tq = tq.filter(Transfer.user_id == user_id)
+        transfer_item = tq.first()
+        if not transfer_item:
+            eq = db.query(Expense).filter(Expense.id == tx_id, Expense.type == "TRANSFER")
+            if user_id:
+                eq = eq.filter(Expense.user_id == user_id)
+            expense = eq.first()
+    elif t_type in ("income", "deposit"):
         iq = db.query(Income).filter(Income.id == tx_id)
         if user_id:
             iq = iq.filter(Income.user_id == user_id)
         income = iq.first()
-    elif t_type in ("expense", "transfer"):
+    elif t_type in ("expense", "expenses"):
         eq = db.query(Expense).filter(Expense.id == tx_id)
         if user_id:
             eq = eq.filter(Expense.user_id == user_id)
         expense = eq.first()
     else:
-        eq = db.query(Expense).filter(Expense.id == tx_id)
+        # Search all models
+        tq = db.query(Transfer).filter(Transfer.id == tx_id)
         if user_id:
-            eq = eq.filter(Expense.user_id == user_id)
-        expense = eq.first()
-        if not expense:
-            iq = db.query(Income).filter(Income.id == tx_id)
+            tq = tq.filter(Transfer.user_id == user_id)
+        transfer_item = tq.first()
+        if not transfer_item:
+            eq = db.query(Expense).filter(Expense.id == tx_id)
             if user_id:
-                iq = iq.filter(Income.user_id == user_id)
-            income = iq.first()
+                eq = eq.filter(Expense.user_id == user_id)
+            expense = eq.first()
+            if not expense:
+                iq = db.query(Income).filter(Income.id == tx_id)
+                if user_id:
+                    iq = iq.filter(Income.user_id == user_id)
+                income = iq.first()
 
-    if not expense and not income:
+    if not expense and not income and not transfer_item:
         raise HTTPException(status_code=404, detail="Transaction not found.")
 
     amt = tx_in.amount if tx_in.amount is not None else tx_in.amt
@@ -545,7 +581,26 @@ def update_transaction(
     note = tx_in.note if tx_in.note is not None else tx_in.title
     d = tx_in.date or tx_in.spent_on or tx_in.received_on
 
-    if expense:
+    if transfer_item:
+        if amt is not None:
+            transfer_item.amount = float(amt)
+        if cat is not None:
+            transfer_item.category = cat
+        if note is not None:
+            transfer_item.note = note
+        if d is not None:
+            transfer_item.transferred_on = d
+        if tx_in.payment_method is not None:
+            transfer_item.payment_method = tx_in.payment_method
+        if tx_in.wallet_id is not None:
+            transfer_item.from_wallet_id = tx_in.wallet_id
+        if tx_in.to_wallet_id is not None:
+            transfer_item.to_wallet_id = tx_in.to_wallet_id
+        db.commit()
+        db.refresh(transfer_item)
+        return serialize_unified(transfer_item, "transfer", db=db)
+
+    elif expense:
         new_amt = float(amt) if amt is not None else float(expense.amount)
         new_w_id = tx_in.wallet_id if tx_in.wallet_id is not None else expense.wallet_id
         is_transfer = (tx_in.type or expense.type or "").upper() == "TRANSFER"
@@ -622,7 +677,26 @@ def delete_transaction(
     user_id = current_user.id if current_user else None
     t_type = (type or "").strip().lower()
 
-    if t_type in ("income", "deposit"):
+    if t_type == "transfer":
+        q = db.query(Transfer).filter(Transfer.id == tx_id)
+        if user_id:
+            q = q.filter(Transfer.user_id == user_id)
+        item = q.first()
+        if item:
+            db.delete(item)
+            db.commit()
+            return {"message": "Transaction deleted", "id": tx_id}
+        # Fallback legacy Expense
+        q_leg = db.query(Expense).filter(Expense.id == tx_id, Expense.type == "TRANSFER")
+        if user_id:
+            q_leg = q_leg.filter(Expense.user_id == user_id)
+        item_leg = q_leg.first()
+        if item_leg:
+            db.delete(item_leg)
+            db.commit()
+            return {"message": "Transaction deleted", "id": tx_id}
+
+    elif t_type in ("income", "deposit"):
         q = db.query(Income).filter(Income.id == tx_id)
         if user_id:
             q = q.filter(Income.user_id == user_id)
@@ -641,7 +715,16 @@ def delete_transaction(
             db.commit()
             return {"message": "Transaction deleted", "id": tx_id}
 
-    # Fallback search both
+    # Fallback search all models
+    q_tr = db.query(Transfer).filter(Transfer.id == tx_id)
+    if user_id:
+        q_tr = q_tr.filter(Transfer.user_id == user_id)
+    item_tr = q_tr.first()
+    if item_tr:
+        db.delete(item_tr)
+        db.commit()
+        return {"message": "Transaction deleted", "id": tx_id}
+
     q_exp = db.query(Expense).filter(Expense.id == tx_id)
     if user_id:
         q_exp = q_exp.filter(Expense.user_id == user_id)
