@@ -1848,6 +1848,29 @@ th button:hover {
   color: var(--pl-color-primary);
 }
 
+th button .sort-arrow {
+  margin-left: 3px;
+  font-size: 11px;
+  font-weight: 700;
+  display: inline-block;
+  transition: opacity 0.15s ease, color 0.15s ease;
+}
+
+th button .sort-arrow.active {
+  color: var(--pl-color-primary);
+  opacity: 1;
+}
+
+th button .sort-arrow.inactive {
+  color: var(--pl-text-muted);
+  opacity: 0.45;
+}
+
+th button:hover .sort-arrow.inactive {
+  opacity: 0.85;
+  color: var(--pl-color-primary);
+}
+
 td {
   padding: 14px 18px;
   font-size: 13px;

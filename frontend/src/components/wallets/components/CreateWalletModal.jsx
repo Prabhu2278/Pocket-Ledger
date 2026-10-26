@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { CURRENCY_CONFIGS } from '../../../../utils/formatCurrency'
 import { CustomDropdown } from '../../ui/CustomDropdown/CustomDropdown'
+import { getUniqueWalletColor } from '../../../pages/Wallets'
 
 const WALLET_TYPE_OPTIONS = [
   { value: 'BANK', label: 'Bank Account' },
@@ -9,11 +10,10 @@ const WALLET_TYPE_OPTIONS = [
   { value: 'CREDIT_CARD', label: 'Credit Card' },
 ]
 
-export function CreateWalletModal({ isOpen, onClose, onSave, currency = 'INR' }) {
+export function CreateWalletModal({ isOpen, onClose, onSave, currency = 'INR', wallets = [] }) {
   const [name, setName] = useState('')
   const [walletType, setWalletType] = useState('BANK')
   const [initialBalance, setInitialBalance] = useState('')
-  const [color, setColor] = useState('#10b981')
 
   const currCode = (currency || 'INR').toUpperCase()
   const currSymbol = CURRENCY_CONFIGS[currCode]?.symbol || '₹'
@@ -39,7 +39,7 @@ export function CreateWalletModal({ isOpen, onClose, onSave, currency = 'INR' })
       name: name.trim(),
       wallet_type: walletType,
       initial_balance: parseFloat(initialBalance) || 0,
-      color,
+      color: getUniqueWalletColor(wallets),
     })
     setName('')
     setInitialBalance('')

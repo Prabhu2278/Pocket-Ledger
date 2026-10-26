@@ -27,14 +27,16 @@ export function TransactionTable({
       (key === 'description' && sort.key === 'note') ||
       (key === 'category' && sort.key === 'cat') ||
       (key === 'wallet' && sort.key === 'wallet_name')
-    const sortLabel = isSorted ? (sort.direction > 0 ? ' ↑' : ' ↓') : ''
+    const arrowChar = isSorted ? (sort.direction > 0 ? '↑' : '↓') : '↓'
     const ariaSort = isSorted ? (sort.direction > 0 ? 'ascending' : 'descending') : 'none'
 
     return (
       <th className={`${isRight ? 'r' : ''} ${className}`.trim()} aria-sort={ariaSort}>
         <button type="button" onClick={() => onSort(key)}>
-          {label}
-          {sortLabel}
+          <span>{label}</span>
+          <span className={`sort-arrow ${isSorted ? 'active' : 'inactive'}`} aria-hidden="true">
+            {arrowChar}
+          </span>
         </button>
       </th>
     )

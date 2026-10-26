@@ -9,7 +9,73 @@ const WALLET_TYPES = [
   { id: 'CREDIT_CARD', label: 'Credit Card' },
 ]
 
-const COLOR_OPTIONS = ['#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#06b6d4', '#64748b']
+const WALLET_PALETTE = [
+  '#10b981', // Emerald
+  '#3b82f6', // Sapphire Blue
+  '#8b5cf6', // Violet
+  '#ec4899', // Rose Pink
+  '#f59e0b', // Amber Orange
+  '#06b6d4', // Cyan
+  '#6366f1', // Indigo
+  '#14b8a6', // Teal
+  '#f97316', // Coral Orange
+  '#a855f7', // Purple
+  '#e11d48', // Ruby
+  '#84cc16', // Lime
+  '#0284c7', // Sky Blue
+  '#d946ef', // Fuchsia
+  '#22c55e', // Green
+  '#eab308', // Sunflower
+  '#64748b', // Slate
+  '#4f46e5', // Deep Indigo
+  '#059669', // Pine Green
+  '#2563eb', // Royal Blue
+  '#db2777', // Magenta Pink
+  '#ea580c', // Bright Rust
+  '#7c3aed', // Royal Violet
+  '#0891b2', // Deep Ocean Cyan
+]
+
+function hslToHex(h, s, l) {
+  s /= 100
+  l /= 100
+  const a = s * Math.min(l, 1 - l)
+  const f = (n) => {
+    const k = (n + h / 30) % 12
+    const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1)
+    return Math.round(255 * color).toString(16).padStart(2, '0')
+  }
+  return `#${f(0)}${f(8)}${f(4)}`
+}
+
+export function getUniqueWalletColor(existingWallets = []) {
+  const used = new Set(
+    existingWallets
+      .map((w) => (w.color || '').toLowerCase().trim())
+      .filter(Boolean)
+  )
+
+  // 1. Filter out colors already in use by another wallet
+  const unusedPalette = WALLET_PALETTE.filter(
+    (c) => !used.has(c.toLowerCase())
+  )
+
+  if (unusedPalette.length > 0) {
+    const idx = Math.floor(Math.random() * unusedPalette.length)
+    return unusedPalette[idx]
+  }
+
+  // 2. If all curated colors are in use, generate a random vibrant HSL color that is not used
+  for (let attempt = 0; attempt < 50; attempt++) {
+    const randomHue = Math.floor(Math.random() * 360)
+    const genColor = hslToHex(randomHue, 72, 52)
+    if (!used.has(genColor.toLowerCase())) {
+      return genColor
+    }
+  }
+
+  return '#4f46e5'
+}
 
 export function Wallets({
   wallets = [],
@@ -72,7 +138,7 @@ export function Wallets({
     setName('')
     setWalletType('BANK')
     setInitialBalance('')
-    setColor('#10b981')
+    setColor(getUniqueWalletColor(wallets))
     setError('')
     setModalOpen(true)
   }
@@ -82,7 +148,7 @@ export function Wallets({
     setName(w.name || '')
     setWalletType(w.wallet_type || 'BANK')
     setInitialBalance(String(w.initial_balance ?? 0))
-    setColor(w.color || '#10b981')
+    setColor(w.color || getUniqueWalletColor(wallets))
     setError('')
     setModalOpen(true)
   }
@@ -101,14 +167,15 @@ export function Wallets({
           name: name.trim(),
           wallet_type: walletType,
           initial_balance: initBal,
-          color,
+          color: editingWallet.color || color || getUniqueWalletColor(wallets),
         })
       } else {
+        const assignedColor = color || getUniqueWalletColor(wallets)
         await onAddWallet({
           name: name.trim(),
           wallet_type: walletType,
           initial_balance: initBal,
-          color,
+          color: assignedColor,
         })
       }
       setModalOpen(false)
@@ -352,83 +419,162 @@ export function Wallets({
           className="modal-overlay"
           role="dialog"
           aria-modal="true"
+          aria-labelledby="wallet-modal-title"
           onClick={(e) => {
             if (e.target === e.currentTarget) setModalOpen(false)
           }}
         >
-          <div className="dialog-content wallet-dialog-content">
-            <form className="f" onSubmit={handleSubmit} noValidate>
-              <h2>{editingWallet ? 'Edit Account' : 'Add New Account'}</h2>
+          <div className="dialog-content wallet-dialog-content" onClick={(e) => e.stopPropagation()}>
+            {/* Modal Header */}
+            <div className="wallet-modal-header">
+              <div className="wallet-modal-title-wrap">
+                <div className="wallet-modal-icon-badge" aria-hidden="true">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="2" y="5" width="20" height="14" rx="2" />
+                    <line x1="2" y1="10" x2="22" y2="10" />
+                  </svg>
+                </div>
+                <div>
+                  <h2 id="wallet-modal-title" style={{ margin: 0, fontSize: '18px', fontWeight: 800 }}>
+                    {editingWallet ? 'Edit Account' : 'Add New Account'}
+                  </h2>
+                  <p style={{ margin: '2px 0 0', fontSize: '12.5px', color: 'var(--pl-text-muted)' }}>
+                    {editingWallet ? 'Update account details and balance' : 'Create a new wallet or bank account'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="ghost"
+                onClick={() => setModalOpen(false)}
+                aria-label="Close modal"
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  padding: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: 'var(--pl-radius-md)',
+                  color: 'var(--pl-text-muted)',
+                }}
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
 
-              <label>
-                Account Name
+            <form onSubmit={handleSubmit} noValidate>
+              {/* Account Name */}
+              <div className="wallet-field-group">
+                <label htmlFor="wallet-name-input" className="wallet-field-label">
+                  Account Name <span style={{ color: 'var(--pl-color-danger)' }}>*</span>
+                </label>
                 <input
                   type="text"
                   id="wallet-name-input"
+                  className="wallet-form-input"
                   required
                   placeholder="e.g. HDFC Bank, GPay, Cash in Hand"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   autoFocus
                 />
-              </label>
-
-              <label style={{ margin: '6px 0 2px', fontSize: '13px', fontWeight: 600 }}>
-                Account Type
-              </label>
-              <div className="wallet-type-chips" role="radiogroup" aria-label="Account Type">
-                {WALLET_TYPES.map((t) => (
-                  <button
-                    key={t.id}
-                    type="button"
-                    className="wallet-type-chip"
-                    aria-pressed={walletType === t.id}
-                    onClick={() => setWalletType(t.id)}
-                  >
-                    {t.label}
-                  </button>
-                ))}
               </div>
 
-              <label>
-                Initial Starting Balance ({currency})
-                <input
-                  type="number"
-                  id="wallet-balance-input"
-                  step="0.01"
-                  placeholder="0.00"
-                  value={initialBalance}
-                  onChange={(e) => setInitialBalance(e.target.value)}
-                />
-              </label>
+              {/* Account Type */}
+              <div className="wallet-field-group">
+                <label className="wallet-field-label">
+                  Account Type
+                </label>
+                <div className="wallet-type-grid" role="radiogroup" aria-label="Account Type">
+                  {WALLET_TYPES.map((t) => {
+                    const isSelected = walletType === t.id
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        className={`wallet-type-btn ${isSelected ? 'active' : ''}`}
+                        aria-pressed={isSelected}
+                        onClick={() => setWalletType(t.id)}
+                      >
+                        <span className="wallet-type-btn-icon" aria-hidden="true">
+                          {t.id === 'BANK' && (
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v4M12 14v4M16 14v4" />
+                            </svg>
+                          )}
+                          {t.id === 'WALLET' && (
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
+                              <line x1="12" y1="18" x2="12.01" y2="18" />
+                            </svg>
+                          )}
+                          {t.id === 'CASH' && (
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <rect x="2" y="6" width="20" height="12" rx="2" />
+                              <circle cx="12" cy="12" r="2" />
+                              <path d="M6 12h.01M18 12h.01" />
+                            </svg>
+                          )}
+                          {t.id === 'CREDIT_CARD' && (
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
+                              <line x1="1" y1="10" x2="23" y2="10" />
+                            </svg>
+                          )}
+                        </span>
+                        <span className="wallet-type-btn-label">{t.label}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
 
-              <label style={{ margin: '6px 0 2px', fontSize: '13px', fontWeight: 600 }}>
-                Accent Color
-              </label>
-              <div className="wallet-color-swatches" role="radiogroup" aria-label="Accent Color">
-                {COLOR_OPTIONS.map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    className={`wallet-color-swatch ${color === c ? 'active' : ''}`}
-                    style={{ background: c }}
-                    onClick={() => setColor(c)}
-                    aria-label={`Color ${c}`}
+              {/* Initial Starting Balance */}
+              <div className="wallet-field-group">
+                <label htmlFor="wallet-balance-input" className="wallet-field-label">
+                  Initial Starting Balance ({currency})
+                </label>
+                <div className="wallet-balance-input-wrap">
+                  <span className="wallet-currency-badge" aria-hidden="true">
+                    {currency === 'INR' ? '₹' : currency}
+                  </span>
+                  <input
+                    type="number"
+                    id="wallet-balance-input"
+                    className="wallet-form-input wallet-balance-input"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={initialBalance}
+                    onChange={(e) => setInitialBalance(e.target.value)}
                   />
-                ))}
+                </div>
               </div>
 
               {error && (
-                <p className="err" role="alert">
-                  {error}
-                </p>
+                <div className="wallet-form-error" role="alert">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="12" />
+                    <line x1="12" y1="16" x2="12.01" y2="16" />
+                  </svg>
+                  <span>{error}</span>
+                </div>
               )}
 
-              <div className="btns">
-                <button type="button" className="ghost" onClick={() => setModalOpen(false)}>
+              {/* Form Buttons */}
+              <div className="wallet-modal-actions">
+                <button
+                  type="button"
+                  className="wallet-btn-cancel"
+                  onClick={() => setModalOpen(false)}
+                >
                   Cancel
                 </button>
-                <button type="submit" className="primary">
+                <button type="submit" className="wallet-btn-submit">
                   {editingWallet ? 'Save Changes' : 'Create Account'}
                 </button>
               </div>
