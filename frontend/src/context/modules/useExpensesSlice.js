@@ -83,6 +83,15 @@ export function useExpensesSlice({
       if (sort.key === 'amt' || sort.key === 'amount') {
         va = Number(a.amt || a.amount) || 0
         vb = Number(b.amt || b.amount) || 0
+      } else if (sort.key === 'description' || sort.key === 'note') {
+        va = (a.note || a.title || a.cat || a.category || '').toLowerCase()
+        vb = (b.note || b.title || b.cat || b.category || '').toLowerCase()
+      } else if (sort.key === 'category' || sort.key === 'cat') {
+        va = (a.cat || a.category || '').toLowerCase()
+        vb = (b.cat || b.category || '').toLowerCase()
+      } else if (sort.key === 'wallet' || sort.key === 'wallet_name') {
+        va = (a.wallet_name || '').toLowerCase()
+        vb = (b.wallet_name || '').toLowerCase()
       }
       if (va < vb) return -1 * sort.direction
       if (va > vb) return 1 * sort.direction

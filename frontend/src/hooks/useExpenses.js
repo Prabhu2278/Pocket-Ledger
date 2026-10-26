@@ -58,7 +58,6 @@ export function useExpenses() {
   const [paymentMethodFilter, setPaymentMethodFilter] = useState('all')
 
   const resetFilters = useCallback(() => {
-    setTypeFilter('all')
     setCategoryFilter('All')
     setWalletFilter('all')
     setMinAmount('')
@@ -70,7 +69,6 @@ export function useExpenses() {
 
   const activeFilterCount = useMemo(() => {
     let count = 0
-    if (typeFilter && typeFilter !== 'all') count++
     if (categoryFilter && categoryFilter !== 'All') count++
     if (walletFilter && walletFilter !== 'all') count++
     if (minAmount !== '') count++
@@ -79,7 +77,6 @@ export function useExpenses() {
     if (endDate !== '') count++
     return count
   }, [
-    typeFilter,
     categoryFilter,
     walletFilter,
     minAmount,

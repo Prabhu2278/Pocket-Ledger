@@ -156,6 +156,34 @@ export function Transactions({
         const valB = Number(b.amount || b.amt || 0)
         return (valA - valB) * sort.direction
       }
+
+      if (sort.key === 'description' || sort.key === 'note') {
+        const descA = (a.note || a.title || a.category || a.cat || '').toLowerCase()
+        const descB = (b.note || b.title || b.category || b.cat || '').toLowerCase()
+        const comp = descA.localeCompare(descB) || (a.id - b.id)
+        return comp * sort.direction
+      }
+
+      if (sort.key === 'category' || sort.key === 'cat') {
+        const catA = (a.category || a.cat || (a.type === 'income' ? 'Salary' : a.type === 'transfer' ? 'Transfer' : 'Other')).toLowerCase()
+        const catB = (b.category || b.cat || (b.type === 'income' ? 'Salary' : b.type === 'transfer' ? 'Transfer' : 'Other')).toLowerCase()
+        const comp = catA.localeCompare(catB) || (a.id - b.id)
+        return comp * sort.direction
+      }
+
+      if (sort.key === 'wallet' || sort.key === 'wallet_name') {
+        const getWalletLabel = (t) => {
+          if ((t.type || '').toLowerCase() === 'transfer') {
+            return `${t.wallet_name || 'Source'} → ${t.to_wallet_name || 'Destination'}`.toLowerCase()
+          }
+          return (t.wallet_name || 'Main Wallet').toLowerCase()
+        }
+        const walA = getWalletLabel(a)
+        const walB = getWalletLabel(b)
+        const comp = walA.localeCompare(walB) || (a.id - b.id)
+        return comp * sort.direction
+      }
+
       const dateA = normalizeDateStr(a.date || a.spent_on || a.received_on)
       const dateB = normalizeDateStr(b.date || b.spent_on || b.received_on)
       const comp = dateA.localeCompare(dateB) || a.id - b.id

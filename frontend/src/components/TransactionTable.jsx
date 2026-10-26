@@ -19,16 +19,19 @@ export function TransactionTable({
     )
   }
 
-  const renderTh = (key, label, isRight = false) => {
+  const renderTh = (key, label, isRight = false, className = '') => {
     const isSorted =
       sort.key === key ||
       (key === 'amt' && sort.key === 'amount') ||
-      (key === 'date' && (sort.key === 'spent_on' || sort.key === 'received_on'))
+      (key === 'date' && (sort.key === 'spent_on' || sort.key === 'received_on')) ||
+      (key === 'description' && sort.key === 'note') ||
+      (key === 'category' && sort.key === 'cat') ||
+      (key === 'wallet' && sort.key === 'wallet_name')
     const sortLabel = isSorted ? (sort.direction > 0 ? ' ↑' : ' ↓') : ''
     const ariaSort = isSorted ? (sort.direction > 0 ? 'ascending' : 'descending') : 'none'
 
     return (
-      <th className={isRight ? 'r' : ''} aria-sort={ariaSort}>
+      <th className={`${isRight ? 'r' : ''} ${className}`.trim()} aria-sort={ariaSort}>
         <button type="button" onClick={() => onSort(key)}>
           {label}
           {sortLabel}
@@ -43,9 +46,9 @@ export function TransactionTable({
         <thead>
           <tr>
             {renderTh('date', 'Date')}
-            <th>Description</th>
-            <th className="hide-s">Category</th>
-            <th className="hide-s">Wallet</th>
+            {renderTh('description', 'Description')}
+            {renderTh('category', 'Category', false, 'hide-s')}
+            {renderTh('wallet', 'Wallet', false, 'hide-s')}
             <th>Type</th>
             {renderTh('amt', 'Amount', true)}
             <th>

@@ -22,13 +22,18 @@ export function ExpenseList({
     )
   }
 
-  const renderTh = (key, label, isRight = false) => {
-    const isSorted = sort.key === key || (key === 'amt' && sort.key === 'amount') || (key === 'date' && sort.key === 'spent_on')
+  const renderTh = (key, label, isRight = false, className = '') => {
+    const isSorted =
+      sort.key === key ||
+      (key === 'amt' && sort.key === 'amount') ||
+      (key === 'date' && sort.key === 'spent_on') ||
+      (key === 'description' && sort.key === 'note') ||
+      (key === 'category' && sort.key === 'cat')
     const sortLabel = isSorted ? (sort.direction > 0 ? ' ↑' : ' ↓') : ''
     const ariaSort = isSorted ? (sort.direction > 0 ? 'ascending' : 'descending') : 'none'
 
     return (
-      <th className={isRight ? 'r' : ''} aria-sort={ariaSort}>
+      <th className={`${isRight ? 'r' : ''} ${className}`.trim()} aria-sort={ariaSort}>
         <button type="button" onClick={() => onSort(key)}>
           {label}
           {sortLabel}
@@ -43,8 +48,8 @@ export function ExpenseList({
         <thead>
           <tr>
             {renderTh('date', 'Date')}
-            <th>Description</th>
-            <th className="hide-s">Category</th>
+            {renderTh('description', 'Description')}
+            {renderTh('category', 'Category', false, 'hide-s')}
             {renderTh('amt', 'Amount', true)}
             <th>
               <span style={{ position: 'absolute', left: '-9999px' }}>Actions</span>
