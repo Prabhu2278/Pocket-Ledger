@@ -258,37 +258,6 @@ export function CategoriesTab({
                 </div>
               )}
 
-              <div className="category-form-field">
-                <label>Assigned Unique Color</label>
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '10px',
-                    padding: '9px 12px',
-                    background: 'var(--pl-bg-surface-hover, rgba(0, 0, 0, 0.03))',
-                    borderRadius: 'var(--pl-radius-md, 8px)',
-                    border: '1px solid var(--pl-border-default, #e2e8f0)',
-                  }}
-                >
-                  <span
-                    style={{
-                      width: '20px',
-                      height: '20px',
-                      borderRadius: '50%',
-                      background: categoryColor,
-                      display: 'inline-block',
-                      boxShadow: '0 2px 5px rgba(0,0,0,0.15)',
-                      flexShrink: 0,
-                    }}
-                    aria-hidden="true"
-                  />
-                  <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--pl-text-muted)' }}>
-                    {categoryColor} (Auto-assigned unique color)
-                  </span>
-                </div>
-              </div>
-
               <div className="category-modal-btns">
                 <button
                   type="button"
@@ -308,43 +277,6 @@ export function CategoriesTab({
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-
-      {/* Delete / Deactivate Confirmation Modal */}
-      {categoryToDelete && (
-        <div className="category-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="cat-del-title" onClick={(e) => { if (e.target === e.currentTarget && !isDeleting) setCategoryToDelete(null) }}>
-          <div className="category-modal-box">
-            <h3 id="cat-del-title" className="category-modal-title" style={{ color: 'var(--pl-color-danger)' }}>
-              Remove Category?
-            </h3>
-            <p className="category-modal-desc">
-              Are you sure you want to remove <b>"{categoryToDelete.name}"</b>?
-              <br /><br />
-              If you have existing transactions using this category, it will be <b>safely deactivated</b> so your historical records and reports remain intact.
-            </p>
-
-            <div className="category-modal-btns">
-              <button
-                type="button"
-                className="ghost"
-                onClick={() => setCategoryToDelete(null)}
-                disabled={isDeleting}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="primary"
-                style={{ background: 'var(--pl-color-danger)', borderColor: 'var(--pl-color-danger)' }}
-                onClick={handleConfirmDelete}
-                disabled={isDeleting}
-                id="btn-confirm-delete-category"
-              >
-                {isDeleting ? 'Removing...' : 'Remove Category'}
-              </button>
-            </div>
           </div>
         </div>
       )}
